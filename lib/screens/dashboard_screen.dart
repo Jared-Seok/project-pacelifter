@@ -4,6 +4,7 @@ import 'package:pacelifter/services/health_service.dart';
 import 'package:pacelifter/services/auth_service.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// 재설계된 대시보드 화면
 ///
@@ -318,7 +319,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: [
           Text(
             'PaceLifter',
-            style: TextStyle(
+            style: GoogleFonts.anton(
               fontSize: 28,
               fontWeight: FontWeight.bold,
               color: Theme.of(context).colorScheme.secondary,

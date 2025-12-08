@@ -1,6 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:pacelifter/services/auth_service.dart';
 import 'package:pacelifter/screens/main_navigation.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:pacelifter/services/profile_service.dart';
+import 'package:pacelifter/screens/profile_setup_screen.dart';
 
 /// 로그인 화면
 ///
@@ -14,19 +18,39 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final AuthService _authService = AuthService();
+  final ProfileService _profileService = ProfileService();
   final TextEditingController _usernameController = TextEditingController();
   late AnimationController _animationController;
+  late AnimationController _phraseAnimationController;
   late Animation<Offset> _logoSlideAnimation;
   late Animation<double> _formFadeAnimation;
+  late Animation<double> _phraseFadeAnimation;
   bool _isLoading = false;
+
+  // Motivational phrases
+  final List<String> _motivationalPhrases = [
+    'There is NO finish line',
+    'Be unbreakable',
+    'We pay for pain.\nNothing can hurt us.',
+    'Run heavy, Lift fast.',
+    'Defy Limits.',
+    'Built to Last.',
+    'No Easy Way.',
+    'Pain is Fuel.',
+    'Too strong for runners,\ntoo fast for lifters.',
+    'Pain is temporary,\nbut glory lasts forever.',
+  ];
+
+  int _currentPhraseIndex = 0;
+  Timer? _phraseTimer;
 
   @override
   void initState() {
     super.initState();
 
-    // 애니메이션 초기화
+    // 로고/폼 애니메이션 초기화
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -54,17 +78,61 @@ class _LoginScreenState extends State<LoginScreen>
       ),
     );
 
+    // Phrase 애니메이션 초기화
+    _phraseAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    );
+
+    _phraseFadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(
+      CurvedAnimation(
+        parent: _phraseAnimationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
     // 화면이 표시된 후 애니메이션 시작
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted) {
         _animationController.forward();
+        _phraseAnimationController.forward();
       }
     });
+
+    // 10초마다 phrase 변경
+    _startPhraseTimer();
+  }
+
+  void _startPhraseTimer() {
+    _phraseTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      if (mounted) {
+        _changePhrase();
+      }
+    });
+  }
+
+  void _changePhrase() async {
+    // Fade out
+    await _phraseAnimationController.reverse();
+
+    if (mounted) {
+      setState(() {
+        _currentPhraseIndex = (_currentPhraseIndex + 1) % _motivationalPhrases.length;
+      });
+
+      // Fade in
+      await _phraseAnimationController.forward();
+    }
   }
 
   @override
   void dispose() {
     _animationController.dispose();
+    _phraseAnimationController.dispose();
+    _phraseTimer?.cancel();
     _usernameController.dispose();
     super.dispose();
   }
@@ -95,12 +163,23 @@ class _LoginScreenState extends State<LoginScreen>
       _isLoading = false;
     });
 
-    // 메인 네비게이션 화면으로 이동
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (context) => const MainNavigation(),
-      ),
-    );
+    final isProfileSetupCompleted = await _profileService.isProfileSetupCompleted();
+
+    if (!mounted) return;
+
+    if (isProfileSetupCompleted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => const MainNavigation(),
+        ),
+      );
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => const ProfileSetupScreen(),
+        ),
+      );
+    }
   }
 
   @override
@@ -135,24 +214,72 @@ class _LoginScreenState extends State<LoginScreen>
                               const SizedBox(height: 16),
                               Text(
                                 'PaceLifter',
-                                style: TextStyle(
-                                  fontSize: 36,
+                                style: GoogleFonts.anton(
+                                  fontSize: 40,
                                   fontWeight: FontWeight.bold,
                                   color: Theme.of(context).colorScheme.secondary,
+                                  letterSpacing: 1.5,
                                 ),
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 12),
                               Text(
-                                '러닝 & 하이록스 트레이닝',
-                                style: TextStyle(
-                                  fontSize: 14,
+                                'Discipline Conquers All',
+                                style: GoogleFonts.oswald(
+                                  fontSize: 21,
+                                  fontWeight: FontWeight.bold,
+                                  fontStyle: FontStyle.italic,
                                   color: Theme.of(context)
                                       .colorScheme
                                       .onSurface
-                                      .withOpacity(0.7),
+                                      .withOpacity(0.8),
+                                  letterSpacing: 0.5,
                                 ),
                               ),
                             ],
+                          ),
+                        ),
+                      ),
+
+                      // Motivational Phrase 섹션 (중앙)
+                      Expanded(
+                        flex: 1, // Give it a flex value to distribute space
+                        child: Container(
+                          alignment: Alignment.center,
+                          padding: const EdgeInsets.only(
+                            left: 24.0,
+                            right: 24.0,
+                            bottom: 30.0, // Move up
+                          ),
+                          child: AnimatedBuilder(
+                            animation: _phraseAnimationController,
+                            builder: (context, child) {
+                              return FadeTransition(
+                                opacity: _phraseFadeAnimation,
+                                child: ShaderMask(
+                                  shaderCallback: (bounds) {
+                                    return LinearGradient(
+                                      colors: [
+                                        Theme.of(context).colorScheme.primary,
+                                        Theme.of(context).colorScheme.secondary,
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ).createShader(bounds);
+                                  },
+                                  child: Text(
+                                    _motivationalPhrases[_currentPhraseIndex],
+                                    textAlign: TextAlign.center,
+                                    style: GoogleFonts.bebasNeue(
+                                      fontSize: 40,
+                                      fontStyle: FontStyle.italic,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.white, // Color needs to be white for ShaderMask to work correctly with gradient
+                                      height: 1.3,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                         ),
                       ),

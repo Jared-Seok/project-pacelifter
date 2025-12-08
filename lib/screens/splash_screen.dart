@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pacelifter/services/auth_service.dart';
 import 'package:pacelifter/screens/login_screen.dart';
 import 'package:pacelifter/screens/main_navigation.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// 스플래시 화면
 ///
@@ -97,37 +98,37 @@ class _SplashScreenState extends State<SplashScreen>
                     // 로고 아이콘
                     Icon(
                       Icons.directions_run,
-                      size: 120,
+                      size: 140,
                       color: Theme.of(context).colorScheme.secondary,
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 28),
                     // 앱 이름
                     Text(
                       'PaceLifter',
-                      style: TextStyle(
-                        fontSize: 42,
+                      style: GoogleFonts.anton(
+                        fontSize: 52,
                         fontWeight: FontWeight.bold,
                         color: Theme.of(context).colorScheme.secondary,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
                     // Discipline Conquers All (이탤릭)
                     Text(
                       'Discipline Conquers All',
-                      style: TextStyle(
-                        fontSize: 16,
+                      style: GoogleFonts.oswald(
+                        fontSize: 21,
                         fontStyle: FontStyle.italic,
-                        fontWeight: FontWeight.w300,
+                        fontWeight: FontWeight.bold,
                         color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
                         letterSpacing: 0.5,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     // Welcome Hybrid Athlete (Athlete에 포인트 색상)
                     RichText(
                       text: TextSpan(
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 18,
                           color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         ),
                         children: [
