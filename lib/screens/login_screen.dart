@@ -5,6 +5,7 @@ import 'package:pacelifter/screens/main_navigation.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pacelifter/services/profile_service.dart';
 import 'package:pacelifter/screens/profile_setup_screen.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 /// 로그인 화면
 ///
@@ -206,10 +207,14 @@ class _LoginScreenState extends State<LoginScreen>
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(
-                                Icons.directions_run,
-                                size: 100,
-                                color: Theme.of(context).colorScheme.secondary,
+                              SvgPicture.asset(
+                                'assets/images/pllogo.svg',
+                                width: 100,
+                                height: 100,
+                                colorFilter: ColorFilter.mode(
+                                  Theme.of(context).colorScheme.secondary,
+                                  BlendMode.srcIn,
+                                ),
                               ),
                               const SizedBox(height: 16),
                               Text(

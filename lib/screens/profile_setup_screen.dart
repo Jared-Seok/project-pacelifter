@@ -11,7 +11,7 @@ class ProfileSetupScreen extends StatefulWidget {
   State<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
 }
 
-class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
+class _ProfileSetupScreenState extends State<ProfileSetupScreen> with SingleTickerProviderStateMixin {
   final PageController _pageController = PageController();
   final ProfileService _profileService = ProfileService();
   UserProfile _userProfile = UserProfile();
@@ -19,14 +19,43 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   int _currentPage = 0;
   final int _totalPages = 5;
 
+  late AnimationController _progressAnimationController;
+  late Animation<double> _progressAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _progressAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
+    _progressAnimation = Tween<double>(begin: 0.0, end: 1.0 / _totalPages).animate(
+      CurvedAnimation(parent: _progressAnimationController, curve: Curves.easeInOut),
+    );
+    _progressAnimationController.forward();
+  }
+
   @override
   void dispose() {
+    _progressAnimationController.dispose();
     _pageController.dispose();
     super.dispose();
   }
 
   void _nextPage() {
     if (_currentPage < _totalPages - 1) {
+      setState(() {
+        _currentPage++;
+      });
+      _progressAnimation = Tween<double>(
+        begin: _currentPage / _totalPages,
+        end: (_currentPage + 1) / _totalPages,
+      ).animate(
+        CurvedAnimation(parent: _progressAnimationController, curve: Curves.easeInOut),
+      );
+      _progressAnimationController.reset();
+      _progressAnimationController.forward();
+
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
@@ -71,19 +100,23 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       ),
       body: Column(
         children: [
-          LinearProgressIndicator(
-            value: (_currentPage + 1) / _totalPages,
-            minHeight: 8,
+          AnimatedBuilder(
+            animation: _progressAnimation,
+            builder: (context, child) {
+              return LinearProgressIndicator(
+                value: _progressAnimation.value,
+                minHeight: 8,
+                backgroundColor: Colors.white,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  Theme.of(context).colorScheme.secondary,
+                ),
+              );
+            },
           ),
           Expanded(
             child: PageView(
               controller: _pageController,
               physics: const NeverScrollableScrollPhysics(),
-              onPageChanged: (page) {
-                setState(() {
-                  _currentPage = page;
-                });
-              },
               children: [
                 _buildStep1(),
                 _buildStep2(),
@@ -170,7 +203,15 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             height: 56,
             child: ElevatedButton(
               onPressed: (_userProfile.gender != null && _userProfile.height != null && _userProfile.weight != null) ? _nextPage : null,
-              child: const Text('다음'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: (_userProfile.gender != null && _userProfile.height != null && _userProfile.weight != null)
+                    ? Theme.of(context).colorScheme.secondary
+                    : Colors.grey,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.grey,
+                disabledForegroundColor: Colors.white,
+              ),
+              child: const Text('다음', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -179,6 +220,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   }
 
   Widget _buildStep2() {
+    final hasInput = _userProfile.skeletalMuscleMass != null || _userProfile.bodyFatPercentage != null;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Column(
@@ -194,7 +237,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(hintText: '예: 35.5', border: OutlineInputBorder()),
             onChanged: (value) {
-              _userProfile = _userProfile.copyWith(skeletalMuscleMass: double.tryParse(value));
+              setState(() {
+                _userProfile = _userProfile.copyWith(skeletalMuscleMass: double.tryParse(value));
+              });
             },
           ),
           const SizedBox(height: 24),
@@ -204,20 +249,38 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(hintText: '예: 15.2', border: OutlineInputBorder()),
             onChanged: (value) {
-              _userProfile = _userProfile.copyWith(bodyFatPercentage: double.tryParse(value));
+              setState(() {
+                _userProfile = _userProfile.copyWith(bodyFatPercentage: double.tryParse(value));
+              });
             },
           ),
           const SizedBox(height: 48),
           SizedBox(
             width: double.infinity,
             height: 56,
-            child: ElevatedButton(onPressed: _nextPage, child: const Text('다음')),
+            child: ElevatedButton(
+              onPressed: _nextPage,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.7),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('건너뛰기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
           ),
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             height: 56,
-            child: TextButton(onPressed: _nextPage, child: const Text('건너뛰기')),
+            child: ElevatedButton(
+              onPressed: hasInput ? _nextPage : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: hasInput ? Theme.of(context).colorScheme.secondary : Colors.grey,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.grey,
+                disabledForegroundColor: Colors.white,
+              ),
+              child: const Text('다음', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
           ),
         ],
       ),
@@ -225,6 +288,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   }
 
   Widget _buildStep3() {
+    final hasInput = _userProfile.fullMarathonTime != null ||
+                     _userProfile.halfMarathonTime != null ||
+                     _userProfile.tenKmTime != null ||
+                     _userProfile.fiveKmTime != null;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Column(
@@ -240,7 +308,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             keyboardType: TextInputType.datetime,
             decoration: const InputDecoration(hintText: '예: 03:30:00', border: OutlineInputBorder()),
             onChanged: (value) {
-              _userProfile = _userProfile.copyWith(fullMarathonTime: _parseDuration(value));
+              setState(() {
+                _userProfile = _userProfile.copyWith(fullMarathonTime: _parseDuration(value));
+              });
             },
           ),
           const SizedBox(height: 24),
@@ -250,7 +320,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             keyboardType: TextInputType.datetime,
             decoration: const InputDecoration(hintText: '예: 01:45:00', border: OutlineInputBorder()),
             onChanged: (value) {
-              _userProfile = _userProfile.copyWith(halfMarathonTime: _parseDuration(value));
+              setState(() {
+                _userProfile = _userProfile.copyWith(halfMarathonTime: _parseDuration(value));
+              });
             },
           ),
           const SizedBox(height: 24),
@@ -260,7 +332,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             keyboardType: TextInputType.datetime,
             decoration: const InputDecoration(hintText: '예: 00:45:00', border: OutlineInputBorder()),
             onChanged: (value) {
-              _userProfile = _userProfile.copyWith(tenKmTime: _parseDuration(value));
+              setState(() {
+                _userProfile = _userProfile.copyWith(tenKmTime: _parseDuration(value));
+              });
             },
           ),
           const SizedBox(height: 24),
@@ -270,20 +344,38 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             keyboardType: TextInputType.datetime,
             decoration: const InputDecoration(hintText: '예: 00:21:00', border: OutlineInputBorder()),
             onChanged: (value) {
-              _userProfile = _userProfile.copyWith(fiveKmTime: _parseDuration(value));
+              setState(() {
+                _userProfile = _userProfile.copyWith(fiveKmTime: _parseDuration(value));
+              });
             },
           ),
           const SizedBox(height: 48),
           SizedBox(
             width: double.infinity,
             height: 56,
-            child: ElevatedButton(onPressed: _nextPage, child: const Text('다음')),
+            child: ElevatedButton(
+              onPressed: _nextPage,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.7),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('건너뛰기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
           ),
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             height: 56,
-            child: TextButton(onPressed: _nextPage, child: const Text('건너뛰기')),
+            child: ElevatedButton(
+              onPressed: hasInput ? _nextPage : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: hasInput ? Theme.of(context).colorScheme.secondary : Colors.grey,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.grey,
+                disabledForegroundColor: Colors.white,
+              ),
+              child: const Text('다음', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
           ),
         ],
       ),
@@ -291,6 +383,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   }
 
   Widget _buildStep4() {
+    final hasInput = _userProfile.maxPullUps != null || _userProfile.maxPushUps != null;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Column(
@@ -306,7 +400,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(hintText: '예: 10', border: OutlineInputBorder()),
             onChanged: (value) {
-              _userProfile = _userProfile.copyWith(maxPullUps: int.tryParse(value));
+              setState(() {
+                _userProfile = _userProfile.copyWith(maxPullUps: int.tryParse(value));
+              });
             },
           ),
           const SizedBox(height: 24),
@@ -316,14 +412,38 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(hintText: '예: 30', border: OutlineInputBorder()),
             onChanged: (value) {
-              _userProfile = _userProfile.copyWith(maxPushUps: int.tryParse(value));
+              setState(() {
+                _userProfile = _userProfile.copyWith(maxPushUps: int.tryParse(value));
+              });
             },
           ),
           const SizedBox(height: 48),
           SizedBox(
             width: double.infinity,
             height: 56,
-            child: ElevatedButton(onPressed: _nextPage, child: const Text('다음')),
+            child: ElevatedButton(
+              onPressed: _nextPage,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.7),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('건너뛰기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: ElevatedButton(
+              onPressed: hasInput ? _nextPage : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: hasInput ? Theme.of(context).colorScheme.secondary : Colors.grey,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.grey,
+                disabledForegroundColor: Colors.white,
+              ),
+              child: const Text('다음', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
           ),
         ],
       ),
@@ -331,6 +451,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   }
 
   Widget _buildStep5() {
+    final hasInput = _userProfile.squat3RM != null ||
+                     _userProfile.benchPress3RM != null ||
+                     _userProfile.deadlift3RM != null;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Column(
@@ -346,7 +470,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(hintText: '예: 100', border: OutlineInputBorder()),
             onChanged: (value) {
-              _userProfile = _userProfile.copyWith(squat3RM: double.tryParse(value));
+              setState(() {
+                _userProfile = _userProfile.copyWith(squat3RM: double.tryParse(value));
+              });
             },
           ),
           const SizedBox(height: 24),
@@ -356,7 +482,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(hintText: '예: 80', border: OutlineInputBorder()),
             onChanged: (value) {
-              _userProfile = _userProfile.copyWith(benchPress3RM: double.tryParse(value));
+              setState(() {
+                _userProfile = _userProfile.copyWith(benchPress3RM: double.tryParse(value));
+              });
             },
           ),
           const SizedBox(height: 24),
@@ -366,14 +494,38 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(hintText: '예: 120', border: OutlineInputBorder()),
             onChanged: (value) {
-              _userProfile = _userProfile.copyWith(deadlift3RM: double.tryParse(value));
+              setState(() {
+                _userProfile = _userProfile.copyWith(deadlift3RM: double.tryParse(value));
+              });
             },
           ),
           const SizedBox(height: 48),
           SizedBox(
             width: double.infinity,
             height: 56,
-            child: ElevatedButton(onPressed: _finishSetup, child: const Text('완료')),
+            child: ElevatedButton(
+              onPressed: _finishSetup,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.7),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('건너뛰기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: ElevatedButton(
+              onPressed: hasInput ? _finishSetup : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: hasInput ? Theme.of(context).colorScheme.secondary : Colors.grey,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.grey,
+                disabledForegroundColor: Colors.white,
+              ),
+              child: const Text('완료', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
           ),
         ],
       ),

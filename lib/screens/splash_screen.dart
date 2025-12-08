@@ -3,6 +3,7 @@ import 'package:pacelifter/services/auth_service.dart';
 import 'package:pacelifter/screens/login_screen.dart';
 import 'package:pacelifter/screens/main_navigation.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 /// 스플래시 화면
 ///
@@ -96,10 +97,14 @@ class _SplashScreenState extends State<SplashScreen>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     // 로고 아이콘
-                    Icon(
-                      Icons.directions_run,
-                      size: 140,
-                      color: Theme.of(context).colorScheme.secondary,
+                    SvgPicture.asset(
+                      'assets/images/pllogo.svg',
+                      width: 210,
+                      height: 210,
+                      colorFilter: ColorFilter.mode(
+                        Theme.of(context).colorScheme.secondary,
+                        BlendMode.srcIn,
+                      ),
                     ),
                     const SizedBox(height: 28),
                     // 앱 이름

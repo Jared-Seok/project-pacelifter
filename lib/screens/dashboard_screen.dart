@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pacelifter/screens/race_list_screen.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -236,11 +237,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text('PaceLifter',
-              style: GoogleFonts.anton(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.secondary)),
+          Row(
+            children: [
+              SvgPicture.asset(
+                'assets/images/pllogo.svg',
+                width: 40,
+                height: 40,
+                colorFilter: ColorFilter.mode(
+                  Theme.of(context).colorScheme.secondary,
+                  BlendMode.srcIn,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text('PaceLifter',
+                  style: GoogleFonts.anton(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.secondary)),
+            ],
+          ),
           IconButton(
               icon: const Icon(Icons.sync),
               onPressed: _isLoading ? null : _syncHealthData,
