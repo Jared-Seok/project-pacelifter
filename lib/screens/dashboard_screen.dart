@@ -7,6 +7,7 @@ import 'package:pacelifter/services/race_service.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:pacelifter/screens/race_list_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -56,6 +57,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _loadRaces() async {
     final races = await _raceService.getRaces();
     if (mounted) {
+      // Sort races by date, upcoming first
+      races.sort((a, b) => a.raceDate.compareTo(b.raceDate));
       setState(() {
         _races = races;
       });
@@ -261,6 +264,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(
                 titles[_currentPage],
@@ -280,7 +284,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 220,
+          height: 200,
           child: Stack(
             alignment: Alignment.center,
             children: [
@@ -293,39 +297,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 },
                 children: pages,
               ),
-              if (_currentPage > 0)
-                Positioned(
-                  left: -4,
-                  child: IconButton(
-                    icon: const Icon(Icons.arrow_back_ios_new),
-                    onPressed: () => _mainPageController.previousPage(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
-                    ),
-                  ),
-                ),
-              if (_currentPage < pages.length - 1)
-                Positioned(
-                  right: -4,
-                  child: IconButton(
-                    icon: const Icon(Icons.arrow_forward_ios),
-                    onPressed: () => _mainPageController.nextPage(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
-                    ),
-                  ),
-                ),
             ],
           ),
         ),
         const SizedBox(height: 8),
+        // 페이지 인디케이터 및 더보기 버튼
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(
-            pages.length,
-            (index) => _buildPageIndicator(index == _currentPage),
-          ),
+          children: [
+            ...List.generate(
+              pages.length,
+              (index) => _buildPageIndicator(index == _currentPage),
+            ),
+          ],
         ),
+        if (_currentPage == 1 && _races.length > 1)
+          Center(
+            child: TextButton(
+              onPressed: () {
+                Navigator.of(context).push(MaterialPageRoute(
+                  builder: (context) => RaceListScreen(races: _races),
+                ));
+              },
+              child: const Text('모든 레이스 보기'),
+            ),
+          ),
       ],
     );
   }
@@ -341,28 +337,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildRacesPage() {
-    return _races.isEmpty
-        ? Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: InkWell(
-              onTap: _showAddRaceDialog,
-              child: const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.flag_outlined, size: 48, color: Colors.grey),
-                    SizedBox(height: 12),
-                    Text('등록된 레이스가 없습니다.'),
-                    Text('새로운 목표를 추가해보세요!'),
-                  ],
-                ),
-              ),
+    if (_races.isEmpty) {
+      return Card(
+        margin: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: InkWell(
+          onTap: _showAddRaceDialog,
+          child: const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.flag_outlined, size: 48, color: Colors.grey),
+                SizedBox(height: 12),
+                Text('등록된 레이스가 없습니다.'),
+                Text('새로운 목표를 추가해보세요!'),
+              ],
             ),
-          )
-        : PageView(
-            controller: PageController(viewportFraction: 0.9),
-            children: _races.map((race) => _buildRaceCard(race)).toList(),
-          );
+          ),
+        ),
+      );
+    }
+    // 가장 가까운 레이스 하나만 보여줌
+    return _buildRaceCard(_races.first);
   }
 
   Widget _buildRaceCard(Race race) {
