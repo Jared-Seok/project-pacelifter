@@ -532,6 +532,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildStrengthEndurancePage() {
     return Column(mainAxisAlignment: MainAxisAlignment.center, children: [
       Row(children: [
+        // Endurance (좌측)
+        Expanded(
+            child:
+                Column(children: [
+          Icon(Icons.directions_run,
+              size: 40, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(height: 8),
+          const Text('Endurance',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text('${_endurancePercentage.toStringAsFixed(1)}%',
+              style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary))
+        ])),
+        // 원형 차트 (중앙)
+        SizedBox(width: 120, height: 120, child: _buildPieChart()),
+        // Strength (우측)
         Expanded(
             child:
                 Column(children: [
@@ -546,22 +565,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                   color: Theme.of(context).colorScheme.primary))
-        ])),
-        SizedBox(width: 120, height: 120, child: _buildPieChart()),
-        Expanded(
-            child:
-                Column(children: [
-          Icon(Icons.directions_run,
-              size: 40, color: Theme.of(context).colorScheme.secondary),
-          const SizedBox(height: 8),
-          const Text('Endurance',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          Text('${_endurancePercentage.toStringAsFixed(1)}%',
-              style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.secondary))
         ]))
       ]),
       const SizedBox(height: 16),
