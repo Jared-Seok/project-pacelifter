@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pacelifter/services/auth_service.dart';
-import 'package:pacelifter/screens/dashboard_screen.dart';
+import 'package:pacelifter/screens/main_navigation.dart';
 
 /// 로그인 화면
 ///
@@ -95,10 +95,10 @@ class _LoginScreenState extends State<LoginScreen>
       _isLoading = false;
     });
 
-    // 대시보드 화면으로 이동
+    // 메인 네비게이션 화면으로 이동
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (context) => const DashboardScreen(),
+        builder: (context) => const MainNavigation(),
       ),
     );
   }

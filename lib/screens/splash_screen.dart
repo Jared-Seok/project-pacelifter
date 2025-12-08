@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pacelifter/services/auth_service.dart';
 import 'package:pacelifter/screens/login_screen.dart';
-import 'package:pacelifter/screens/dashboard_screen.dart';
+import 'package:pacelifter/screens/main_navigation.dart';
 
 /// 스플래시 화면
 ///
@@ -67,7 +67,7 @@ class _SplashScreenState extends State<SplashScreen>
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (context) => isLoggedIn
-            ? const DashboardScreen()
+            ? const MainNavigation()
             : const LoginScreen(),
       ),
     );

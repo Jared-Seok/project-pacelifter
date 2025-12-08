@@ -2,13 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:health/health.dart';
 import 'package:pacelifter/services/health_service.dart';
 import 'package:pacelifter/services/auth_service.dart';
-import 'package:pacelifter/screens/health_import_screen.dart';
-import 'package:pacelifter/screens/login_screen.dart';
 import 'package:intl/intl.dart';
+import 'package:fl_chart/fl_chart.dart';
 
-/// 대시보드 화면
+/// 재설계된 대시보드 화면
 ///
-/// 앱의 메인 화면으로, 운동 통계와 최근 활동을 표시합니다.
+/// Strength/Endurance 비율, 운동 피드를 표시합니다.
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
@@ -16,23 +15,24 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
+enum TimePeriod { week, month, year }
+
 class _DashboardScreenState extends State<DashboardScreen> {
   final HealthService _healthService = HealthService();
   final AuthService _authService = AuthService();
   List<HealthDataPoint> _workoutData = [];
   bool _isLoading = false;
-  String? _username;
+  TimePeriod _selectedPeriod = TimePeriod.week;
 
   // 통계 데이터
+  double _strengthPercentage = 0.0;
+  double _endurancePercentage = 0.0;
   int _totalWorkouts = 0;
-  double _totalDistance = 0.0;
-  Duration _totalDuration = Duration.zero;
 
   @override
   void initState() {
     super.initState();
     _checkFirstLoginAndSync();
-    _loadUserData();
   }
 
   /// 첫 로그인 확인 및 동기화 팝업 표시
@@ -41,23 +41,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final isSyncCompleted = await _authService.isHealthSyncCompleted();
 
     if (isFirstLogin && !isSyncCompleted && mounted) {
-      // 첫 로그인이고 동기화가 완료되지 않은 경우 팝업 표시
       await Future.delayed(const Duration(milliseconds: 500));
       if (mounted) {
         _showHealthSyncDialog();
       }
     } else if (isSyncCompleted) {
-      // 이미 동기화가 완료된 경우 데이터 로드
       _loadHealthData();
     }
-  }
-
-  /// 사용자 데이터 로드
-  Future<void> _loadUserData() async {
-    final username = await _authService.getUsername();
-    setState(() {
-      _username = username;
-    });
   }
 
   /// 헬스 데이터 동기화 다이얼로그 표시
@@ -114,7 +104,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         color: Theme.of(context).colorScheme.primary,
                       ),
                       const SizedBox(width: 8),
-                      const Text('페이스 및 거리 추적'),
+                      const Text('Strength/Endurance 비율 추적'),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -130,14 +120,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              '※ 나중에 설정에서 변경할 수 있습니다.',
-              style: TextStyle(
-                fontSize: 12,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
               ),
             ),
           ],
@@ -198,27 +180,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         setState(() {
           _isLoading = false;
         });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('건강 데이터 접근 권한이 필요합니다'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
       }
     } catch (e) {
       setState(() {
         _isLoading = false;
       });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('동기화 실패: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     }
   }
 
@@ -239,30 +205,64 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   /// 통계 계산
   void _calculateStatistics() {
-    _totalWorkouts = _workoutData.length;
-    _totalDistance = 0.0;
-    _totalDuration = Duration.zero;
+    // 선택된 기간에 따라 데이터 필터링
+    final now = DateTime.now();
+    DateTime startDate;
 
-    for (var data in _workoutData) {
+    switch (_selectedPeriod) {
+      case TimePeriod.week:
+        startDate = now.subtract(const Duration(days: 7));
+        break;
+      case TimePeriod.month:
+        startDate = now.subtract(const Duration(days: 30));
+        break;
+      case TimePeriod.year:
+        startDate = now.subtract(const Duration(days: 365));
+        break;
+    }
+
+    final filteredData = _workoutData.where((data) {
+      return data.dateFrom.isAfter(startDate);
+    }).toList();
+
+    _totalWorkouts = filteredData.length;
+
+    // Strength vs Endurance 분류 (간단한 로직)
+    int strengthCount = 0;
+    int enduranceCount = 0;
+
+    for (var data in filteredData) {
       if (data.value is WorkoutHealthValue) {
         final workout = data.value as WorkoutHealthValue;
-        _totalDistance += workout.totalDistance ?? 0.0;
-        _totalDuration += workout.totalEnergyBurned != null
-            ? Duration(
-                seconds: (data.dateFrom.difference(data.dateTo).inSeconds).abs())
-            : Duration.zero;
+        final type = workout.workoutActivityType.name.toUpperCase();
+
+        // Strength: 웨이트 트레이닝, 근력 운동 등
+        if (type.contains('STRENGTH') ||
+            type.contains('WEIGHT') ||
+            type.contains('FUNCTIONAL')) {
+          strengthCount++;
+        }
+        // Endurance: 러닝, 사이클링, 수영 등
+        else if (type.contains('RUNNING') ||
+            type.contains('CYCLING') ||
+            type.contains('SWIMMING') ||
+            type.contains('WALKING') ||
+            type.contains('HIKING')) {
+          enduranceCount++;
+        } else {
+          // 기타 운동은 endurance로 분류
+          enduranceCount++;
+        }
       }
     }
-  }
 
-  /// 로그아웃
-  Future<void> _handleLogout() async {
-    await _authService.logout();
-    if (mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-        (route) => false,
-      );
+    final total = strengthCount + enduranceCount;
+    if (total > 0) {
+      _strengthPercentage = (strengthCount / total) * 100;
+      _endurancePercentage = (enduranceCount / total) * 100;
+    } else {
+      _strengthPercentage = 50.0;
+      _endurancePercentage = 50.0;
     }
   }
 
@@ -270,330 +270,386 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(
-        title: const Text('PaceLifter'),
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        foregroundColor: Theme.of(context).colorScheme.onSurface,
-        actions: [
+      body: SafeArea(
+        child: _isLoading
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('운동 데이터를 동기화하는 중...'),
+                  ],
+                ),
+              )
+            : RefreshIndicator(
+                onRefresh: _loadHealthData,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 커스텀 헤더
+                      _buildHeader(),
+
+                      // 운동 요약 섹션
+                      _buildWorkoutSummarySection(),
+
+                      const SizedBox(height: 24),
+
+                      // 운동 피드
+                      _buildWorkoutFeed(),
+                    ],
+                  ),
+                ),
+              ),
+      ),
+    );
+  }
+
+  /// 커스텀 헤더
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'PaceLifter',
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.secondary,
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.sync),
             onPressed: _isLoading ? null : _syncHealthData,
-            tooltip: '데이터 동기화',
-          ),
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              if (value == 'logout') {
-                _handleLogout();
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'logout',
-                child: Row(
-                  children: [
-                    Icon(Icons.logout),
-                    SizedBox(width: 8),
-                    Text('로그아웃'),
-                  ],
-                ),
-              ),
-            ],
+            tooltip: '동기화',
           ),
         ],
       ),
-      body: _isLoading
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+    );
+  }
+
+  /// 운동 요약 섹션
+  Widget _buildWorkoutSummarySection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 타이틀과 기간 선택 버튼
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  CircularProgressIndicator(
-                    color: Theme.of(context).colorScheme.primary,
+                  const Text(
+                    '최근 운동 요약',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  const SizedBox(height: 16),
-                  const Text('운동 데이터를 동기화하는 중...'),
+                  _buildPeriodSelector(),
                 ],
               ),
-            )
-          : RefreshIndicator(
-              onRefresh: _loadHealthData,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 환영 메시지
-                    Text(
-                      '안녕하세요, ${_username ?? '사용자'}님!',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '오늘도 훌륭한 러닝을 준비하세요',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-                    // 통계 카드
-                    _buildStatisticsCard(),
-                    const SizedBox(height: 24),
-
-                    // 최근 운동 섹션
-                    _buildRecentWorkoutsSection(),
-                    const SizedBox(height: 24),
-
-                    // 빠른 액션 버튼
-                    _buildQuickActions(),
-                  ],
-                ),
-              ),
-            ),
-    );
-  }
-
-  /// 통계 카드 위젯
-  Widget _buildStatisticsCard() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '전체 통계',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatItem(
-                    Icons.directions_run,
-                    '운동 횟수',
-                    '$_totalWorkouts회',
-                  ),
-                ),
-                Expanded(
-                  child: _buildStatItem(
-                    Icons.straighten,
-                    '총 거리',
-                    '${(_totalDistance / 1000).toStringAsFixed(1)}km',
-                  ),
-                ),
-                Expanded(
-                  child: _buildStatItem(
-                    Icons.timer,
-                    '총 시간',
-                    '${_totalDuration.inHours}시간',
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// 통계 항목 위젯
-  Widget _buildStatItem(IconData icon, String label, String value) {
-    return Column(
-      children: [
-        Icon(
-          icon,
-          color: Theme.of(context).colorScheme.primary,
-          size: 32,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// 최근 운동 섹션
-  Widget _buildRecentWorkoutsSection() {
-    final recentWorkouts = _workoutData.take(5).toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              '최근 운동',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const HealthImportScreen(),
-                  ),
-                );
-              },
-              child: const Text('전체보기'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        recentWorkouts.isEmpty
-            ? Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Center(
+              // Strength/Endurance 비율 표시
+              Row(
+                children: [
+                  // Strength (좌측)
+                  Expanded(
                     child: Column(
                       children: [
                         Icon(
-                          Icons.info_outline,
-                          size: 48,
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          '운동 기록이 없습니다',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                          ),
+                          Icons.fitness_center,
+                          size: 40,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                         const SizedBox(height: 8),
                         const Text(
-                          '헬스 앱과 동기화하여 운동 기록을 가져오세요',
-                          style: TextStyle(fontSize: 12),
-                          textAlign: TextAlign.center,
+                          'Strength',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${_strengthPercentage.toStringAsFixed(1)}%',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
                         ),
                       ],
                     ),
                   ),
-                ),
-              )
-            : Column(
-                children: recentWorkouts.map((data) {
-                  final workout = data.value as WorkoutHealthValue;
-                  final distance = workout.totalDistance ?? 0.0;
-                  final type = workout.workoutActivityType.name;
 
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    child: ListTile(
-                      leading: Icon(
-                        _getWorkoutIcon(type),
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      title: Text(type),
-                      subtitle: Text(
-                        DateFormat('yyyy-MM-dd HH:mm').format(data.dateFrom),
-                      ),
-                      trailing: Text(
-                        '${(distance / 1000).toStringAsFixed(2)} km',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
+                  // 원형 차트 (중앙)
+                  SizedBox(
+                    width: 120,
+                    height: 120,
+                    child: _buildPieChart(),
+                  ),
+
+                  // Endurance (우측)
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.directions_run,
+                          size: 40,
+                          color: Theme.of(context).colorScheme.secondary,
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Endurance',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${_endurancePercentage.toStringAsFixed(1)}%',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.secondary,
+                          ),
+                        ),
+                      ],
                     ),
-                  );
-                }).toList(),
+                  ),
+                ],
               ),
-      ],
+              const SizedBox(height: 16),
+
+              // 총 운동 횟수
+              Center(
+                child: Text(
+                  '총 $_totalWorkouts회 운동',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
-  /// 빠른 액션 버튼
-  Widget _buildQuickActions() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          '빠른 액션',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+  /// 기간 선택 버튼
+  Widget _buildPeriodSelector() {
+    return SegmentedButton<TimePeriod>(
+      segments: const [
+        ButtonSegment(
+          value: TimePeriod.week,
+          label: Text('주', style: TextStyle(fontSize: 12)),
         ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('GPS 러닝 기능은 개발 중입니다')),
-                  );
-                },
-                icon: const Icon(Icons.play_arrow),
-                label: const Text('러닝 시작'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.secondary,
-                  foregroundColor: Theme.of(context).colorScheme.onSecondary,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const HealthImportScreen(),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.analytics),
-                label: const Text('분석'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-              ),
-            ),
-          ],
+        ButtonSegment(
+          value: TimePeriod.month,
+          label: Text('월', style: TextStyle(fontSize: 12)),
+        ),
+        ButtonSegment(
+          value: TimePeriod.year,
+          label: Text('연', style: TextStyle(fontSize: 12)),
         ),
       ],
+      selected: {_selectedPeriod},
+      onSelectionChanged: (Set<TimePeriod> newSelection) {
+        setState(() {
+          _selectedPeriod = newSelection.first;
+          _calculateStatistics();
+        });
+      },
+      style: ButtonStyle(
+        visualDensity: VisualDensity.compact,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
     );
+  }
+
+  /// 원형 차트
+  Widget _buildPieChart() {
+    return PieChart(
+      PieChartData(
+        sectionsSpace: 2,
+        centerSpaceRadius: 35,
+        sections: [
+          PieChartSectionData(
+            value: _strengthPercentage,
+            color: Theme.of(context).colorScheme.primary,
+            radius: 20,
+            showTitle: false,
+          ),
+          PieChartSectionData(
+            value: _endurancePercentage,
+            color: Theme.of(context).colorScheme.secondary,
+            radius: 20,
+            showTitle: false,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 운동 피드
+  Widget _buildWorkoutFeed() {
+    // 최근 운동 데이터 (최대 20개)
+    final recentWorkouts = _workoutData.take(20).toList();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '운동 피드',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          recentWorkouts.isEmpty
+              ? Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32.0),
+                    child: Center(
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            size: 48,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withOpacity(0.5),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            '운동 기록이 없습니다',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withOpacity(0.7),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            '헬스 앱과 동기화하여 운동 기록을 가져오세요',
+                            style: TextStyle(fontSize: 12),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              : Column(
+                  children: recentWorkouts.map((data) {
+                    final workout = data.value as WorkoutHealthValue;
+                    final distance = workout.totalDistance ?? 0.0;
+                    final type = workout.workoutActivityType.name;
+                    final isStrength = _isStrengthWorkout(type);
+
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      child: ListTile(
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: isStrength
+                                ? Theme.of(context)
+                                    .colorScheme
+                                    .primary
+                                    .withOpacity(0.2)
+                                : Theme.of(context)
+                                    .colorScheme
+                                    .secondary
+                                    .withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            _getWorkoutIcon(type),
+                            color: isStrength
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context).colorScheme.secondary,
+                          ),
+                        ),
+                        title: Text(
+                          type,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(
+                          DateFormat('yyyy-MM-dd HH:mm').format(data.dateFrom),
+                        ),
+                        trailing: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            if (distance > 0)
+                              Text(
+                                '${(distance / 1000).toStringAsFixed(2)} km',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            Text(
+                              isStrength ? 'Strength' : 'Endurance',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isStrength
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Theme.of(context).colorScheme.secondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+          const SizedBox(height: 80),
+        ],
+      ),
+    );
+  }
+
+  /// 운동 타입이 Strength인지 판단
+  bool _isStrengthWorkout(String type) {
+    final upperType = type.toUpperCase();
+    return upperType.contains('STRENGTH') ||
+        upperType.contains('WEIGHT') ||
+        upperType.contains('FUNCTIONAL');
   }
 
   /// 운동 유형에 따른 아이콘 반환
   IconData _getWorkoutIcon(String type) {
-    switch (type.toUpperCase()) {
-      case 'RUNNING':
-        return Icons.directions_run;
-      case 'WALKING':
-        return Icons.directions_walk;
-      case 'CYCLING':
-        return Icons.directions_bike;
-      case 'SWIMMING':
-        return Icons.pool;
-      case 'HIKING':
-        return Icons.terrain;
-      default:
-        return Icons.fitness_center;
+    final upperType = type.toUpperCase();
+    if (upperType.contains('RUNNING')) return Icons.directions_run;
+    if (upperType.contains('WALKING')) return Icons.directions_walk;
+    if (upperType.contains('CYCLING')) return Icons.directions_bike;
+    if (upperType.contains('SWIMMING')) return Icons.pool;
+    if (upperType.contains('HIKING')) return Icons.terrain;
+    if (upperType.contains('STRENGTH') || upperType.contains('WEIGHT')) {
+      return Icons.fitness_center;
     }
+    return Icons.sports;
   }
 }
