@@ -13,7 +13,24 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'PaceLifter',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        colorScheme: const ColorScheme(
+          brightness: Brightness.dark,
+          primary: Color(0xFF8F9779), // Khaki
+          onPrimary: Color(0xFFEEEEEE), // Text on Khaki
+          secondary: Color(0xFFD4E157), // Accent
+          onSecondary: Color(0xFF121212), // Text on Accent
+          tertiary: Color(0xFFD4E157), // Accent for tertiary
+          onTertiary: Color(0xFF121212),
+          surface: Color(0xFF121212), // Background
+          onSurface: Color(0xFFEEEEEE), // Text on background
+          background: Color(0xFF121212), // Background
+          onBackground: Color(0xFFEEEEEE), // Text on background
+          error: Colors.red,
+          onError: Colors.white,
+        ),
+        progressIndicatorTheme: const ProgressIndicatorThemeData(
+          color: Color(0xFF8F9779), // 카키색으로 명시적 지정
+        ),
         useMaterial3: true,
       ),
       home: const PaceLifterHome(),
@@ -27,9 +44,11 @@ class PaceLifterHome extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
         title: const Text('PaceLifter'),
-        backgroundColor: Colors.blue,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -37,7 +56,7 @@ class PaceLifterHome extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 24),
-            const Icon(Icons.directions_run, size: 80, color: Colors.blue),
+            Icon(Icons.directions_run, size: 80, color: Theme.of(context).colorScheme.secondary),
             const SizedBox(height: 16),
             const Text(
               'PaceLifter',
@@ -66,17 +85,20 @@ class PaceLifterHome extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     _buildFeatureItem(
+                      context,
                       Icons.upload_file,
                       'Apple Health 데이터 분석',
                       '기존 운동 데이터를 불러와서 분석',
                     ),
                     _buildFeatureItem(
+                      context,
                       Icons.gps_fixed,
                       'GPS 러닝 트래킹',
                       '실시간 위치 추적 및 페이스 분석',
                     ),
-                    _buildFeatureItem(Icons.event, '대회 준비', '목표 레이스에 맞춘 훈련 계획'),
+                    _buildFeatureItem(context, Icons.event, '대회 준비', '목표 레이스에 맞춘 훈련 계획'),
                     _buildFeatureItem(
+                      context,
                       Icons.insights,
                       '퍼포먼스 분석',
                       '데이터 기반 운동 인사이트',
@@ -100,8 +122,8 @@ class PaceLifterHome extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.all(16),
                 textStyle: const TextStyle(fontSize: 16),
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Theme.of(context).colorScheme.onPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -124,13 +146,13 @@ class PaceLifterHome extends StatelessWidget {
     );
   }
 
-  Widget _buildFeatureItem(IconData icon, String title, String description) {
+  Widget _buildFeatureItem(BuildContext context, IconData icon, String title, String description) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: Colors.blue, size: 24),
+          Icon(icon, color: Theme.of(context).colorScheme.primary, size: 24),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

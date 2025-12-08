@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
@@ -24,6 +26,30 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>운동 기록을 이미지로 남기기 위해 카메라 권한이 필요합니다</string>
+	<key>NSHealthClinicalHealthRecordsShareUsageDescription</key>
+	<string>운동 데이터를 기록하고 분석하기 위해 건강 데이터 기록 권한이 필요합니다.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>운동 데이터를 분석하기 위해 건강 데이터 읽기 권한이 필요합니다</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>운동 기록을 저장하기 위해 건강 데이터 쓰기 권한이 필요합니다</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>백그라운드에서 러닝 경로를 기록하기 위해 위치 권한이 필요합니다</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>백그라운드에서 러닝 경로를 추적하기 위해 항상 위치 접근이 필요합니다</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>러닝 중 경로를 기록하기 위해 위치 권한이 필요합니다</string>
+	<key>NSMotionUsageDescription</key>
+	<string>운동 동작을 추적하기 위해 모션 센서 접근이 필요합니다</string>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>fetch</string>
+		<string>processing</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
@@ -40,32 +66,6 @@
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>CADisableMinimumFrameDurationOnPhone</key>
-	<true/>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
-	<!-- 위치 추적 -->
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>러닝 중 경로를 기록하기 위해 위치 권한이 필요합니다</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>백그라운드에서 러닝 경로를 기록하기 위해 위치 권한이 필요합니다</string>
-	<key>NSLocationAlwaysUsageDescription</key>
-	<string>백그라운드에서 러닝 경로를 추적하기 위해 항상 위치 접근이 필요합니다</string>
-	<!-- 건강 데이터 -->
-	<key>NSHealthShareUsageDescription</key>
-	<string>운동 데이터를 분석하기 위해 건강 데이터 읽기 권한이 필요합니다</string>
-	<key>NSHealthUpdateUsageDescription</key>
-	<string>운동 기록을 저장하기 위해 건강 데이터 쓰기 권한이 필요합니다</string>
-	<!-- 모션 센서 -->
-	<key>NSMotionUsageDescription</key>
-	<string>운동 동작을 추적하기 위해 모션 센서 접근이 필요합니다</string>
-	<!-- 백그라운드 모드 -->
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>location</string>
-		<string>fetch</string>
-		<string>processing</string>
 	</array>
 </dict>
 </plist>
