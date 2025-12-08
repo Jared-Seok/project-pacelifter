@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'screens/health_import_screen.dart';
+import 'screens/splash_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -23,8 +24,6 @@ class MyApp extends StatelessWidget {
           onTertiary: Color(0xFF121212),
           surface: Color(0xFF121212), // Background
           onSurface: Color(0xFFEEEEEE), // Text on background
-          background: Color(0xFF121212), // Background
-          onBackground: Color(0xFFEEEEEE), // Text on background
           error: Colors.red,
           onError: Colors.white,
         ),
@@ -33,7 +32,7 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const PaceLifterHome(),
+      home: const SplashScreen(),
     );
   }
 }
@@ -44,7 +43,7 @@ class PaceLifterHome extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.background,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
         title: const Text('PaceLifter'),
         backgroundColor: Theme.of(context).colorScheme.surface,
