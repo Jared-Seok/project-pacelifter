@@ -100,45 +100,49 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  children: [
-                    SvgPicture.asset(
-                      iconPath,
-                      width: 80,
-                      height: 80,
-                      colorFilter: ColorFilter.mode(
-                        color,
-                        BlendMode.srcIn,
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      SvgPicture.asset(
+                        iconPath,
+                        width: 80,
+                        height: 80,
+                        colorFilter: ColorFilter.mode(
+                          color,
+                          BlendMode.srcIn,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      _formatWorkoutType(workoutType),
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: color,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: color.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        workoutCategory,
+                      const SizedBox(height: 16),
+                      Text(
+                        _formatWorkoutType(workoutType),
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 24,
                           fontWeight: FontWeight.bold,
                           color: color,
                         ),
+                        textAlign: TextAlign.center,
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          workoutCategory,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: color,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -175,6 +179,18 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                         '총 거리',
                         '${(workout.totalDistance! / 1000).toStringAsFixed(2)} km',
                       ),
+                      // 러닝 운동인 경우 평균 페이스 추가
+                      if (workoutType.toUpperCase().contains('RUNNING') && workout.totalDistance! > 0) ...[
+                        const Divider(height: 24),
+                        _buildInfoRow(
+                          Icons.speed,
+                          '평균 페이스',
+                          _calculateAveragePace(
+                            widget.workoutData.dateTo.difference(widget.workoutData.dateFrom),
+                            workout.totalDistance!.toDouble(),
+                          ),
+                        ),
+                      ],
                     ],
                     if (workout.totalEnergyBurned != null) ...[
                       const Divider(height: 24),
@@ -406,9 +422,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
   String _getWorkoutCategory(String type) {
     final upperType = type.toUpperCase();
-    if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
-      return 'Core';
-    } else if (upperType.contains('STRENGTH') ||
+    if (upperType.contains('CORE') ||
+        upperType.contains('FUNCTIONAL') ||
+        upperType.contains('STRENGTH') ||
         upperType.contains('WEIGHT') ||
         upperType.contains('TRADITIONAL_STRENGTH_TRAINING')) {
       return 'Strength';
@@ -423,8 +439,6 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         return Theme.of(context).colorScheme.primary;
       case 'Endurance':
         return Theme.of(context).colorScheme.secondary;
-      case 'Core':
-        return Theme.of(context).colorScheme.primary;
       default:
         return Theme.of(context).colorScheme.secondary;
     }
@@ -444,11 +458,15 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   }
 
   String _formatWorkoutType(String type) {
+    final upperType = type.toUpperCase();
     if (type == 'TRADITIONAL_STRENGTH_TRAINING') {
       return 'STRENGTH TRAINING';
     }
     if (type == 'CORE_TRAINING') {
       return 'CORE TRAINING';
+    }
+    if (upperType.contains('RUNNING')) {
+      return 'RUNNING';
     }
     return type
         .replaceAll('WORKOUT_ACTIVITY_TYPE_', '')
@@ -471,5 +489,20 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     } else {
       return '$seconds초';
     }
+  }
+
+  String _calculateAveragePace(Duration duration, double distanceInMeters) {
+    // 거리를 km로 변환
+    final distanceInKm = distanceInMeters / 1000;
+
+    // 페이스 계산 (초/km)
+    final paceInSecondsPerKm = duration.inSeconds / distanceInKm;
+
+    // 분과 초로 변환
+    final paceMinutes = paceInSecondsPerKm ~/ 60;
+    final paceSeconds = (paceInSecondsPerKm % 60).round();
+
+    // 형식: 5'30"/km
+    return '$paceMinutes\'${paceSeconds.toString().padLeft(2, '0')}"/km';
   }
 }

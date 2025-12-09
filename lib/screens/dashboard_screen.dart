@@ -751,10 +751,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   final color = _getCategoryColor(workoutCategory);
 
                   final String displayName;
+                  final upperType = type.toUpperCase();
                   if (type == 'TRADITIONAL_STRENGTH_TRAINING') {
                     displayName = 'STRENGTH TRAINING';
                   } else if (type == 'CORE_TRAINING') {
                     displayName = 'CORE TRAINING';
+                  } else if (upperType.contains('RUNNING')) {
+                    displayName = 'RUNNING';
                   } else {
                     displayName = type;
                   }
@@ -762,7 +765,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   final Color backgroundColor;
                   final Color iconColor;
 
-                  if (workoutCategory == 'Strength(Core)') {
+                  // Core 운동은 특별한 색상 조합 사용
+                  if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
                     backgroundColor = Theme.of(context).colorScheme.primary;
                     iconColor = Theme.of(context).colorScheme.secondary;
                   } else {
@@ -822,9 +826,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   String _getWorkoutCategory(String type) {
     final upperType = type.toUpperCase();
-    if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
-      return 'Strength(Core)';
-    } else if (upperType.contains('STRENGTH') ||
+    if (upperType.contains('CORE') ||
+        upperType.contains('FUNCTIONAL') ||
+        upperType.contains('STRENGTH') ||
         upperType.contains('WEIGHT') ||
         upperType.contains('TRADITIONAL_STRENGTH_TRAINING')) {
       return 'Strength';
@@ -839,8 +843,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return Theme.of(context).colorScheme.primary;
       case 'Endurance':
         return Theme.of(context).colorScheme.secondary;
-      case 'Strength(Core)':
-        return Theme.of(context).colorScheme.primary;
       default:
         return Theme.of(context).colorScheme.secondary;
     }
