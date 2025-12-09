@@ -46,7 +46,7 @@ dependencies:
   # 위치 추적 (러닝 경로)
   geolocator: ^14.0.2
   google_maps_flutter: ^2.9.0
-  background_location: ^0.13.0
+
 
   # 워치 연동 (iOS만 지원 - Apple Watch)
   # watch_connectivity: ^2.0.0  # 나중에 필요시 추가
@@ -83,6 +83,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.13.1
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -109,6 +110,7 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/images/
+    - assets/images/app-icon/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
@@ -135,3 +137,9 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path_android: "assets/images/app-icon/icon-andriod-512.png"
+  image_path_ios: "assets/images/app-icon/icon-ios-1024.png"
