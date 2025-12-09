@@ -583,8 +583,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
         Expanded(
             child:
                 Column(children: [
-          Icon(Icons.directions_run,
-              size: 40, color: Theme.of(context).colorScheme.primary),
+          SvgPicture.asset(
+            'assets/images/runner-icon.svg',
+            width: 40,
+            height: 40,
+            colorFilter: ColorFilter.mode(
+              Theme.of(context).colorScheme.secondary,
+              BlendMode.srcIn,
+            ),
+          ),
           const SizedBox(height: 8),
           const Text('Endurance',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -593,7 +600,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.primary))
+                  color: Theme.of(context).colorScheme.secondary))
         ])),
         // 원형 차트 (중앙)
         SizedBox(width: 120, height: 120, child: _buildPieChart()),
@@ -601,8 +608,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
         Expanded(
             child:
                 Column(children: [
-          Icon(Icons.fitness_center,
-              size: 40, color: Theme.of(context).colorScheme.primary),
+          SvgPicture.asset(
+            'assets/images/lifter-icon.svg',
+            width: 40,
+            height: 40,
+            colorFilter: ColorFilter.mode(
+              Theme.of(context).colorScheme.primary,
+              BlendMode.srcIn,
+            ),
+          ),
           const SizedBox(height: 8),
           const Text('Strength',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),

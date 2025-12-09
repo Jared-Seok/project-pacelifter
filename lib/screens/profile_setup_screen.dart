@@ -207,7 +207,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> with SingleTick
                 backgroundColor: (_userProfile.gender != null && _userProfile.height != null && _userProfile.weight != null)
                     ? Theme.of(context).colorScheme.secondary
                     : Colors.grey,
-                foregroundColor: Colors.white,
+                foregroundColor: (_userProfile.gender != null && _userProfile.height != null && _userProfile.weight != null)
+                    ? Colors.black
+                    : Colors.white,
                 disabledBackgroundColor: Colors.grey,
                 disabledForegroundColor: Colors.white,
               ),
@@ -275,7 +277,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> with SingleTick
               onPressed: hasInput ? _nextPage : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: hasInput ? Theme.of(context).colorScheme.secondary : Colors.grey,
-                foregroundColor: Colors.white,
+                foregroundColor: hasInput ? Colors.black : Colors.white,
                 disabledBackgroundColor: Colors.grey,
                 disabledForegroundColor: Colors.white,
               ),
@@ -370,7 +372,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> with SingleTick
               onPressed: hasInput ? _nextPage : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: hasInput ? Theme.of(context).colorScheme.secondary : Colors.grey,
-                foregroundColor: Colors.white,
+                foregroundColor: hasInput ? Colors.black : Colors.white,
                 disabledBackgroundColor: Colors.grey,
                 disabledForegroundColor: Colors.white,
               ),
@@ -438,7 +440,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> with SingleTick
               onPressed: hasInput ? _nextPage : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: hasInput ? Theme.of(context).colorScheme.secondary : Colors.grey,
-                foregroundColor: Colors.white,
+                foregroundColor: hasInput ? Colors.black : Colors.white,
                 disabledBackgroundColor: Colors.grey,
                 disabledForegroundColor: Colors.white,
               ),
@@ -520,7 +522,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> with SingleTick
               onPressed: hasInput ? _finishSetup : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: hasInput ? Theme.of(context).colorScheme.secondary : Colors.grey,
-                foregroundColor: Colors.white,
+                foregroundColor: hasInput ? Colors.black : Colors.white,
                 disabledBackgroundColor: Colors.grey,
                 disabledForegroundColor: Colors.white,
               ),
