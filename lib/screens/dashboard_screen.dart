@@ -33,6 +33,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   double _strengthPercentage = 0.0;
   double _endurancePercentage = 0.0;
   int _totalWorkouts = 0;
+  String _dateRangeText = '';
 
   @override
   void initState() {
@@ -162,22 +163,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _calculateStatistics() {
     final now = DateTime.now();
     DateTime startDate;
+    DateTime endDate;
+
     switch (_selectedPeriod) {
       case TimePeriod.week:
-        startDate = now.subtract(const Duration(days: 7));
+        // 월요일부터 일요일까지
+        // DateTime.weekday: 1 = Monday, 7 = Sunday
+        final currentWeekday = now.weekday;
+        final daysToMonday = currentWeekday - 1; // 월요일까지의 일수
+        final daysToSunday = 7 - currentWeekday; // 일요일까지의 일수
+
+        startDate = DateTime(now.year, now.month, now.day)
+            .subtract(Duration(days: daysToMonday));
+        endDate = DateTime(now.year, now.month, now.day)
+            .add(Duration(days: daysToSunday))
+            .add(const Duration(hours: 23, minutes: 59, seconds: 59));
+
+        // 날짜 범위 텍스트 생성: "25/12/8 ~ 14" 형식
+        final startDay = startDate.day;
+        final endDay = endDate.day;
+        _dateRangeText = '${now.year.toString().substring(2)}/${now.month}/$startDay ~ $endDay';
         break;
+
       case TimePeriod.month:
-        startDate = now.subtract(const Duration(days: 30));
+        // 해당 월의 1일부터 마지막 날까지
+        startDate = DateTime(now.year, now.month, 1);
+        endDate = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+
+        // 날짜 범위 텍스트 생성: "25/12" 형식
+        _dateRangeText = '${now.year.toString().substring(2)}/${now.month}';
         break;
+
       case TimePeriod.year:
-        startDate = now.subtract(const Duration(days: 365));
+        // 해당 연도의 1월 1일부터 12월 31일까지
+        startDate = DateTime(now.year, 1, 1);
+        endDate = DateTime(now.year, 12, 31, 23, 59, 59);
+
+        // 날짜 범위 텍스트 생성: "2025" 형식
+        _dateRangeText = '${now.year}';
         break;
     }
-    final filteredData =
-        _workoutData.where((data) => data.dateFrom.isAfter(startDate)).toList();
+
+    final filteredData = _workoutData
+        .where((data) =>
+            data.dateFrom.isAfter(startDate.subtract(const Duration(seconds: 1))) &&
+            data.dateFrom.isBefore(endDate.add(const Duration(seconds: 1))))
+        .toList();
+
     _totalWorkouts = filteredData.length;
     int strengthCount = 0;
     int enduranceCount = 0;
+
     for (var data in filteredData) {
       if (data.value is WorkoutHealthValue) {
         final workout = data.value as WorkoutHealthValue;
@@ -191,6 +227,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
       }
     }
+
     final total = strengthCount + enduranceCount;
     if (total > 0) {
       _strengthPercentage = (strengthCount / total) * 100;
@@ -578,14 +615,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ]))
       ]),
       const SizedBox(height: 16),
-      Center(
-          child: Text('총 $_totalWorkouts회 운동',
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text('총 $_totalWorkouts회 운동',
               style: TextStyle(
                   fontSize: 14,
                   color: Theme.of(context)
                       .colorScheme
                       .onSurface
-                      .withOpacity(0.7))))
+                      .withOpacity(0.7))),
+          Text(_dateRangeText,
+              style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withOpacity(0.5)))
+        ],
+      )
     ]);
   }
   
