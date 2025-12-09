@@ -9,6 +9,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pacelifter/screens/race_list_screen.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:pacelifter/screens/workout_detail_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -217,10 +218,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     for (var data in filteredData) {
       if (data.value is WorkoutHealthValue) {
         final workout = data.value as WorkoutHealthValue;
-        final type = workout.workoutActivityType.name.toUpperCase();
-        if (type.contains('STRENGTH') ||
-            type.contains('WEIGHT') ||
-            type.contains('FUNCTIONAL')) {
+        final type = workout.workoutActivityType.name;
+        if (_isStrengthWorkout(type)) {
           strengthCount++;
         } else {
           enduranceCount++;
@@ -748,34 +747,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   final workout = data.value as WorkoutHealthValue;
                   final distance = workout.totalDistance ?? 0.0;
                   final type = workout.workoutActivityType.name;
-                  final isStrength = _isStrengthWorkout(type);
+                  final workoutCategory = _getWorkoutCategory(type);
+                  final color = _getCategoryColor(workoutCategory);
+
+                  final String displayName;
+                  if (type == 'TRADITIONAL_STRENGTH_TRAINING') {
+                    displayName = 'STRENGTH TRAINING';
+                  } else if (type == 'CORE_TRAINING') {
+                    displayName = 'CORE TRAINING';
+                  } else {
+                    displayName = type;
+                  }
+
+                  final Color backgroundColor;
+                  final Color iconColor;
+
+                  if (workoutCategory == 'Strength(Core)') {
+                    backgroundColor = Theme.of(context).colorScheme.primary;
+                    iconColor = Theme.of(context).colorScheme.secondary;
+                  } else {
+                    backgroundColor = color.withOpacity(0.2);
+                    iconColor = color;
+                  }
+
                   return Card(
                       margin: const EdgeInsets.only(bottom: 12),
                       child: ListTile(
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => WorkoutDetailScreen(workoutData: data),
+                              ),
+                            );
+                          },
                           leading: Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                  color: isStrength
-                                      ? Theme.of(context)
-                                          .colorScheme
-                                          .primary
-                                          .withOpacity(0.2)
-                                      : Theme.of(context)
-                                          .colorScheme
-                                          .secondary
-                                          .withOpacity(0.2),
+                                  color: backgroundColor,
                                   borderRadius: BorderRadius.circular(8)),
-                              child: Icon(_getWorkoutIcon(type),
-                                  color: isStrength
-                                      ? Theme.of(context).colorScheme.primary
-                                      : Theme.of(context)
-                                          .colorScheme
-                                          .secondary)),
-                          title: Text(type,
+                              child: _getWorkoutIconWidget(type, iconColor)),
+                          title: Text(displayName,
                               style:
                                   const TextStyle(fontWeight: FontWeight.bold)),
                           subtitle: Text(
-                              DateFormat('yyyy-MM-dd HH:mm').format(data.dateFrom)),
+                              DateFormat('yyyy-MM-dd').format(data.dateFrom)),
                           trailing: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               crossAxisAlignment: CrossAxisAlignment.end,
@@ -786,16 +801,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       style: const TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 14)),
-                                Text(isStrength ? 'Strength' : 'Endurance',
+                                Text(workoutCategory,
                                     style: TextStyle(
                                         fontSize: 12,
-                                        color: isStrength
-                                            ? Theme.of(context)
-                                                .colorScheme
-                                                .primary
-                                            : Theme.of(context)
-                                                .colorScheme
-                                                .secondary))
+                                        color: color))
                               ])));
                 }).toList()),
           const SizedBox(height: 80)
@@ -806,19 +815,61 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final upperType = type.toUpperCase();
     return upperType.contains('STRENGTH') ||
         upperType.contains('WEIGHT') ||
-        upperType.contains('FUNCTIONAL');
+        upperType.contains('FUNCTIONAL') ||
+        upperType.contains('CORE') ||
+        upperType.contains('TRADITIONAL_STRENGTH_TRAINING');
   }
 
-  IconData _getWorkoutIcon(String type) {
+  String _getWorkoutCategory(String type) {
     final upperType = type.toUpperCase();
-    if (upperType.contains('RUNNING')) return Icons.directions_run;
-    if (upperType.contains('WALKING')) return Icons.directions_walk;
-    if (upperType.contains('CYCLING')) return Icons.directions_bike;
-    if (upperType.contains('SWIMMING')) return Icons.pool;
-    if (upperType.contains('HIKING')) return Icons.terrain;
-    if (upperType.contains('STRENGTH') || upperType.contains('WEIGHT')) {
-      return Icons.fitness_center;
+    if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
+      return 'Strength(Core)';
+    } else if (upperType.contains('STRENGTH') ||
+        upperType.contains('WEIGHT') ||
+        upperType.contains('TRADITIONAL_STRENGTH_TRAINING')) {
+      return 'Strength';
+    } else {
+      return 'Endurance';
     }
-    return Icons.sports;
+  }
+
+  Color _getCategoryColor(String category) {
+    switch (category) {
+      case 'Strength':
+        return Theme.of(context).colorScheme.primary;
+      case 'Endurance':
+        return Theme.of(context).colorScheme.secondary;
+      case 'Strength(Core)':
+        return Theme.of(context).colorScheme.primary;
+      default:
+        return Theme.of(context).colorScheme.secondary;
+    }
+  }
+
+  Widget _getWorkoutIconWidget(String type, Color color) {
+    final upperType = type.toUpperCase();
+    String iconPath;
+    double iconSize = 24;
+
+    if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
+      iconPath = 'assets/images/core-icon.svg';
+      iconSize = 24;
+    } else if (upperType.contains('STRENGTH') ||
+        upperType.contains('WEIGHT') ||
+        upperType.contains('TRADITIONAL_STRENGTH_TRAINING')) {
+      iconPath = 'assets/images/lifter-icon.svg';
+    } else {
+      iconPath = 'assets/images/runner-icon.svg';
+    }
+
+    return SvgPicture.asset(
+      iconPath,
+      width: iconSize,
+      height: iconSize,
+      colorFilter: ColorFilter.mode(
+        color,
+        BlendMode.srcIn,
+      ),
+    );
   }
 }

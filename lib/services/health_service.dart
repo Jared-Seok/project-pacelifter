@@ -16,22 +16,47 @@ class HealthService {
   final permissions = types.map((e) => HealthDataAccess.READ).toList();
 
   /// 건강 데이터 접근 권한 요청
-  Future<bool> requestAuthorization() async {
-    // 요청 전, 권한이 이미 부여되었는지 확인
-    bool? hasPermissions = await health.hasPermissions(types, permissions: permissions);
+  Future<bool> requestAuthorization({
+    List<HealthDataType>? types,
+    List<HealthDataAccess>? permissions,
+  }) async {
+    final requestTypes = types ?? HealthService.types;
+    final requestPermissions =
+        permissions ?? requestTypes.map((e) => HealthDataAccess.READ).toList();
+
+    bool? hasPermissions =
+        await health.hasPermissions(requestTypes, permissions: requestPermissions);
     if (hasPermissions != true) {
-      // 권한이 없거나 결정되지 않았다면 사용자에게 요청
-      bool requested = await health.requestAuthorization(types, permissions: permissions);
+      bool requested = await health.requestAuthorization(requestTypes,
+          permissions: requestPermissions);
       return requested;
     }
     return true;
+  }
+
+  Future<List<HealthDataPoint>> getHealthDataFromTypes(
+    DateTime startTime,
+    DateTime endTime,
+    List<HealthDataType> types,
+  ) async {
+    try {
+      List<HealthDataPoint> healthData = await health.getHealthDataFromTypes(
+        types: types,
+        startTime: startTime,
+        endTime: endTime,
+      );
+      return health.removeDuplicates(healthData);
+    } catch (e) {
+      print("데이터 가져오기 실패: $e");
+      return [];
+    }
   }
 
   /// 운동 데이터 가져오기
   Future<List<HealthDataPoint>> fetchWorkoutData() async {
     final now = DateTime.now();
     // 1년 전 데이터까지만 가져오도록 설정
-    final lastYear = now.subtract(const Duration(days: 365)); 
+    final lastYear = now.subtract(const Duration(days: 365));
 
     bool granted = await requestAuthorization();
     if (granted) {
