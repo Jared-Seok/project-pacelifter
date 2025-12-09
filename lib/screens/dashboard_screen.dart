@@ -307,7 +307,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _buildWorkoutSummaryPage(),
       _buildRacesPage(),
     ];
-    final List<String> titles = ['최근 운동 요약', '다가오는 레이스'];
+    final List<String> titles = ['최근 운동 요약', '준비중인 레이스'];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -316,14 +316,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                titles[_currentPage],
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Text(
+                  titles[_currentPage],
+                  style:
+                      const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
               ),
-              if (_currentPage == 1) // '다가오는 레이스' 페이지일 때만 + 버튼 표시
+              if (_currentPage == 1) // '준비중인 레이스' 페이지일 때만 + 버튼 표시
                 IconButton(
                   icon: const Icon(Icons.add_circle_outline),
                   onPressed: _showAddRaceDialog,
@@ -336,7 +339,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 200,
+          height: 230,
           child: Stack(
             alignment: Alignment.center,
             children: [
@@ -585,8 +588,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Column(children: [
           SvgPicture.asset(
             'assets/images/runner-icon.svg',
-            width: 40,
-            height: 40,
+            width: 42,
+            height: 42,
             colorFilter: ColorFilter.mode(
               Theme.of(context).colorScheme.secondary,
               BlendMode.srcIn,
@@ -610,8 +613,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Column(children: [
           SvgPicture.asset(
             'assets/images/lifter-icon.svg',
-            width: 40,
-            height: 40,
+            width: 46,
+            height: 46,
             colorFilter: ColorFilter.mode(
               Theme.of(context).colorScheme.primary,
               BlendMode.srcIn,

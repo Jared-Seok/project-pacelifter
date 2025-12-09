@@ -99,8 +99,8 @@ class _SplashScreenState extends State<SplashScreen>
                     // 로고 아이콘
                     SvgPicture.asset(
                       'assets/images/pllogo.svg',
-                      width: 210,
-                      height: 210,
+                      width: 254,
+                      height: 254,
                       colorFilter: ColorFilter.mode(
                         Theme.of(context).colorScheme.secondary,
                         BlendMode.srcIn,
