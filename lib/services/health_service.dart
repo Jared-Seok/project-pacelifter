@@ -19,8 +19,8 @@ class HealthService {
   Future<bool> requestAuthorization() async {
     // 요청 전, 권한이 이미 부여되었는지 확인
     bool? hasPermissions = await health.hasPermissions(types, permissions: permissions);
-    if (hasPermissions == false) {
-      // 권한이 없다면 사용자에게 요청
+    if (hasPermissions != true) {
+      // 권한이 없거나 결정되지 않았다면 사용자에게 요청
       bool requested = await health.requestAuthorization(types, permissions: permissions);
       return requested;
     }

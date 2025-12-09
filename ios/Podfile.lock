@@ -1,6 +1,4 @@
 PODS:
-  - background_location (0.0.1):
-    - Flutter
   - device_info_plus (0.0.1):
     - Flutter
   - DKImagePickerController/Core (4.3.9):
@@ -79,7 +77,6 @@ PODS:
     - Flutter
 
 DEPENDENCIES:
-  - background_location (from `.symlinks/plugins/background_location/ios`)
   - device_info_plus (from `.symlinks/plugins/device_info_plus/ios`)
   - file_picker (from `.symlinks/plugins/file_picker/ios`)
   - Flutter (from `Flutter`)
@@ -105,8 +102,6 @@ SPEC REPOS:
     - SwiftyGif
 
 EXTERNAL SOURCES:
-  background_location:
-    :path: ".symlinks/plugins/background_location/ios"
   device_info_plus:
     :path: ".symlinks/plugins/device_info_plus/ios"
   file_picker:
@@ -137,7 +132,6 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/workmanager_apple/ios"
 
 SPEC CHECKSUMS:
-  background_location: d888b93eca7cff45c2c084b7ecea2eec70b6e490
   device_info_plus: 21fcca2080fbcd348be798aa36c3e5ed849eefbe
   DKImagePickerController: 946cec48c7873164274ecc4624d19e3da4c1ef3c
   DKPhotoGallery: b3834fecb755ee09a593d7c9e389d8b5d6deed60
