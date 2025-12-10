@@ -19,14 +19,6 @@ class HealthWorkout {
 
   Duration get duration => endDate.difference(startDate);
 
-  double? get averagePace {
-    if (distance == null || distance! <= 0) return null;
-    // 분/km 반환
-    final durationMinutes = duration.inSeconds / 60.0;
-    final distanceKm = distance! / 1000.0;
-    return durationMinutes / distanceKm;
-  }
-
   double? get averageSpeed {
     if (distance == null || distance! <= 0) return null;
     // km/h 반환
@@ -60,19 +52,15 @@ class HealthWorkout {
       'totalEnergyBurned': totalEnergyBurned,
       'sourceName': sourceName,
       'duration': duration.inSeconds,
-      'averagePace': averagePace,
       'averageSpeed': averageSpeed,
     };
   }
 
   @override
   String toString() {
-    final paceStr = averagePace != null
-        ? '${averagePace!.toStringAsFixed(2)} min/km'
-        : 'N/A';
     final distStr = distance != null
         ? '${(distance! / 1000).toStringAsFixed(2)} km'
         : 'N/A';
-    return '$workoutType: $distStr, $paceStr, ${duration.inMinutes} min';
+    return '$workoutType: $distStr, ${duration.inMinutes} min';
   }
 }
