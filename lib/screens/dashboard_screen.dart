@@ -180,10 +180,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
             .add(Duration(days: daysToSunday))
             .add(const Duration(hours: 23, minutes: 59, seconds: 59));
 
-        // 날짜 범위 텍스트 생성: "25/12/8 ~ 14" 형식
+        // 날짜 범위 텍스트 생성: "25/12/8~14" 형식 (월이 바뀌면 "25/12/30~26/1/5" 형식)
         final startDay = startDate.day;
         final endDay = endDate.day;
-        _dateRangeText = '${now.year.toString().substring(2)}/${now.month}/$startDay ~ $endDay';
+
+        // 시작일과 종료일의 연도/월이 다른지 확인
+        if (startDate.year != endDate.year || startDate.month != endDate.month) {
+          // 연도나 월이 바뀌는 경우: 전체 날짜 표시
+          _dateRangeText =
+              '${startDate.year.toString().substring(2)}/${startDate.month}/$startDay~'
+              '${endDate.year.toString().substring(2)}/${endDate.month}/$endDay';
+        } else {
+          // 같은 월인 경우: 간단하게 표시
+          _dateRangeText = '${startDate.year.toString().substring(2)}/${startDate.month}/$startDay~$endDay';
+        }
         break;
 
       case TimePeriod.month:
