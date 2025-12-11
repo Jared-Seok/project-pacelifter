@@ -93,10 +93,7 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> {
                   ),
                   child: const Text(
                     '운동 시작',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                 ),
           const SizedBox(height: 16),
@@ -120,10 +117,7 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('오류: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('오류: $e'), backgroundColor: Colors.red),
         );
         setState(() {
           _isStarting = false;
@@ -217,9 +211,7 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> {
                 const SizedBox(height: 20),
 
                 // GPS 포인트
-                _buildInfoText(
-                  'GPS 포인트: ${_currentState!.routePointsCount}개',
-                ),
+                _buildInfoText('GPS 포인트: ${_currentState!.routePointsCount}개'),
               ],
             ),
           ),
@@ -258,7 +250,9 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> {
             children: [
               Icon(
                 isPaused ? Icons.pause_circle : Icons.play_circle,
-                color: isPaused ? Colors.orange : Theme.of(context).colorScheme.secondary,
+                color: isPaused
+                    ? Colors.orange
+                    : Theme.of(context).colorScheme.secondary,
                 size: 28,
               ),
               const SizedBox(width: 8),
@@ -267,7 +261,9 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: isPaused ? Colors.orange : Theme.of(context).colorScheme.secondary,
+                  color: isPaused
+                      ? Colors.orange
+                      : Theme.of(context).colorScheme.secondary,
                 ),
               ),
             ],
@@ -313,7 +309,9 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> {
                 label,
                 style: TextStyle(
                   fontSize: compact ? 14 : 16,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withOpacity(0.7),
                 ),
               ),
             ],
@@ -339,7 +337,9 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> {
                     unit,
                     style: TextStyle(
                       fontSize: compact ? 16 : 20,
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withOpacity(0.6),
                     ),
                   ),
                 ),
@@ -441,9 +441,7 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('종료'),
           ),
         ],
@@ -472,10 +470,7 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('운동 종료 오류: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('운동 종료 오류: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -492,10 +487,7 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> {
 class WorkoutSummaryScreen extends StatelessWidget {
   final WorkoutSummary summary;
 
-  const WorkoutSummaryScreen({
-    super.key,
-    required this.summary,
-  });
+  const WorkoutSummaryScreen({super.key, required this.summary});
 
   @override
   Widget build(BuildContext context) {
@@ -582,7 +574,9 @@ class WorkoutSummaryScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.05),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
@@ -647,11 +641,7 @@ class WorkoutSummaryScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(
-            icon,
-            size: 32,
-            color: Theme.of(context).colorScheme.secondary,
-          ),
+          Icon(icon, size: 32, color: Theme.of(context).colorScheme.secondary),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -661,7 +651,9 @@ class WorkoutSummaryScreen extends StatelessWidget {
                   label,
                   style: TextStyle(
                     fontSize: 14,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withOpacity(0.6),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -684,7 +676,9 @@ class WorkoutSummaryScreen extends StatelessWidget {
                           unit,
                           style: TextStyle(
                             fontSize: 16,
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withOpacity(0.6),
                           ),
                         ),
                       ),
@@ -705,16 +699,10 @@ class WorkoutSummaryScreen extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 14),
-          ),
+          Text(label, style: const TextStyle(fontSize: 14)),
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -728,6 +716,6 @@ class WorkoutSummaryScreen extends StatelessWidget {
   String _formatDuration(Duration duration) {
     int minutes = duration.inMinutes;
     int seconds = duration.inSeconds.remainder(60);
-    return '${minutes}분 ${seconds}초';
+    return '$minutes분 $seconds초';
   }
 }
