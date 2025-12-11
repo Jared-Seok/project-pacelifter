@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'workout_tracking_screen.dart';
+import 'endurance_environment_screen.dart';
 
 /// 운동 시작 화면
 ///
@@ -19,9 +19,20 @@ class _WorkoutStartScreenState extends State<WorkoutStartScreen> {
   WorkoutType _selectedType = WorkoutType.none;
 
   void _selectWorkoutType(WorkoutType type) {
-    setState(() {
-      _selectedType = type;
-    });
+    if (type == WorkoutType.endurance) {
+      // Endurance 선택 시 바로 환경 선택 화면으로 이동
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const EnduranceEnvironmentScreen(),
+        ),
+      );
+    } else {
+      // Strength는 기존 방식대로 상태 변경
+      setState(() {
+        _selectedType = type;
+      });
+    }
   }
 
   void _goBack() {
@@ -37,9 +48,7 @@ class _WorkoutStartScreenState extends State<WorkoutStartScreen> {
       appBar: AppBar(
         title: Text(_selectedType == WorkoutType.none
             ? '운동 시작'
-            : _selectedType == WorkoutType.endurance
-                ? 'Endurance'
-                : 'Strength'),
+            : 'Strength'),
         backgroundColor: Theme.of(context).colorScheme.surface,
         foregroundColor: Theme.of(context).colorScheme.onSurface,
         leading: _selectedType != WorkoutType.none
@@ -51,7 +60,7 @@ class _WorkoutStartScreenState extends State<WorkoutStartScreen> {
       ),
       body: _selectedType == WorkoutType.none
           ? _buildSelectionScreen()
-          : _buildTemplateScreen(),
+          : _buildStrengthTemplateScreen(),
     );
   }
 
@@ -163,89 +172,6 @@ class _WorkoutStartScreenState extends State<WorkoutStartScreen> {
           ),
         );
       },
-    );
-  }
-
-  /// 템플릿 화면
-  Widget _buildTemplateScreen() {
-    final isEndurance = _selectedType == WorkoutType.endurance;
-
-    if (isEndurance) {
-      // Endurance: 러닝 추적 화면으로 이동
-      return _buildEnduranceTemplateScreen();
-    } else {
-      // Strength: 추후 구현
-      return _buildStrengthTemplateScreen();
-    }
-  }
-
-  /// Endurance 템플릿 (러닝)
-  Widget _buildEnduranceTemplateScreen() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SvgPicture.asset(
-              'assets/images/runner-icon.svg',
-              width: 100,
-              height: 100,
-              colorFilter: ColorFilter.mode(
-                Theme.of(context).colorScheme.secondary,
-                BlendMode.srcIn,
-              ),
-            ),
-            const SizedBox(height: 32),
-            Text(
-              '러닝 트래킹',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.secondary,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'GPS와 심박수를 활용한\n실시간 러닝 추적',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-              ),
-            ),
-            const SizedBox(height: 48),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const WorkoutTrackingScreen(),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.secondary,
-                foregroundColor: Theme.of(context).colorScheme.onSecondary,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 48,
-                  vertical: 20,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-              ),
-              child: const Text(
-                '운동 시작',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/workout_tracking_service.dart';
 
 /// 실시간 운동 추적 화면
@@ -15,13 +16,13 @@ class WorkoutTrackingScreen extends StatefulWidget {
 }
 
 class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> {
-  final WorkoutTrackingService _service = WorkoutTrackingService();
+  late WorkoutTrackingService _service;
   WorkoutState? _currentState;
-  bool _isStarting = false;
 
   @override
   void initState() {
     super.initState();
+    _service = Provider.of<WorkoutTrackingService>(context, listen: false);
 
     // 실시간 업데이트 리스닝
     _service.workoutStateStream.listen((state) {
@@ -31,6 +32,13 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> {
         });
       }
     });
+
+    // 서비스의 현재 상태를 즉시 반영
+    // (예: 화면이 이미 시작된 운동에 연결될 경우)
+    if (_service.isTracking) {
+      // 강제로 첫 상태 업데이트를 요청할 수 있는 메소드가 서비스에 있다면 더 좋음
+      // 예: _service.requestUpdate();
+    }
   }
 
   @override
@@ -38,92 +46,11 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
-        child: _currentState == null
-            ? _buildStartScreen()
+        child: _currentState == null || !_currentState!.isTracking
+            ? const Center(child: CircularProgressIndicator())
             : _buildTrackingScreen(),
       ),
     );
-  }
-
-  /// 운동 시작 전 화면
-  Widget _buildStartScreen() {
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.directions_run,
-            size: 120,
-            color: Theme.of(context).colorScheme.secondary,
-          ),
-          const SizedBox(height: 32),
-          Text(
-            '러닝 준비',
-            style: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'GPS와 건강 데이터 권한이 필요합니다',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 16,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-            ),
-          ),
-          const SizedBox(height: 48),
-          _isStarting
-              ? const CircularProgressIndicator()
-              : ElevatedButton(
-                  onPressed: _startWorkout,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.secondary,
-                    foregroundColor: Theme.of(context).colorScheme.onSecondary,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 48,
-                      vertical: 20,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                  ),
-                  child: const Text(
-                    '운동 시작',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                ),
-          const SizedBox(height: 16),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// 운동 시작 처리
-  Future<void> _startWorkout() async {
-    setState(() {
-      _isStarting = true;
-    });
-
-    try {
-      await _service.startWorkout();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('오류: $e'), backgroundColor: Colors.red),
-        );
-        setState(() {
-          _isStarting = false;
-        });
-      }
-    }
   }
 
   /// 운동 중 추적 화면
@@ -478,7 +405,7 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> {
 
   @override
   void dispose() {
-    _service.dispose();
+    // _service.dispose() is now handled by the Provider
     super.dispose();
   }
 }
