@@ -86,8 +86,8 @@ class HealthService {
   /// 운동 데이터 가져오기
   Future<List<HealthDataPoint>> fetchWorkoutData() async {
     final now = DateTime.now();
-    // 1년 전 데이터까지만 가져오도록 설정
-    final lastYear = now.subtract(const Duration(days: 365));
+    // 가능한 모든 데이터를 가져오기 (10년 전까지)
+    final startDate = now.subtract(const Duration(days: 365 * 10));
 
     bool granted = await requestAuthorization();
     if (granted) {
@@ -95,7 +95,7 @@ class HealthService {
         // 지정된 기간 동안의 운동 데이터 요청
         List<HealthDataPoint> healthData = await health.getHealthDataFromTypes(
           types: [HealthDataType.WORKOUT],
-          startTime: lastYear,
+          startTime: startDate,
           endTime: now,
         );
 

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:health/health.dart';
 import 'package:pacelifter/models/race.dart';
+import 'package:pacelifter/models/time_period.dart';
 import 'package:pacelifter/services/health_service.dart';
 import 'package:pacelifter/services/auth_service.dart';
 import 'package:pacelifter/services/race_service.dart';
@@ -10,6 +12,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:pacelifter/screens/race_list_screen.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:pacelifter/screens/workout_detail_screen.dart';
+import 'package:pacelifter/screens/workout_feed_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -18,13 +21,12 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-enum TimePeriod { week, month, year }
-
 class _DashboardScreenState extends State<DashboardScreen> {
   final HealthService _healthService = HealthService();
   final AuthService _authService = AuthService();
   final RaceService _raceService = RaceService();
   late PageController _mainPageController;
+  final ScrollController _scrollController = ScrollController();
   List<HealthDataPoint> _workoutData = [];
   List<Race> _races = [];
   bool _isLoading = true;
@@ -36,17 +38,79 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _totalWorkouts = 0;
   String _dateRangeText = '';
 
+  // 무한 스크롤 관련 변수
+  String _currentVisibleMonth = '';
+  final Map<String, GlobalKey> _monthKeyMap = {};
+
   @override
   void initState() {
     super.initState();
     _mainPageController = PageController();
+    _scrollController.addListener(_onScroll);
     _initialize();
   }
 
   @override
   void dispose() {
     _mainPageController.dispose();
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    _updateVisibleMonth();
+  }
+
+  void _updateVisibleMonth() {
+    if (_workoutData.isEmpty) return;
+
+    // 화면 상단(sticky 헤더 바로 아래)에 보이는 첫 번째 운동 데이터의 월을 찾음
+    String? newVisibleMonth;
+
+    for (var entry in _monthKeyMap.entries) {
+      final key = entry.value;
+      final context = key.currentContext;
+      if (context != null) {
+        final renderBox = context.findRenderObject() as RenderBox?;
+        if (renderBox != null) {
+          final position = renderBox.localToGlobal(Offset.zero);
+          // Sticky 헤더(48px) 바로 아래 영역에 있는 첫 번째 월 찾기
+          // 위로 스크롤할 때도 즉시 반응하도록 범위 조정
+          if (position.dy <= 100 && position.dy >= -100) {
+            newVisibleMonth = entry.key;
+            break;
+          }
+        }
+      }
+    }
+
+    // 찾지 못했다면 현재 화면에 보이는 첫 번째 데이터의 월 사용
+    if (newVisibleMonth == null) {
+      for (var data in _workoutData) {
+        final monthKey = '${data.dateFrom.year}년 ${data.dateFrom.month}월';
+        if (_monthKeyMap.containsKey(monthKey)) {
+          final key = _monthKeyMap[monthKey];
+          final context = key?.currentContext;
+          if (context != null) {
+            final renderBox = context.findRenderObject() as RenderBox?;
+            if (renderBox != null) {
+              final position = renderBox.localToGlobal(Offset.zero);
+              if (position.dy >= 50 && position.dy <= 300) {
+                newVisibleMonth = monthKey;
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (newVisibleMonth != null && _currentVisibleMonth != newVisibleMonth) {
+      setState(() {
+        _currentVisibleMonth = newVisibleMonth!;
+      });
+    }
   }
 
   Future<void> _initialize() async {
@@ -156,9 +220,293 @@ class _DashboardScreenState extends State<DashboardScreen> {
       setState(() {
         _workoutData = workoutData;
         _calculateStatistics();
+        _prepareMonthKeys();
         _isLoading = false;
       });
     }
+  }
+
+  void _prepareMonthKeys() {
+    _monthKeyMap.clear();
+    if (_workoutData.isEmpty) return;
+
+    // 각 월의 첫 번째 데이터에 대한 Key 생성
+    Set<String> processedMonths = {};
+    for (var data in _workoutData) {
+      final date = data.dateFrom;
+      final monthKey = '${date.year}년 ${date.month}월';
+      if (!processedMonths.contains(monthKey)) {
+        _monthKeyMap[monthKey] = GlobalKey();
+        processedMonths.add(monthKey);
+      }
+    }
+
+    // 첫 번째 월을 현재 보이는 월로 설정
+    if (_monthKeyMap.isNotEmpty) {
+      _currentVisibleMonth = _monthKeyMap.keys.first;
+    }
+  }
+
+  void _showMonthPicker() {
+    if (_monthKeyMap.isEmpty) return;
+
+    // 사용 가능한 년도와 월 추출
+    final availableYearsMonths = <int, Set<int>>{};
+    for (var monthKey in _monthKeyMap.keys) {
+      final parts = monthKey.replaceAll('년 ', '-').replaceAll('월', '').split('-');
+      final year = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+
+      if (!availableYearsMonths.containsKey(year)) {
+        availableYearsMonths[year] = {};
+      }
+      availableYearsMonths[year]!.add(month);
+    }
+
+    final years = availableYearsMonths.keys.toList()..sort((a, b) => b.compareTo(a));
+
+    // 현재 표시 중인 년/월 파싱
+    final currentParts = _currentVisibleMonth.replaceAll('년 ', '-').replaceAll('월', '').split('-');
+    int selectedYear = int.parse(currentParts[0]);
+    int selectedMonth = int.parse(currentParts[1]);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final availableMonths = (availableYearsMonths[selectedYear]?.toList() ?? [])
+            ..sort((a, b) => b.compareTo(a));
+
+          return Container(
+            height: 380,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(top: 12),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  '이동할 년/월 선택',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // 선택된 년/월 표시
+                Text(
+                  '$selectedYear년 $selectedMonth월',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: Row(
+                    children: [
+                      // 년도 피커
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Text(
+                              '연',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Expanded(
+                              child: CupertinoPicker(
+                                scrollController: FixedExtentScrollController(
+                                  initialItem: years.indexOf(selectedYear),
+                                ),
+                                itemExtent: 40,
+                                onSelectedItemChanged: (index) {
+                                  setModalState(() {
+                                    selectedYear = years[index];
+                                    // 선택한 년도에 해당하는 월이 없으면 첫 번째 월로 설정
+                                    final months = availableYearsMonths[selectedYear]!.toList()
+                                      ..sort((a, b) => b.compareTo(a));
+                                    if (!months.contains(selectedMonth)) {
+                                      selectedMonth = months.first;
+                                    }
+                                  });
+                                },
+                                children: years.map((year) {
+                                  return Center(
+                                    child: Text(
+                                      '$year년',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        color: Theme.of(context).colorScheme.onSurface,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // 월 피커
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Text(
+                              '월',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Expanded(
+                              child: CupertinoPicker(
+                                scrollController: FixedExtentScrollController(
+                                  initialItem: availableMonths.indexOf(selectedMonth).clamp(0, availableMonths.length - 1),
+                                ),
+                                itemExtent: 40,
+                                onSelectedItemChanged: (index) {
+                                  setModalState(() {
+                                    selectedMonth = availableMonths[index];
+                                  });
+                                },
+                                children: availableMonths.map((month) {
+                                  return Center(
+                                    child: Text(
+                                      '$month월',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        color: Theme.of(context).colorScheme.onSurface,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('취소'),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            final targetMonth = '$selectedYear년 $selectedMonth월';
+                            _scrollToMonth(targetMonth);
+                          },
+                          child: const Text('이동'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _scrollToMonth(String monthKey) {
+    print('Attempting to scroll to: $monthKey');
+    print('Available keys: ${_monthKeyMap.keys.toList()}');
+
+    final key = _monthKeyMap[monthKey];
+    if (key == null) {
+      print('Key not found for month: $monthKey');
+      return;
+    }
+
+    // 짧은 지연 후 스크롤하여 레이아웃이 안정화되도록 함
+    Future.delayed(const Duration(milliseconds: 150), () {
+      final context = key.currentContext;
+      if (context != null) {
+        print('Scrolling to $monthKey');
+        Scrollable.ensureVisible(
+          context,
+          duration: const Duration(milliseconds: 600),
+          curve: Curves.easeInOut,
+          alignment: 0.0, // 최상단에 위치
+        );
+      } else {
+        print('Context is null for $monthKey');
+      }
+    });
+  }
+
+  void _scrollToCurrentPeriod() {
+    // 현재 선택된 기간의 운동 데이터 필터링
+    final now = DateTime.now();
+    DateTime startDate;
+    DateTime endDate;
+
+    switch (_selectedPeriod) {
+      case TimePeriod.week:
+        final currentWeekday = now.weekday;
+        final daysToMonday = currentWeekday - 1;
+        final daysToSunday = 7 - currentWeekday;
+        startDate = DateTime(now.year, now.month, now.day)
+            .subtract(Duration(days: daysToMonday));
+        endDate = DateTime(now.year, now.month, now.day)
+            .add(Duration(days: daysToSunday))
+            .add(const Duration(hours: 23, minutes: 59, seconds: 59));
+        break;
+      case TimePeriod.month:
+        startDate = DateTime(now.year, now.month, 1);
+        endDate = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+        break;
+      case TimePeriod.year:
+        startDate = DateTime(now.year, 1, 1);
+        endDate = DateTime(now.year, 12, 31, 23, 59, 59);
+        break;
+    }
+
+    final filteredData = _workoutData
+        .where((data) =>
+            data.dateFrom.isAfter(startDate.subtract(const Duration(seconds: 1))) &&
+            data.dateFrom.isBefore(endDate.add(const Duration(seconds: 1))))
+        .toList();
+
+    // 상세 페이지로 이동
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => WorkoutFeedScreen(
+          workoutData: filteredData,
+          period: _selectedPeriod,
+          dateRangeText: _dateRangeText,
+        ),
+      ),
+    );
   }
 
   void _calculateStatistics() {
@@ -259,18 +607,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   await _loadHealthData();
                   await _loadRaces();
                 },
-                child: SingleChildScrollView(
+                child: CustomScrollView(
+                  controller: _scrollController,
                   physics: const AlwaysScrollableScrollPhysics(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildHeader(),
-                      const SizedBox(height: 16),
-                      _buildSwipableCardsSection(),
-                      const SizedBox(height: 24),
-                      _buildWorkoutFeed(),
-                    ],
-                  ),
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildHeader(),
+                          const SizedBox(height: 16),
+                          _buildSwipableCardsSection(),
+                          const SizedBox(height: 24),
+                        ],
+                      ),
+                    ),
+                    _buildWorkoutFeedSliver(),
+                  ],
                 ),
               ),
       ),
@@ -393,9 +746,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildWorkoutSummaryPage() {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: _buildStrengthEndurancePage(),
+      child: InkWell(
+        onTap: _scrollToCurrentPeriod,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: _buildStrengthEndurancePage(),
+        ),
       ),
     );
   }
@@ -433,12 +789,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final progress = totalTrainingDays > 0
         ? (trainingDaysPassed / totalTrainingDays).clamp(0.0, 1.0)
         : 0.0;
+
+    // 훈련 기간 동안의 운동 횟수 계산
+    final trainingWorkouts = _workoutData.where((data) {
+      final date = data.dateFrom;
+      return date.isAfter(race.trainingStartDate.subtract(const Duration(seconds: 1))) &&
+             date.isBefore(now.add(const Duration(seconds: 1)));
+    }).toList();
+
+    int enduranceCount = 0;
+    int strengthCount = 0;
+    for (final data in trainingWorkouts) {
+      final workout = data.value as WorkoutHealthValue;
+      final type = workout.workoutActivityType.name;
+      if (_isStrengthWorkout(type)) {
+        strengthCount++;
+      } else {
+        enduranceCount++;
+      }
+    }
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -459,12 +836,69 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Text(
                 '훈련 기간: ${DateFormat('yy.MM.dd').format(race.trainingStartDate)} ~ ${DateFormat('yy.MM.dd').format(race.raceDate)}',
                 style: const TextStyle(fontSize: 12, color: Colors.grey)),
-            const Spacer(),
+            const SizedBox(height: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('훈련 진행률: ${(progress * 100).toStringAsFixed(0)}%'),
-                const SizedBox(height: 4),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('훈련 진행률: ${(progress * 100).toStringAsFixed(0)}%'),
+                    // 운동 횟수 표시 (컴팩트하게)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Endurance
+                        SvgPicture.asset(
+                          'assets/images/runner-icon.svg',
+                          width: 18,
+                          height: 18,
+                          colorFilter: ColorFilter.mode(
+                            Theme.of(context).colorScheme.secondary,
+                            BlendMode.srcIn,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$enduranceCount',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.secondary,
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Container(
+                            width: 1,
+                            height: 14,
+                            color: Colors.grey[400],
+                          ),
+                        ),
+                        // Strength
+                        Text(
+                          '$strengthCount',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        SvgPicture.asset(
+                          'assets/images/lifter-icon.svg',
+                          width: 18,
+                          height: 18,
+                          colorFilter: ColorFilter.mode(
+                            Theme.of(context).colorScheme.primary,
+                            BlendMode.srcIn,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
                 LinearProgressIndicator(
                   value: progress,
                   minHeight: 12,
@@ -663,19 +1097,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ]);
   }
   
-  Widget _buildPlaceholderPage(String title, String content) {
-    return Center(
-        child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-          Text(title,
-              style:
-                  const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Text(content, style: const TextStyle(fontSize: 14, color: Colors.grey))
-        ]));
-  }
-
   Widget _buildPeriodSelector() {
     return SegmentedButton<TimePeriod>(
         segments: const [
@@ -719,20 +1140,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ]));
   }
 
-  Widget _buildWorkoutFeed() {
-    final recentWorkouts = _workoutData.take(20).toList();
-    return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('운동 피드',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          recentWorkouts.isEmpty
-              ? Card(
-                  child: Padding(
-                      padding: const EdgeInsets.all(32.0),
-                      child: Center(
-                          child: Column(children: [
+  Widget _buildWorkoutFeedSliver() {
+    if (_workoutData.isEmpty) {
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('운동 피드',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Center(
+                    child: Column(
+                      children: [
                         Icon(Icons.info_outline,
                             size: 48,
                             color: Theme.of(context)
@@ -750,79 +1174,146 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         const SizedBox(height: 8),
                         const Text('헬스 앱과 동기화하여 운동 기록을 가져오세요',
                             style: TextStyle(fontSize: 12),
-                            textAlign: TextAlign.center)
-                      ]))))
-              : Column(
-                  children: recentWorkouts.map((data) {
-                  final workout = data.value as WorkoutHealthValue;
-                  final distance = workout.totalDistance ?? 0.0;
-                  final type = workout.workoutActivityType.name;
-                  final workoutCategory = _getWorkoutCategory(type);
-                  final color = _getCategoryColor(workoutCategory);
+                            textAlign: TextAlign.center),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 80),
+            ],
+          ),
+        ),
+      );
+    }
 
-                  final String displayName;
-                  final upperType = type.toUpperCase();
-                  if (type == 'TRADITIONAL_STRENGTH_TRAINING') {
-                    displayName = 'STRENGTH TRAINING';
-                  } else if (type == 'CORE_TRAINING') {
-                    displayName = 'CORE TRAINING';
-                  } else if (upperType.contains('RUNNING')) {
-                    displayName = 'RUNNING';
-                  } else {
-                    displayName = type;
-                  }
+    return SliverMainAxisGroup(
+      slivers: [
+        // Sticky 헤더
+        SliverPersistentHeader(
+          pinned: true,
+          delegate: _StickyMonthHeaderDelegate(
+            currentMonth: _currentVisibleMonth,
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            onMonthSelectorTap: _showMonthPicker,
+          ),
+        ),
+        // 운동 데이터 리스트
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                return _buildWorkoutItem(index);
+              },
+              childCount: _workoutData.length,
+            ),
+          ),
+        ),
+        // 하단 여백
+        const SliverToBoxAdapter(
+          child: SizedBox(height: 80),
+        ),
+      ],
+    );
+  }
 
-                  final Color backgroundColor;
-                  final Color iconColor;
+  Widget _buildWorkoutItem(int index) {
+    final data = _workoutData[index];
+    final date = data.dateFrom;
+    final monthKey = '${date.year}년 ${date.month}월';
 
-                  // Core 운동은 특별한 색상 조합 사용
-                  if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
-                    backgroundColor = Theme.of(context).colorScheme.primary;
-                    iconColor = Theme.of(context).colorScheme.secondary;
-                  } else {
-                    backgroundColor = color.withOpacity(0.2);
-                    iconColor = color;
-                  }
+    // 해당 월의 첫 번째 항목인지 확인
+    final isFirstOfMonth = index == 0 ||
+        _workoutData[index - 1].dateFrom.month != date.month ||
+        _workoutData[index - 1].dateFrom.year != date.year;
 
-                  return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      child: ListTile(
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => WorkoutDetailScreen(workoutData: data),
-                              ),
-                            );
-                          },
-                          leading: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                  color: backgroundColor,
-                                  borderRadius: BorderRadius.circular(8)),
-                              child: _getWorkoutIconWidget(type, iconColor)),
-                          title: Text(displayName,
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text(
-                              DateFormat('yyyy-MM-dd').format(data.dateFrom)),
-                          trailing: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                if (distance > 0)
-                                  Text(
-                                      '${(distance / 1000).toStringAsFixed(2)} km',
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14)),
-                                Text(workoutCategory,
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        color: color))
-                              ])));
-                }).toList()),
-          const SizedBox(height: 80)
-        ]));
+    final workout = data.value as WorkoutHealthValue;
+    final distance = workout.totalDistance ?? 0.0;
+    final type = workout.workoutActivityType.name;
+    final workoutCategory = _getWorkoutCategory(type);
+    final color = _getCategoryColor(workoutCategory);
+
+    final String displayName;
+    final upperType = type.toUpperCase();
+    if (type == 'TRADITIONAL_STRENGTH_TRAINING') {
+      displayName = 'STRENGTH TRAINING';
+    } else if (type == 'CORE_TRAINING') {
+      displayName = 'CORE TRAINING';
+    } else if (upperType.contains('RUNNING')) {
+      displayName = 'RUNNING';
+    } else {
+      displayName = type;
+    }
+
+    final Color backgroundColor;
+    final Color iconColor;
+
+    // Core 운동은 특별한 색상 조합 사용
+    if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
+      backgroundColor = Theme.of(context).colorScheme.primary;
+      iconColor = Theme.of(context).colorScheme.secondary;
+    } else {
+      backgroundColor = color.withOpacity(0.2);
+      iconColor = color;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 월별 섹션 헤더 (sticky 헤더와 중복되지 않을 때만 표시)
+        if (isFirstOfMonth && monthKey != _currentVisibleMonth)
+          Container(
+            key: _monthKeyMap[monthKey],
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+            child: Text(
+              monthKey,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          ),
+        // 운동 카드 (첫 번째 운동에는 월 이동을 위한 key 부여)
+        Card(
+          key: isFirstOfMonth && monthKey == _currentVisibleMonth ? _monthKeyMap[monthKey] : null,
+          margin: const EdgeInsets.only(bottom: 12),
+          child: ListTile(
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => WorkoutDetailScreen(workoutData: data),
+                ),
+              );
+            },
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: backgroundColor,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: _getWorkoutIconWidget(type, iconColor),
+            ),
+            title: Text(displayName,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text(DateFormat('yyyy-MM-dd').format(data.dateFrom)),
+            trailing: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                if (distance > 0)
+                  Text('${(distance / 1000).toStringAsFixed(2)} km',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 14)),
+                Text(workoutCategory,
+                    style: TextStyle(fontSize: 12, color: color)),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   bool _isStrengthWorkout(String type) {
@@ -883,5 +1374,78 @@ class _DashboardScreenState extends State<DashboardScreen> {
         BlendMode.srcIn,
       ),
     );
+  }
+}
+
+// Sticky 헤더 델리게이트
+class _StickyMonthHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final String currentMonth;
+  final Color backgroundColor;
+  final VoidCallback onMonthSelectorTap;
+
+  _StickyMonthHeaderDelegate({
+    required this.currentMonth,
+    required this.backgroundColor,
+    required this.onMonthSelectorTap,
+  });
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      color: backgroundColor,
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text(
+            '운동 피드',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Text(
+                currentMonth,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: onMonthSelectorTap,
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(
+                    Icons.calendar_month,
+                    size: 20,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  double get maxExtent => 82.0;
+
+  @override
+  double get minExtent => 82.0;
+
+  @override
+  bool shouldRebuild(covariant _StickyMonthHeaderDelegate oldDelegate) {
+    return currentMonth != oldDelegate.currentMonth;
   }
 }
