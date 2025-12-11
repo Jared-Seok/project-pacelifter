@@ -37,10 +37,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
   Future<void> _fetchHeartRateData() async {
     final types = [HealthDataType.HEART_RATE];
-    final permissions = [HealthDataAccess.READ];
 
-    final granted = await _healthService.requestAuthorization(
-        types: types, permissions: permissions);
+    final granted = await _healthService.requestAuthorization();
     if (granted) {
       try {
         final heartRateData = await _healthService.getHealthDataFromTypes(
@@ -87,11 +85,10 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     print('📅 운동 시작: ${widget.workoutData.dateFrom}');
     print('📅 운동 종료: ${widget.workoutData.dateTo}');
 
+    // HealthKit RUNNING_SPEED 데이터만 사용 (WALKING_SPEED 제외)
     final types = [HealthDataType.RUNNING_SPEED];
-    final permissions = [HealthDataAccess.READ];
 
-    final granted = await _healthService.requestAuthorization(
-        types: types, permissions: permissions);
+    final granted = await _healthService.requestAuthorization();
 
     print('✅ 권한 부여: $granted');
 
@@ -105,37 +102,23 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
         print('📊 RUNNING_SPEED 데이터 개수: ${speedData.length}');
 
-        if (speedData.isEmpty) {
-          // RUNNING_SPEED 데이터가 없으면 WALKING_SPEED 시도
-          print('⚠️ RUNNING_SPEED 데이터 없음, WALKING_SPEED 시도');
-          final walkingSpeedData = await _healthService.getHealthDataFromTypes(
-            widget.workoutData.dateFrom,
-            widget.workoutData.dateTo,
-            [HealthDataType.WALKING_SPEED],
-          );
-
-          print('📊 WALKING_SPEED 데이터 개수: ${walkingSpeedData.length}');
-
-          if (walkingSpeedData.isNotEmpty) {
-            _processPaceData(walkingSpeedData);
-            return;
-          }
-        } else {
+        if (speedData.isNotEmpty) {
           _processPaceData(speedData);
-          return;
-        }
-
-        // 둘 다 없으면 에러 메시지
-        if (mounted) {
-          setState(() {
-            _paceError = '페이스 데이터가 없습니다.\n(Apple Watch로 기록한 운동만 지원)';
-          });
+        } else {
+          // RUNNING_SPEED 데이터 없음
+          if (mounted) {
+            setState(() {
+              _paceError = '러닝 속도 데이터가 없습니다.\n(PaceLifter 앱으로 기록한 운동에서만 표시됩니다)';
+              _isPaceLoading = false;
+            });
+          }
         }
       } catch (e) {
         print('❌ 에러 발생: $e');
         if (mounted) {
           setState(() {
             _paceError = '페이스 데이터를 가져오는 데 실패했습니다: $e';
+            _isPaceLoading = false;
           });
         }
       }
@@ -143,61 +126,42 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       if (mounted) {
         setState(() {
           _paceError = '페이스 접근 권한이 거부되었습니다.';
+          _isPaceLoading = false;
         });
       }
-    }
-    if (mounted) {
-      setState(() {
-        _isPaceLoading = false;
-      });
     }
   }
 
   void _processPaceData(List<HealthDataPoint> speedData) {
     print('🔄 페이스 데이터 처리 중: ${speedData.length}개');
 
-    // 필터링: 최소 속도 1.5 m/s (약 10분/km) 이상만 사용
-    // 이는 정지/걷기 구간을 제외하고 실제 달리기 구간만 사용
-    const double minSpeed = 1.5; // m/s
+    // 거리 가중 평균 페이스 계산 (NRC/Strava 방식)
+    // 평균 페이스 = 총 운동 시간 / 총 거리
+    final workout = widget.workoutData.value as WorkoutHealthValue;
+    final totalDistance = workout.totalDistance; // 미터
+    final totalDuration = widget.workoutData.dateTo.difference(widget.workoutData.dateFrom);
 
-    List<HealthDataPoint> validData = [];
-    double sum = 0;
-    int filteredCount = 0;
-
-    for (var data in speedData) {
-      final speedMs = (data.value as NumericHealthValue).numericValue.toDouble();
-
-      if (speedMs >= minSpeed) {
-        // 페이스 = 1000 / (속도 * 60) 분/km
-        final pace = 1000 / (speedMs * 60);
-        sum += pace;
-        validData.add(data);
-      } else {
-        filteredCount++;
-      }
-    }
-
-    print('✅ 유효한 데이터: ${validData.length}개 (필터링: $filteredCount개)');
-
-    if (validData.isEmpty) {
+    if (totalDistance == null || totalDistance == 0) {
       if (mounted) {
         setState(() {
-          _paceError = '유효한 페이스 데이터가 없습니다.\n(달리기 속도가 감지되지 않음)';
+          _paceError = '거리 데이터가 없습니다.';
           _isPaceLoading = false;
         });
       }
       return;
     }
 
-    final avgPace = sum / validData.length;
-    print('✅ 평균 페이스: ${_formatPace(avgPace)}');
-    print('   최소 속도: ${validData.map((d) => (d.value as NumericHealthValue).numericValue).reduce((a, b) => a < b ? a : b).toStringAsFixed(2)} m/s');
-    print('   최대 속도: ${validData.map((d) => (d.value as NumericHealthValue).numericValue).reduce((a, b) => a > b ? a : b).toStringAsFixed(2)} m/s');
+    // 거리 가중 평균 페이스 (분/km)
+    final avgPaceMinPerKm = (totalDuration.inSeconds / 60) / (totalDistance / 1000);
+
+    print('✅ 평균 페이스: ${_formatPace(avgPaceMinPerKm)}');
+    print('   총 거리: ${(totalDistance / 1000).toStringAsFixed(2)} km');
+    print('   총 시간: ${totalDuration.inMinutes}분 ${totalDuration.inSeconds % 60}초');
 
     if (mounted) {
       setState(() {
-        _paceData = validData;
-        _avgPace = avgPace;
+        _paceData = speedData;
+        _avgPace = avgPaceMinPerKm;
         _isPaceLoading = false;
       });
     }
@@ -549,19 +513,28 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
   Widget _buildPaceChart() {
     final spots = <FlSpot>[];
-    // Calculate relative time in minutes
-    final workoutStartTimeMillis =
-        widget.workoutData.dateFrom.millisecondsSinceEpoch;
 
+    // 운동 시작 시간 기준
+    final workoutStartTime = widget.workoutData.dateFrom;
+    final workoutEndTime = widget.workoutData.dateTo;
+    final totalDurationSeconds = workoutEndTime.difference(workoutStartTime).inSeconds;
+
+    // 데이터 포인트를 운동 시간 기준으로 변환
     for (var data in _paceData) {
-      final relativeTimeMinutes =
-          (data.dateFrom.millisecondsSinceEpoch - workoutStartTimeMillis) /
-              (1000 * 60);
+      // X축: 운동 시작 이후 경과 시간 (초)
+      final elapsedSeconds = data.dateFrom.difference(workoutStartTime).inSeconds.toDouble();
+
+      // Y축: 페이스 (분/km)
       final speedMs = (data.value as NumericHealthValue).numericValue.toDouble();
+
       // 속도(m/s)를 페이스(분/km)로 변환
-      final pace = speedMs > 0 ? 1000 / (speedMs * 60) : 0.0;
-      if (pace > 0) {
-        spots.add(FlSpot(relativeTimeMinutes, pace.toDouble()));
+      if (speedMs > 0) {
+        final pace = 1000 / (speedMs * 60);
+
+        // 유효한 페이스만 추가 (비정상적으로 느린 페이스 제외)
+        if (pace < 20) {
+          spots.add(FlSpot(elapsedSeconds, pace));
+        }
       }
     }
 
@@ -569,22 +542,17 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       return const Center(child: Text('유효한 페이스 데이터가 없습니다.'));
     }
 
-    // Calculate min/max pace for Y-axis
+    // Y축 범위 계산
     final minPace = spots.map((e) => e.y).reduce(min);
     final maxPace = spots.map((e) => e.y).reduce(max);
 
-    // Calculate total workout duration in minutes for X-axis
-    final totalWorkoutDurationMinutes = widget.workoutData.dateTo
-        .difference(widget.workoutData.dateFrom)
-        .inMinutes
-        .toDouble();
+    // X축 범위: 0 ~ 총 운동 시간 (초)
+    final maxXSeconds = totalDurationSeconds.toDouble();
 
     return LineChart(
       LineChartData(
         minX: 0,
-        maxX: totalWorkoutDurationMinutes == 0
-            ? 1
-            : totalWorkoutDurationMinutes,
+        maxX: maxXSeconds == 0 ? 1 : maxXSeconds,
         minY: minPace - (minPace * 0.1), // 10% buffer below min
         maxY: maxPace + (maxPace * 0.1), // 10% buffer above max
         gridData: FlGridData(
@@ -609,14 +577,21 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 30,
-              interval: max(1, (totalWorkoutDurationMinutes / 5).floorToDouble()),
+              interval: max(60, (maxXSeconds / 5).floorToDouble()), // 60초 단위 간격
               getTitlesWidget: (value, meta) {
+                // 초를 분:초 형식으로 변환
+                final minutes = (value / 60).floor();
+                final seconds = (value % 60).toInt();
                 return SideTitleWidget(
                   meta: meta,
                   space: 8.0,
-                  child: Text('${value.toInt()}분',
-                      style: const TextStyle(
-                          color: Color(0xff68737d), fontSize: 10)),
+                  child: Text(
+                    seconds == 0 ? '${minutes}분' : '${minutes}:${seconds.toString().padLeft(2, '0')}',
+                    style: const TextStyle(
+                      color: Color(0xff68737d),
+                      fontSize: 10,
+                    ),
+                  ),
                 );
               },
             ),

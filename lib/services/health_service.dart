@@ -3,35 +3,66 @@ import 'package:health/health.dart';
 class HealthService {
   final Health health = Health();
 
-  // 요청할 건강 데이터 유형 목록 (단순화를 위해 WORKOUT만 요청)
-  static final types = [
+  // 읽기 권한 데이터 타입 (P0 - MVP 필수)
+  static final readTypes = [
+    // 프로필 정보
+    HealthDataType.WEIGHT,
+    HealthDataType.HEIGHT,
+
+    // 러닝 기본 데이터
+    HealthDataType.DISTANCE_WALKING_RUNNING,
+    HealthDataType.STEPS,
+    HealthDataType.ACTIVE_ENERGY_BURNED,
+
+    // 심박수 & 운동
+    HealthDataType.HEART_RATE,
     HealthDataType.WORKOUT,
-    // HealthDataType.STEPS,
-    // HealthDataType.HEART_RATE,
-    // HealthDataType.WEIGHT,
-    // HealthDataType.HEIGHT,
+
+    // 고급 지표 (선택적)
+    HealthDataType.RESTING_HEART_RATE,
   ];
 
-  // 읽기/쓰기 권한 정의 (여기서는 읽기만 사용)
-  final permissions = types.map((e) => HealthDataAccess.READ).toList();
+  // 쓰기 권한 데이터 타입 (P0 - MVP 필수)
+  static final writeTypes = [
+    HealthDataType.DISTANCE_WALKING_RUNNING,
+    HealthDataType.STEPS,
+    HealthDataType.ACTIVE_ENERGY_BURNED,
+    HealthDataType.HEART_RATE,
+    HealthDataType.WORKOUT,
+  ];
 
-  /// 건강 데이터 접근 권한 요청
-  Future<bool> requestAuthorization({
-    List<HealthDataType>? types,
-    List<HealthDataAccess>? permissions,
-  }) async {
-    final requestTypes = types ?? HealthService.types;
-    final requestPermissions =
-        permissions ?? requestTypes.map((e) => HealthDataAccess.READ).toList();
+  // 모든 타입 (읽기 + 쓰기)
+  static final allTypes = {...readTypes, ...writeTypes}.toList();
 
-    bool? hasPermissions =
-        await health.hasPermissions(requestTypes, permissions: requestPermissions);
-    if (hasPermissions != true) {
-      bool requested = await health.requestAuthorization(requestTypes,
-          permissions: requestPermissions);
-      return requested;
+  /// 건강 데이터 접근 권한 요청 (읽기 + 쓰기)
+  Future<bool> requestAuthorization() async {
+    try {
+      // 읽기 + 쓰기 권한 모두 요청
+      List<HealthDataAccess> permissions = allTypes.map((type) {
+        // 쓰기 가능한 타입은 READ_WRITE, 나머지는 READ
+        if (writeTypes.contains(type)) {
+          return HealthDataAccess.READ_WRITE;
+        }
+        return HealthDataAccess.READ;
+      }).toList();
+
+      bool? hasPermissions = await health.hasPermissions(
+        allTypes,
+        permissions: permissions,
+      );
+
+      if (hasPermissions != true) {
+        bool requested = await health.requestAuthorization(
+          allTypes,
+          permissions: permissions,
+        );
+        return requested;
+      }
+      return true;
+    } catch (e) {
+      print("권한 요청 실패: $e");
+      return false;
     }
-    return true;
   }
 
   Future<List<HealthDataPoint>> getHealthDataFromTypes(
