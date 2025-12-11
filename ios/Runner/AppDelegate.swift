@@ -8,7 +8,11 @@ import GoogleMaps
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    GMSServices.provideAPIKey("API-KEY-SECRETE")
+    // Fetch the API key from the Info.plist, which is populated by the .xcconfig files.
+    guard let googleMapsApiKey = Bundle.main.object(forInfoDictionaryKey: "GOOGLE_MAPS_API_KEY") as? String else {
+      fatalError("Google Maps API Key not found in Info.plist. Please check your Secrets.xcconfig file.")
+    }
+    GMSServices.provideAPIKey(googleMapsApiKey)
 
     GeneratedPluginRegistrant.register(with: self)
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
