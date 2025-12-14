@@ -26,12 +26,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final AuthService _authService = AuthService();
   final RaceService _raceService = RaceService();
   late PageController _mainPageController;
+  late PageController _racePageController;
   final ScrollController _scrollController = ScrollController();
   List<HealthDataPoint> _workoutData = [];
   List<Race> _races = [];
   bool _isLoading = true;
   TimePeriod _selectedPeriod = TimePeriod.week;
   int _currentPage = 0;
+  int _currentRacePage = 0;
 
   double _strengthPercentage = 0.0;
   double _endurancePercentage = 0.0;
@@ -46,6 +48,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _mainPageController = PageController();
+    _racePageController = PageController();
     _scrollController.addListener(_onScroll);
     _initialize();
   }
@@ -53,6 +56,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void dispose() {
     _mainPageController.dispose();
+    _racePageController.dispose();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
@@ -655,10 +659,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       color: Theme.of(context).colorScheme.secondary)),
             ],
           ),
-          IconButton(
-              icon: const Icon(Icons.sync),
-              onPressed: _isLoading ? null : _syncHealthData,
-              tooltip: '동기화'),
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.add_circle_outline),
+                onPressed: () {
+                  Navigator.of(context).pushNamed('/add-workout').then((result) {
+                    if (result == true) {
+                      // 운동이 추가되면 데이터 새로고침
+                      _syncHealthData();
+                    }
+                  });
+                },
+                tooltip: '운동 추가',
+              ),
+              IconButton(
+                icon: const Icon(Icons.sync),
+                onPressed: _isLoading ? null : _syncHealthData,
+                tooltip: '동기화',
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -776,8 +797,78 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       );
     }
-    // 가장 가까운 레이스 하나만 보여줌
-    return _buildRaceCard(_races.first);
+
+    // 여러 레이스를 상하 스와이프로 전환 가능하도록 PageView 사용
+    return SizedBox(
+      height: 240, // 카드 높이 + 인디케이터 공간
+      child: Stack(
+        children: [
+          PageView.builder(
+            controller: _racePageController,
+            scrollDirection: Axis.vertical, // 상하 스크롤로 변경
+            onPageChanged: (index) {
+              setState(() {
+                _currentRacePage = index;
+              });
+            },
+            itemCount: _races.length,
+            itemBuilder: (context, index) {
+              return _buildRaceCard(_races[index]);
+            },
+          ),
+          // 인디케이터를 오른쪽에 세로로 배치
+          if (_races.length > 1)
+            Positioned(
+              right: 8,
+              top: 0,
+              bottom: 0,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  _races.length,
+                  (index) => Container(
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _currentRacePage == index
+                          ? Theme.of(context).colorScheme.primary
+                          : Colors.grey[300],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _navigateToRaceTrainingFeed(Race race) {
+    final now = DateTime.now();
+
+    // 훈련 기간 동안의 운동 데이터 필터링
+    final trainingWorkouts = _workoutData.where((data) {
+      final date = data.dateFrom;
+      return date.isAfter(race.trainingStartDate.subtract(const Duration(seconds: 1))) &&
+             date.isBefore(now.add(const Duration(seconds: 1)));
+    }).toList();
+
+    // 훈련 기간 텍스트 생성
+    final dateRangeText = '${DateFormat('yy.MM.dd').format(race.trainingStartDate)} ~ ${DateFormat('yy.MM.dd').format(now)}';
+
+    // WorkoutFeedScreen으로 이동
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => WorkoutFeedScreen(
+          workoutData: trainingWorkouts,
+          period: TimePeriod.month, // 기본값으로 month 사용
+          dateRangeText: dateRangeText,
+          raceName: race.name, // 레이스 이름 전달
+        ),
+      ),
+    );
   }
 
   Widget _buildRaceCard(Race race) {
@@ -811,12 +902,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
+      child: InkWell(
+        onTap: () => _navigateToRaceTrainingFeed(race),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -836,68 +929,67 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Text(
                 '훈련 기간: ${DateFormat('yy.MM.dd').format(race.trainingStartDate)} ~ ${DateFormat('yy.MM.dd').format(race.raceDate)}',
                 style: const TextStyle(fontSize: 12, color: Colors.grey)),
-            const SizedBox(height: 12),
+            const SizedBox(height: 20),
+            // 운동 횟수 - 중앙에 크게 배치
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Endurance
+                SvgPicture.asset(
+                  'assets/images/runner-icon.svg',
+                  width: 36,
+                  height: 36,
+                  colorFilter: ColorFilter.mode(
+                    Theme.of(context).colorScheme.secondary,
+                    BlendMode.srcIn,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '$enduranceCount회',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.secondary,
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Container(
+                    width: 2,
+                    height: 32,
+                    color: Colors.grey[300],
+                  ),
+                ),
+                // Strength
+                Text(
+                  '$strengthCount회',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SvgPicture.asset(
+                  'assets/images/lifter-icon.svg',
+                  width: 36,
+                  height: 36,
+                  colorFilter: ColorFilter.mode(
+                    Theme.of(context).colorScheme.primary,
+                    BlendMode.srcIn,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            // 훈련 진행률 - 하단에 배치
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('훈련 진행률: ${(progress * 100).toStringAsFixed(0)}%'),
-                    // 운동 횟수 표시 (컴팩트하게)
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Endurance
-                        SvgPicture.asset(
-                          'assets/images/runner-icon.svg',
-                          width: 18,
-                          height: 18,
-                          colorFilter: ColorFilter.mode(
-                            Theme.of(context).colorScheme.secondary,
-                            BlendMode.srcIn,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '$enduranceCount',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Theme.of(context).colorScheme.secondary,
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: Container(
-                            width: 1,
-                            height: 14,
-                            color: Colors.grey[400],
-                          ),
-                        ),
-                        // Strength
-                        Text(
-                          '$strengthCount',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        SvgPicture.asset(
-                          'assets/images/lifter-icon.svg',
-                          width: 18,
-                          height: 18,
-                          colorFilter: ColorFilter.mode(
-                            Theme.of(context).colorScheme.primary,
-                            BlendMode.srcIn,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                Text('훈련 진행률: ${(progress * 100).toStringAsFixed(0)}%',
+                    style: const TextStyle(fontSize: 13)),
                 const SizedBox(height: 8),
                 LinearProgressIndicator(
                   value: progress,
@@ -909,7 +1001,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ],
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );

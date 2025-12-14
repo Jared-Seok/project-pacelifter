@@ -9,15 +9,21 @@ class WorkoutFeedScreen extends StatelessWidget {
   final List<HealthDataPoint> workoutData;
   final TimePeriod period;
   final String dateRangeText;
+  final String? raceName; // 레이스 이름 (선택적)
 
   const WorkoutFeedScreen({
     super.key,
     required this.workoutData,
     required this.period,
     required this.dateRangeText,
+    this.raceName,
   });
 
   String get periodTitle {
+    // 레이스 이름이 있으면 레이스 이름 사용, 없으면 기간 표시
+    if (raceName != null) {
+      return raceName!;
+    }
     switch (period) {
       case TimePeriod.week:
         return '주간';
@@ -112,6 +118,15 @@ class WorkoutFeedScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text('$periodTitle 운동 피드'),
         backgroundColor: Theme.of(context).colorScheme.surface,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: () {
+              Navigator.of(context).pushNamed('/add-workout');
+            },
+            tooltip: '운동 추가',
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -143,6 +158,7 @@ class WorkoutFeedScreen extends StatelessWidget {
                       null,
                       svgPath: 'assets/images/pllogo.svg',
                       iconSize: 28,
+                      color: Theme.of(context).colorScheme.secondary,
                     ),
                     _buildStatItem(
                       context,

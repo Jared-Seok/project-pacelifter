@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'services/workout_tracking_service.dart';
 import 'screens/health_import_screen.dart';
 import 'screens/splash_screen.dart';
+import 'screens/add_workout_screen.dart';
 
 void main() {
   runApp(
@@ -40,6 +41,9 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: const SplashScreen(),
+      routes: {
+        '/add-workout': (context) => const AddWorkoutScreen(),
+      },
     );
   }
 }

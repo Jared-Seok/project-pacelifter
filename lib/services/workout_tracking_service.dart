@@ -14,6 +14,7 @@ class WorkoutTrackingService extends ChangeNotifier {
   bool _isTracking = false;
   bool _isPaused = false;
   DateTime? _startTime;
+  DateTime? _stopTime; // 운동 중지 시간 (HealthKit의 stop time)
   DateTime? _pausedTime;
   Duration _totalPausedDuration = Duration.zero;
 
@@ -65,9 +66,10 @@ class WorkoutTrackingService extends ChangeNotifier {
     _isTracking = true;
     _isPaused = false;
     _startTime = DateTime.now();
+    _stopTime = null; // 아직 운동이 중지되지 않음
     _pausedTime = null;
     _totalPausedDuration = Duration.zero;
-    _route.clear(); 
+    _route.clear();
     _totalDistance = 0;
     _recentSpeeds.clear();
     _paceHistory.clear();
@@ -340,19 +342,27 @@ class WorkoutTrackingService extends ChangeNotifier {
       resumeWorkout();
     }
 
+    // 11.2 운동 중지 시간 기록 (HealthKit의 stopActivity 시점)
+    _stopTime = DateTime.now();
+
     _isTracking = false;
     _positionStream?.cancel();
     _updateTimer?.cancel();
 
+    // 11.3 최종 시간 계산
+    // endTime: 사용자가 "완료"를 누른 시간 (HealthKit의 session.end)
+    // stopTime: 사용자가 "중지"를 누른 시간 (HealthKit의 stopActivity)
+    // activeDuration: 실제 운동 시간 (일시정지 제외)
     final endTime = DateTime.now();
     final activeDuration =
-        endTime.difference(_startTime!) - _totalPausedDuration;
+        _stopTime!.difference(_startTime!) - _totalPausedDuration;
 
-    // 11.2 최종 요약 생성
+    // 11.4 최종 요약 생성
     final summary = WorkoutSummary(
       startTime: _startTime!,
-      endTime: endTime,
-      duration: activeDuration,
+      endTime: endTime, // 완료 시간 (elapsed time)
+      stopTime: _stopTime!, // 중지 시간 (workout time) - HealthKit 기준
+      duration: activeDuration, // 실제 운동 시간 (일시정지 제외)
       totalDuration: endTime.difference(_startTime!),
       distanceMeters: _totalDistance,
       averagePace: _calculatePace(_totalDistance / 1000, activeDuration),
@@ -384,10 +394,12 @@ class WorkoutTrackingService extends ChangeNotifier {
   Future<void> _saveToHealthKit(WorkoutSummary summary) async {
     try {
       // 12.1 HKWorkout 저장
+      // HealthKit의 stopActivity 시점(stopTime)을 종료 시간으로 사용
+      // 이렇게 해야 HealthKit이 자동으로 계산하는 평균 페이스가 정확함
       bool workoutSaved = await _health.writeWorkoutData(
         activityType: HealthWorkoutActivityType.RUNNING,
         start: summary.startTime,
-        end: summary.endTime,
+        end: summary.stopTime, // stopTime 사용 (endTime 아님)
         totalDistance: summary.distanceMeters.toInt(),
         totalEnergyBurned: summary.calories.toInt(),
       );
@@ -402,7 +414,7 @@ class WorkoutTrackingService extends ChangeNotifier {
         value: summary.distanceMeters,
         type: HealthDataType.DISTANCE_WALKING_RUNNING,
         startTime: summary.startTime,
-        endTime: summary.endTime,
+        endTime: summary.stopTime, // stopTime 사용
       );
 
       // 12.3 칼로리 샘플 저장
@@ -410,7 +422,7 @@ class WorkoutTrackingService extends ChangeNotifier {
         value: summary.calories,
         type: HealthDataType.ACTIVE_ENERGY_BURNED,
         startTime: summary.startTime,
-        endTime: summary.endTime,
+        endTime: summary.stopTime, // stopTime 사용
       );
 
       // 12.4 걸음 수 저장 (추정)
@@ -420,10 +432,12 @@ class WorkoutTrackingService extends ChangeNotifier {
         value: estimatedSteps.toDouble(),
         type: HealthDataType.STEPS,
         startTime: summary.startTime,
-        endTime: summary.endTime,
+        endTime: summary.stopTime, // stopTime 사용
       );
 
       print('✅ HealthKit 저장 완료');
+      print('   - 운동 시간 기준: ${summary.startTime} ~ ${summary.stopTime}');
+      print('   - 경과 시간: ${summary.startTime} ~ ${summary.endTime}');
     } catch (e) {
       print('❌ HealthKit 저장 오류: $e');
     }
@@ -579,7 +593,8 @@ class WorkoutState {
 /// 운동 완료 요약
 class WorkoutSummary {
   final DateTime startTime;
-  final DateTime endTime;
+  final DateTime endTime; // 완료 시간 (HealthKit의 session.end)
+  final DateTime stopTime; // 중지 시간 (HealthKit의 stopActivity) - 페이스 계산 기준
   final Duration duration; // 실제 운동 시간 (일시정지 제외)
   final Duration totalDuration; // 전체 시간 (일시정지 포함)
   final double distanceMeters;
@@ -593,6 +608,7 @@ class WorkoutSummary {
   WorkoutSummary({
     required this.startTime,
     required this.endTime,
+    required this.stopTime,
     required this.duration,
     required this.totalDuration,
     required this.distanceMeters,
