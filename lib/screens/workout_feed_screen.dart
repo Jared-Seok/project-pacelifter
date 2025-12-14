@@ -81,10 +81,18 @@ class WorkoutFeedScreen extends StatelessWidget {
       );
     }
 
-    if (upperType.contains('STRENGTH') ||
-        upperType.contains('WEIGHT') ||
-        upperType.contains('FUNCTIONAL') ||
-        upperType.contains('CORE')) {
+    // CORE TRAINING은 core-icon.svg 사용
+    if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
+      return SvgPicture.asset(
+        'assets/images/core-icon.svg',
+        width: iconSize,
+        height: iconSize,
+        colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+      );
+    }
+
+    // 나머지 Strength 운동은 lifter-icon.svg 사용
+    if (upperType.contains('STRENGTH') || upperType.contains('WEIGHT')) {
       return SvgPicture.asset(
         'assets/images/lifter-icon.svg',
         width: iconSize,
@@ -132,22 +140,24 @@ class WorkoutFeedScreen extends StatelessWidget {
         children: [
           // Summary Card
           Container(
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
               children: [
+                // 날짜 범위 텍스트를 크고 하얗게 상단 배치
                 Text(
                   dateRangeText,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
@@ -157,7 +167,7 @@ class WorkoutFeedScreen extends StatelessWidget {
                       '${workoutData.length}회',
                       null,
                       svgPath: 'assets/images/pllogo.svg',
-                      iconSize: 28,
+                      iconSize: 36, // 28에서 36으로 증가
                       color: Theme.of(context).colorScheme.secondary,
                     ),
                     _buildStatItem(
@@ -234,7 +244,7 @@ class WorkoutFeedScreen extends StatelessWidget {
     double? iconSize,
   }) {
     final displayColor = color ?? Theme.of(context).colorScheme.primary;
-    final size = iconSize ?? 24.0;
+    final size = iconSize ?? 32.0; // 기본 크기를 24에서 32로 증가
     return Column(
       children: [
         if (svgPath != null)
@@ -246,19 +256,19 @@ class WorkoutFeedScreen extends StatelessWidget {
           )
         else if (icon != null)
           Icon(icon, size: size, color: displayColor),
-        const SizedBox(height: 4),
+        const SizedBox(height: 8), // 4에서 8로 증가
         Text(
           label,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 13, // 12에서 13으로 증가
             color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
           ),
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 4), // 2에서 4로 증가
         Text(
           value,
           style: TextStyle(
-            fontSize: 16,
+            fontSize: 18, // 16에서 18로 증가
             fontWeight: FontWeight.bold,
             color: displayColor,
           ),
@@ -289,8 +299,9 @@ class WorkoutFeedScreen extends StatelessWidget {
     final Color backgroundColor;
     final Color iconColor;
 
+    // CORE TRAINING: secondary color 아이콘, primary color 배경 (Strength와 동일)
     if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
-      backgroundColor = Theme.of(context).colorScheme.primary;
+      backgroundColor = Theme.of(context).colorScheme.primary.withOpacity(0.2);
       iconColor = Theme.of(context).colorScheme.secondary;
     } else {
       backgroundColor = color.withOpacity(0.2);
@@ -316,7 +327,7 @@ class WorkoutFeedScreen extends StatelessWidget {
           child: _getWorkoutIconWidget(type, iconColor),
         ),
         title: Text(displayName, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(DateFormat('yyyy-MM-dd HH:mm').format(data.dateFrom)),
+        subtitle: Text(DateFormat('yyyy-MM-dd').format(data.dateFrom)),
         trailing: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.end,

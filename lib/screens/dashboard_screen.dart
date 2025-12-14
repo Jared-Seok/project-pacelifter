@@ -1342,9 +1342,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final Color backgroundColor;
     final Color iconColor;
 
-    // Core 운동은 특별한 색상 조합 사용
+    // CORE TRAINING: secondary color 아이콘, primary color 배경 (Strength와 동일)
     if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
-      backgroundColor = Theme.of(context).colorScheme.primary;
+      backgroundColor = Theme.of(context).colorScheme.primary.withOpacity(0.2);
       iconColor = Theme.of(context).colorScheme.secondary;
     } else {
       backgroundColor = color.withOpacity(0.2);
