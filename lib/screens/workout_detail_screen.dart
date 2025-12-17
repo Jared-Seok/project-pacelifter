@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:pacelifter/services/health_service.dart';
+import 'package:pacelifter/screens/workout_share_screen.dart';
 import 'dart:math';
 
 /// 운동 세부 정보 화면
@@ -281,6 +282,12 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         title: const Text('운동 세부 정보'),
         backgroundColor: Theme.of(context).colorScheme.surface,
         foregroundColor: Theme.of(context).colorScheme.onSurface,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: _handleShareWorkout,
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -986,6 +993,24 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     }
 
     return null;
+  }
+
+  /// 운동 공유 처리
+  Future<void> _handleShareWorkout() async {
+    // 운동 공유 화면으로 이동
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => WorkoutShareScreen(
+          workoutData: widget.workoutData,
+          heartRateData: _heartRateData,
+          avgHeartRate: _avgHeartRate,
+          paceData: _paceData,
+          avgPace: _avgPace,
+          movingTime: _movingTime,
+        ),
+      ),
+    );
   }
 
   Widget _buildInfoRow(IconData icon, String label, String value) {

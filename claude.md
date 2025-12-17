@@ -373,7 +373,141 @@ _buildPaceChart()
   └─ LineChart 렌더링
 ```
 
-### 2.5 데이터 저장
+### 2.5 운동 공유 (Workout Sharing)
+
+**위치**: [lib/screens/workout_share_screen.dart](lib/screens/workout_share_screen.dart)
+
+운동 기록을 이미지로 생성하여 SNS에 공유하는 기능
+
+#### 기능 흐름
+
+```
+운동 세부 정보 화면
+  ↓ (공유 버튼 클릭)
+WorkoutShareScreen
+  ↓
+1. 배경 이미지 선택 (카메라/갤러리)
+  ↓
+2. 레이아웃 선택
+  ├─ 미니멀: 핵심 지표만 표시
+  ├─ 상세: 모든 통계 표시
+  ├─ 러닝 전용: 페이스, 거리, 심박수 중점
+  └─ 근력 전용: 부위별 운동 내용
+  ↓
+3. 미리보기 확인
+  ↓
+4. 내보내기
+  ├─ 저장: 사진 라이브러리에 저장
+  └─ 공유: SNS 공유 (Share Sheet)
+  ↓
+5. 광고 표시 (추후 구현)
+```
+
+#### 주요 컴포넌트
+
+**이미지 선택**:
+```dart
+// 카메라 또는 갤러리에서 이미지 선택
+final XFile? image = await ImagePicker().pickImage(
+  source: ImageSource.camera, // or ImageSource.gallery
+  imageQuality: 100,
+);
+```
+
+**레이아웃 종류**:
+
+1. **미니멀 (Minimal)**:
+   - 운동 타입
+   - 거리 (러닝인 경우)
+   - 운동 시간
+   - 평균 페이스 (러닝인 경우)
+   - 날짜
+
+2. **상세 (Detailed)**:
+   - 모든 운동 통계
+   - 거리, 시간, 페이스, 심박수, 칼로리
+   - 아이콘과 함께 카드 형태로 표시
+
+3. **러닝 전용 (Running)**:
+   - 거리 (대형 텍스트)
+   - 평균 페이스
+   - 운동 시간
+   - 평균 심박수
+   - 러닝 아이콘 강조
+
+4. **근력 전용 (Strength)**:
+   - 운동 타입
+   - 운동 시간
+   - 칼로리
+   - 근력 아이콘 강조
+
+**스크린샷 생성**:
+```dart
+// Screenshot 패키지 사용
+final Uint8List? imageBytes = await ScreenshotController().capture();
+```
+
+**저장 및 공유**:
+```dart
+// 갤러리 저장
+await ImageGallerySaver.saveImage(
+  imageBytes,
+  quality: 100,
+  name: 'pacelifter_${DateTime.now().millisecondsSinceEpoch}',
+);
+
+// SNS 공유
+await Share.shareXFiles(
+  [XFile(tempFilePath)],
+  text: 'PaceLifter로 기록한 운동 🏃‍♂️💪',
+);
+```
+
+#### 오버레이 디자인
+
+**공통 요소**:
+- 배경 이미지 위에 그라데이션 오버레이 (투명도: 0.3 → 0.7)
+- 상단: PaceLifter 로고
+- 하단: 운동 통계 및 날짜
+- 색상: 흰색 텍스트 (가독성)
+
+**텍스트 스타일**:
+```dart
+// 운동 타입
+fontSize: 28-32, fontWeight: FontWeight.bold
+
+// 주요 지표
+fontSize: 20-24, fontWeight: FontWeight.bold
+
+// 라벨
+fontSize: 11-13, color: white.withOpacity(0.8)
+```
+
+#### iOS 권한 설정
+
+**Info.plist** ([ios/Runner/Info.plist](ios/Runner/Info.plist#L31-L36)):
+```xml
+<key>NSCameraUsageDescription</key>
+<string>운동 기록을 이미지로 남기기 위해 카메라 권한이 필요합니다</string>
+
+<key>NSPhotoLibraryUsageDescription</key>
+<string>운동 기록을 이미지로 공유하기 위해 사진 라이브러리 접근 권한이 필요합니다</string>
+
+<key>NSPhotoLibraryAddUsageDescription</key>
+<string>운동 기록 이미지를 저장하기 위해 사진 라이브러리 저장 권한이 필요합니다</string>
+```
+
+#### 의존성
+
+**pubspec.yaml** ([pubspec.yaml:84-88](pubspec.yaml#L84-L88)):
+```yaml
+image_picker: ^1.1.2        # 카메라/갤러리 이미지 선택
+screenshot: ^3.0.0          # 위젯 스크린샷 캡처
+share_plus: ^10.1.2         # SNS 공유
+image_gallery_saver: ^2.0.3 # 갤러리 저장
+```
+
+### 2.6 데이터 저장
 
 **로컬 스토리지**:
 - `sqflite`: 관계형 데이터베이스
@@ -424,7 +558,7 @@ _buildPaceChart()
 - 달력 배지
 - 운동 타입 아이콘
 - 개인 기록(PR) 표시
-- 공유 이미지 ⭐ (추후 구현)
+- ✅ 공유 이미지 (구현 완료)
 
 ### 3.1 하이브리드 데이터 아키텍처
 
