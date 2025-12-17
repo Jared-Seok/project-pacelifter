@@ -330,7 +330,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               '연',
                               style: TextStyle(
                                 fontSize: 14,
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -375,7 +375,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               '월',
                               style: TextStyle(
                                 fontSize: 14,
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -442,28 +442,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _scrollToMonth(String monthKey) {
-    print('Attempting to scroll to: $monthKey');
-    print('Available keys: ${_monthKeyMap.keys.toList()}');
-
     final key = _monthKeyMap[monthKey];
     if (key == null) {
-      print('Key not found for month: $monthKey');
       return;
     }
 
     // 짧은 지연 후 스크롤하여 레이아웃이 안정화되도록 함
     Future.delayed(const Duration(milliseconds: 150), () {
-      final context = key.currentContext;
-      if (context != null) {
-        print('Scrolling to $monthKey');
+      if (!mounted) return;
+      final scrollContext = key.currentContext;
+      if (scrollContext != null && scrollContext.mounted) {
+        // ignore: use_build_context_synchronously
         Scrollable.ensureVisible(
-          context,
+          scrollContext,
           duration: const Duration(milliseconds: 600),
           curve: Curves.easeInOut,
           alignment: 0.0, // 최상단에 위치
         );
-      } else {
-        print('Context is null for $monthKey');
       }
     });
   }
@@ -1087,13 +1082,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             raceDate != null &&
                             trainingStartDate != null) {
                           formKey.currentState!.save();
+                          final navigator = Navigator.of(context);
                           final newRace = Race(
                               name: raceName,
                               raceDate: raceDate!,
                               trainingStartDate: trainingStartDate!);
                           await _raceService.addRace(newRace);
                           await _loadRaces();
-                          if (mounted) Navigator.of(context).pop();
+                          if (!mounted) return;
+                          navigator.pop();
                         }
                       },
                       child: const Text('저장'))
@@ -1111,7 +1108,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         decoration: BoxDecoration(
             color: isActive
                 ? Theme.of(context).colorScheme.primary
-                : Colors.grey.withOpacity(0.5),
+                : Colors.grey.withValues(alpha: 0.5),
             borderRadius: const BorderRadius.all(Radius.circular(12))));
   }
 
@@ -1177,14 +1174,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   color: Theme.of(context)
                       .colorScheme
                       .onSurface
-                      .withOpacity(0.7))),
+                      .withValues(alpha: 0.7))),
           Text(_dateRangeText,
               style: TextStyle(
                   fontSize: 12,
                   color: Theme.of(context)
                       .colorScheme
                       .onSurface
-                      .withOpacity(0.5)))
+                      .withValues(alpha: 0.5)))
         ],
       )
     ]);
@@ -1255,7 +1252,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             color: Theme.of(context)
                                 .colorScheme
                                 .onSurface
-                                .withOpacity(0.5)),
+                                .withValues(alpha: 0.5)),
                         const SizedBox(height: 12),
                         Text('운동 기록이 없습니다',
                             style: TextStyle(
@@ -1263,7 +1260,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 color: Theme.of(context)
                                     .colorScheme
                                     .onSurface
-                                    .withOpacity(0.7))),
+                                    .withValues(alpha: 0.7))),
                         const SizedBox(height: 8),
                         const Text('헬스 앱과 동기화하여 운동 기록을 가져오세요',
                             style: TextStyle(fontSize: 12),
@@ -1344,10 +1341,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     // CORE TRAINING: secondary color 아이콘, primary color 배경 (Strength와 동일)
     if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
-      backgroundColor = Theme.of(context).colorScheme.primary.withOpacity(0.2);
+      backgroundColor = Theme.of(context).colorScheme.primary.withValues(alpha: 0.2);
       iconColor = Theme.of(context).colorScheme.secondary;
     } else {
-      backgroundColor = color.withOpacity(0.2);
+      backgroundColor = color.withValues(alpha: 0.2);
       iconColor = color;
     }
 
@@ -1514,7 +1511,7 @@ class _StickyMonthHeaderDelegate extends SliverPersistentHeaderDelegate {
                 child: Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(

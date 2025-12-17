@@ -208,14 +208,14 @@ class WorkoutFeedScreen extends StatelessWidget {
                         Icon(
                           Icons.inbox_outlined,
                           size: 64,
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
                         ),
                         const SizedBox(height: 16),
                         Text(
                           '운동 기록이 없습니다',
                           style: TextStyle(
                             fontSize: 16,
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                           ),
                         ),
                       ],
@@ -261,7 +261,7 @@ class WorkoutFeedScreen extends StatelessWidget {
           label,
           style: TextStyle(
             fontSize: 13, // 12에서 13으로 증가
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
           ),
         ),
         const SizedBox(height: 4), // 2에서 4로 증가
@@ -301,10 +301,10 @@ class WorkoutFeedScreen extends StatelessWidget {
 
     // CORE TRAINING: secondary color 아이콘, primary color 배경 (Strength와 동일)
     if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
-      backgroundColor = Theme.of(context).colorScheme.primary.withOpacity(0.2);
+      backgroundColor = Theme.of(context).colorScheme.primary.withValues(alpha: 0.2);
       iconColor = Theme.of(context).colorScheme.secondary;
     } else {
-      backgroundColor = color.withOpacity(0.2);
+      backgroundColor = color.withValues(alpha: 0.2);
       iconColor = color;
     }
 

@@ -58,21 +58,19 @@ class _LoginScreenState extends State<LoginScreen>
     );
 
     // 로고가 중앙에서 위로 올라가는 애니메이션
-    _logoSlideAnimation = Tween<Offset>(
-      begin: Offset.zero, // 중앙
-      end: const Offset(0, -0.5), // 위로 이동
-    ).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeInOut,
-      ),
-    );
+    _logoSlideAnimation =
+        Tween<Offset>(
+          begin: Offset.zero, // 중앙
+          end: const Offset(0, -0.5), // 위로 이동
+        ).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Curves.easeInOut,
+          ),
+        );
 
     // 로그인 폼이 서서히 나타나는 애니메이션
-    _formFadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(
+    _formFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
         curve: const Interval(0.3, 1.0, curve: Curves.easeIn),
@@ -85,10 +83,7 @@ class _LoginScreenState extends State<LoginScreen>
       vsync: this,
     );
 
-    _phraseFadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(
+    _phraseFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _phraseAnimationController,
         curve: Curves.easeInOut,
@@ -121,7 +116,8 @@ class _LoginScreenState extends State<LoginScreen>
 
     if (mounted) {
       setState(() {
-        _currentPhraseIndex = (_currentPhraseIndex + 1) % _motivationalPhrases.length;
+        _currentPhraseIndex =
+            (_currentPhraseIndex + 1) % _motivationalPhrases.length;
       });
 
       // Fade in
@@ -144,7 +140,7 @@ class _LoginScreenState extends State<LoginScreen>
     if (username.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('사용자 이름을 입력해주세요'),
+          content: Text('애슬릿 이름을 입력해주세요'),
           backgroundColor: Colors.red,
         ),
       );
@@ -164,21 +160,18 @@ class _LoginScreenState extends State<LoginScreen>
       _isLoading = false;
     });
 
-    final isProfileSetupCompleted = await _profileService.isProfileSetupCompleted();
+    final isProfileSetupCompleted = await _profileService
+        .isProfileSetupCompleted();
 
     if (!mounted) return;
 
     if (isProfileSetupCompleted) {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => const MainNavigation(),
-        ),
+        MaterialPageRoute(builder: (context) => const MainNavigation()),
       );
     } else {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => const ProfileSetupScreen(),
-        ),
+        MaterialPageRoute(builder: (context) => const ProfileSetupScreen()),
       );
     }
   }
@@ -193,7 +186,8 @@ class _LoginScreenState extends State<LoginScreen>
           builder: (context, child) {
             return SingleChildScrollView(
               child: SizedBox(
-                height: MediaQuery.of(context).size.height -
+                height:
+                    MediaQuery.of(context).size.height -
                     MediaQuery.of(context).padding.top,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 32.0),
@@ -222,7 +216,9 @@ class _LoginScreenState extends State<LoginScreen>
                                 style: GoogleFonts.anton(
                                   fontSize: 40,
                                   fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).colorScheme.secondary,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.secondary,
                                   letterSpacing: 1.5,
                                 ),
                               ),
@@ -233,10 +229,9 @@ class _LoginScreenState extends State<LoginScreen>
                                   fontSize: 21,
                                   fontWeight: FontWeight.bold,
                                   fontStyle: FontStyle.italic,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurface
-                                      .withOpacity(0.8),
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface.withValues(alpha: 0.8),
                                   letterSpacing: 0.5,
                                 ),
                               ),
@@ -278,7 +273,8 @@ class _LoginScreenState extends State<LoginScreen>
                                       fontSize: 40,
                                       fontStyle: FontStyle.italic,
                                       fontWeight: FontWeight.w500,
-                                      color: Colors.white, // Color needs to be white for ShaderMask to work correctly with gradient
+                                      color: Colors
+                                          .white, // Color needs to be white for ShaderMask to work correctly with gradient
                                       height: 1.3,
                                     ),
                                   ),
@@ -303,7 +299,9 @@ class _LoginScreenState extends State<LoginScreen>
                                 style: TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).colorScheme.onSurface,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
                                 ),
                               ),
                               const SizedBox(height: 8),
@@ -311,10 +309,9 @@ class _LoginScreenState extends State<LoginScreen>
                                 '시작하려면 이름을 입력하세요',
                                 style: TextStyle(
                                   fontSize: 14,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurface
-                                      .withOpacity(0.6),
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface.withValues(alpha: 0.6),
                                 ),
                               ),
                               const SizedBox(height: 32),
@@ -323,11 +320,13 @@ class _LoginScreenState extends State<LoginScreen>
                               TextField(
                                 controller: _usernameController,
                                 decoration: InputDecoration(
-                                  labelText: '사용자 이름',
+                                  labelText: '애슬릿 이름',
                                   hintText: '이름을 입력하세요',
                                   prefixIcon: Icon(
                                     Icons.person,
-                                    color: Theme.of(context).colorScheme.primary,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
                                   ),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
@@ -335,16 +334,17 @@ class _LoginScreenState extends State<LoginScreen>
                                   enabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
                                     borderSide: BorderSide(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurface
-                                          .withOpacity(0.3),
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurface.withValues(alpha: 0.3),
                                     ),
                                   ),
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
                                     borderSide: BorderSide(
-                                      color: Theme.of(context).colorScheme.primary,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
                                       width: 2,
                                     ),
                                   ),
@@ -360,10 +360,12 @@ class _LoginScreenState extends State<LoginScreen>
                                 child: ElevatedButton(
                                   onPressed: _isLoading ? null : _handleLogin,
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor:
-                                        Theme.of(context).colorScheme.secondary,
-                                    foregroundColor:
-                                        Theme.of(context).colorScheme.onSecondary,
+                                    backgroundColor: Theme.of(
+                                      context,
+                                    ).colorScheme.secondary,
+                                    foregroundColor: Theme.of(
+                                      context,
+                                    ).colorScheme.onSecondary,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
@@ -377,10 +379,10 @@ class _LoginScreenState extends State<LoginScreen>
                                             strokeWidth: 2,
                                             valueColor:
                                                 AlwaysStoppedAnimation<Color>(
-                                              Theme.of(context)
-                                                  .colorScheme
-                                                  .onSecondary,
-                                            ),
+                                                  Theme.of(
+                                                    context,
+                                                  ).colorScheme.onSecondary,
+                                                ),
                                           ),
                                         )
                                       : const Text(
@@ -400,10 +402,9 @@ class _LoginScreenState extends State<LoginScreen>
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurface
-                                      .withOpacity(0.5),
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface.withValues(alpha: 0.5),
                                 ),
                               ),
                             ],

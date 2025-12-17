@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../services/workout_tracking_service.dart';
+import 'dart:async';
 
 /// 실시간 운동 추적 화면
 ///
-/// NRC/Strava UI 벤치마킹:
-/// - 큰 숫자로 핵심 지표 표시 (거리, 시간, 페이스)
-/// - 하단에 일시정지/종료 버튼
-/// - 심플하고 집중된 레이아웃
+/// 개선사항:
+/// - 3초 카운트다운 추가
+/// - 대시보드 톤 통일 (카키/연두색, SVG 아이콘)
+/// - 더 직관적인 UI
 class WorkoutTrackingScreen extends StatefulWidget {
   const WorkoutTrackingScreen({super.key});
 
@@ -15,14 +17,32 @@ class WorkoutTrackingScreen extends StatefulWidget {
   State<WorkoutTrackingScreen> createState() => _WorkoutTrackingScreenState();
 }
 
-class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> {
+class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> with SingleTickerProviderStateMixin {
   late WorkoutTrackingService _service;
   WorkoutState? _currentState;
+
+  // 카운트다운 관련
+  bool _showCountdown = true;
+  int _countdown = 3;
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
 
   @override
   void initState() {
     super.initState();
     _service = Provider.of<WorkoutTrackingService>(context, listen: false);
+
+    // 펄스 애니메이션 설정
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _pulseAnimation = Tween<double>(begin: 0.8, end: 1.2).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
+    // 카운트다운 시작
+    _startCountdown();
 
     // 실시간 업데이트 리스닝
     _service.workoutStateStream.listen((state) {
@@ -34,11 +54,37 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> {
     });
 
     // 서비스의 현재 상태를 즉시 반영
-    // (예: 화면이 이미 시작된 운동에 연결될 경우)
     if (_service.isTracking) {
       // 강제로 첫 상태 업데이트를 요청할 수 있는 메소드가 서비스에 있다면 더 좋음
       // 예: _service.requestUpdate();
     }
+  }
+
+  void _startCountdown() {
+    _pulseController.repeat(reverse: true);
+
+    Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      setState(() {
+        if (_countdown > 1) {
+          _countdown--;
+        } else {
+          _showCountdown = false;
+          _pulseController.stop();
+          timer.cancel();
+        }
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
   }
 
   @override
@@ -46,14 +92,104 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
-        child: _currentState == null || !_currentState!.isTracking
-            ? const Center(child: CircularProgressIndicator())
-            : _buildTrackingScreen(),
+        child: _showCountdown
+            ? _buildCountdownScreen()
+            : (_currentState == null || !_currentState!.isTracking
+                ? const Center(child: CircularProgressIndicator())
+                : _buildTrackingScreen()),
       ),
     );
   }
 
-  /// 운동 중 추적 화면
+  /// 카운트다운 화면
+  Widget _buildCountdownScreen() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+            Theme.of(context).colorScheme.surface,
+          ],
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Runner 아이콘
+            SvgPicture.asset(
+              'assets/images/runner-icon.svg',
+              width: 100,
+              height: 100,
+              colorFilter: ColorFilter.mode(
+                Theme.of(context).colorScheme.secondary,
+                BlendMode.srcIn,
+              ),
+            ),
+            const SizedBox(height: 40),
+
+            // 준비 텍스트
+            Text(
+              '준비',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+                letterSpacing: 2,
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // 카운트다운 숫자 (펄스 애니메이션)
+            AnimatedBuilder(
+              animation: _pulseAnimation,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: _pulseAnimation.value,
+                  child: Container(
+                    width: 150,
+                    height: 150,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2),
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.secondary,
+                        width: 4,
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '$_countdown',
+                        style: TextStyle(
+                          fontSize: 80,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.secondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 40),
+
+            // 안내 메시지
+            Text(
+              '곧 운동이 시작됩니다',
+              style: TextStyle(
+                fontSize: 16,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 운동 중 추적 화면 (개선된 UI)
   Widget _buildTrackingScreen() {
     if (_currentState == null) return const SizedBox();
 
@@ -65,80 +201,96 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> {
         // 메인: 핵심 지표
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
-                // 시간
-                _buildMetricCard(
-                  label: '시간',
-                  value: _currentState!.durationFormatted,
-                  icon: Icons.timer,
-                ),
-                const SizedBox(height: 20),
-
-                // 거리
-                _buildMetricCard(
-                  label: '거리',
+                // 주요 지표: 거리 (대형)
+                _buildPrimaryMetric(
                   value: _currentState!.distanceKm,
                   unit: 'km',
-                  icon: Icons.straighten,
+                  label: '거리',
                 ),
                 const SizedBox(height: 20),
 
-                // 페이스 (현재 / 평균)
+                // 시간과 페이스 (중요 지표 2개)
                 Row(
                   children: [
                     Expanded(
-                      child: _buildMetricCard(
-                        label: '현재 페이스',
-                        value: _currentState!.currentPace,
-                        unit: '/km',
-                        icon: Icons.speed,
-                        compact: true,
+                      child: _buildSecondaryMetric(
+                        label: '시간',
+                        value: _currentState!.durationFormatted,
+                        icon: Icons.timer,
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _buildMetricCard(
+                      child: _buildSecondaryMetric(
                         label: '평균 페이스',
                         value: _currentState!.averagePace,
                         unit: '/km',
-                        icon: Icons.trending_flat,
-                        compact: true,
+                        icon: Icons.speed,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
+
+                // 현재 페이스 (강조)
+                _buildCurrentPaceCard(),
+                const SizedBox(height: 16),
 
                 // 칼로리 & 심박수
                 Row(
                   children: [
                     Expanded(
-                      child: _buildMetricCard(
+                      child: _buildCompactMetric(
                         label: '칼로리',
                         value: _currentState!.caloriesFormatted,
                         unit: 'kcal',
                         icon: Icons.local_fire_department,
-                        compact: true,
+                        color: Colors.orange,
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _buildMetricCard(
+                      child: _buildCompactMetric(
                         label: '심박수',
                         value: _currentState!.heartRate?.toString() ?? '--',
                         unit: 'bpm',
                         icon: Icons.favorite,
-                        compact: true,
+                        color: Colors.red,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 12),
 
-                // GPS 포인트
-                _buildInfoText('GPS 포인트: ${_currentState!.routePointsCount}개'),
+                // GPS 포인트 정보
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.gps_fixed,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.secondary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'GPS: ${_currentState!.routePointsCount}개 포인트',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -147,6 +299,262 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> {
         // 하단: 컨트롤 버튼
         _buildControls(),
       ],
+    );
+  }
+
+  /// 주요 지표 (대형 - 거리)
+  Widget _buildPrimaryMetric({
+    required String value,
+    required String unit,
+    required String label,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2),
+            Theme.of(context).colorScheme.secondary.withValues(alpha: 0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.3),
+          width: 2,
+        ),
+      ),
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 72,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.secondary,
+                  height: 1,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12, left: 8),
+                child: Text(
+                  unit,
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.7),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 보조 지표 (중형)
+  Widget _buildSecondaryMetric({
+    required String label,
+    required String value,
+    String? unit,
+    required IconData icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            icon,
+            size: 28,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+              if (unit != null) ...[
+                const SizedBox(width: 4),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text(
+                    unit,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 현재 페이스 카드 (강조)
+  Widget _buildCurrentPaceCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.primary,
+          width: 2,
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.trending_up,
+                size: 20,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '현재 페이스',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                _currentState!.currentPace,
+                style: TextStyle(
+                  fontSize: 40,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6, left: 4),
+                child: Text(
+                  '/km',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 컴팩트 지표 (소형)
+  Widget _buildCompactMetric({
+    required String label,
+    required String value,
+    required String unit,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 24, color: color),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+              const SizedBox(width: 2),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 2),
+                child: Text(
+                  unit,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: color.withValues(alpha: 0.7),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -159,8 +567,8 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isPaused
-            ? Colors.orange.withOpacity(0.2)
-            : Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+            ? Colors.orange.withValues(alpha: 0.2)
+            : Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
         border: Border(
           bottom: BorderSide(
             color: isPaused
@@ -204,142 +612,92 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> {
     );
   }
 
-  /// 지표 카드
-  Widget _buildMetricCard({
-    required String label,
-    required String value,
-    String? unit,
-    required IconData icon,
-    bool compact = false,
-  }) {
-    return Container(
-      padding: EdgeInsets.all(compact ? 16 : 24),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        border: Border.all(
-          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.2),
-        ),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: compact ? 20 : 24,
-                color: Theme.of(context).colorScheme.secondary,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: compact ? 14 : 16,
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withOpacity(0.7),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: compact ? 8 : 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: compact ? 32 : 48,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-              ),
-              if (unit != null) ...[
-                const SizedBox(width: 8),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    unit,
-                    style: TextStyle(
-                      fontSize: compact ? 16 : 20,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withOpacity(0.6),
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// 정보 텍스트
-  Widget _buildInfoText(String text) {
-    return Text(
-      text,
-      style: TextStyle(
-        fontSize: 14,
-        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-      ),
-    );
-  }
-
-  /// 컨트롤 버튼
+  /// 컨트롤 버튼 (개선된 UI)
   Widget _buildControls() {
     final isPaused = _currentState?.isPaused ?? false;
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, -5),
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          // 일시정지/재개 버튼
-          ElevatedButton.icon(
-            onPressed: isPaused ? _resumeWorkout : _pauseWorkout,
-            icon: Icon(isPaused ? Icons.play_arrow : Icons.pause),
-            label: Text(isPaused ? '재개' : '일시정지'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: isPaused
-                  ? Theme.of(context).colorScheme.secondary
-                  : Colors.orange,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            // 일시정지/재개 버튼 (크고 눈에 띄게)
+            Expanded(
+              flex: 2,
+              child: ElevatedButton(
+                onPressed: isPaused ? _resumeWorkout : _pauseWorkout,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isPaused
+                      ? Theme.of(context).colorScheme.secondary
+                      : Theme.of(context).colorScheme.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 0,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                      size: 28,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      isPaused ? '재개' : '일시정지',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
+            const SizedBox(width: 12),
 
-          // 종료 버튼
-          OutlinedButton.icon(
-            onPressed: _showStopConfirmation,
-            icon: const Icon(Icons.stop),
-            label: const Text('종료'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.red,
-              side: const BorderSide(color: Colors.red),
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
+            // 종료 버튼 (작게)
+            Expanded(
+              child: OutlinedButton(
+                onPressed: _showStopConfirmation,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red,
+                  side: const BorderSide(color: Colors.red, width: 2),
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: const Column(
+                  children: [
+                    Icon(Icons.stop_rounded, size: 24),
+                    SizedBox(height: 2),
+                    Text(
+                      '종료',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -402,15 +760,9 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> {
       }
     }
   }
-
-  @override
-  void dispose() {
-    // _service.dispose() is now handled by the Provider
-    super.dispose();
-  }
 }
 
-/// 운동 완료 요약 화면
+/// 운동 완료 요약 화면 (개선된 UI)
 class WorkoutSummaryScreen extends StatelessWidget {
   final WorkoutSummary summary;
 
@@ -424,38 +776,84 @@ class WorkoutSummaryScreen extends StatelessWidget {
         title: const Text('운동 완료'),
         backgroundColor: Theme.of(context).colorScheme.surface,
         foregroundColor: Theme.of(context).colorScheme.onSurface,
+        automaticallyImplyLeading: false,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 완료 아이콘
-            Icon(
-              Icons.check_circle,
-              size: 80,
-              color: Theme.of(context).colorScheme.secondary,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '수고하셨습니다!',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onSurface,
+            // 완료 배지 (강조)
+            Container(
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2),
+                    Theme.of(context).colorScheme.secondary.withValues(alpha: 0.05),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.3),
+                  width: 2,
+                ),
+              ),
+              child: Column(
+                children: [
+                  // Runner 아이콘
+                  SvgPicture.asset(
+                    'assets/images/runner-icon.svg',
+                    width: 80,
+                    height: 80,
+                    colorFilter: ColorFilter.mode(
+                      Theme.of(context).colorScheme.secondary,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    '수고하셨습니다!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.secondary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.check_circle_rounded,
+                          size: 16,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'HealthKit에 저장 완료',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'HealthKit에 저장되었습니다',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-              ),
-            ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
 
             // 거리
             _buildSummaryCard(
@@ -503,7 +901,7 @@ class WorkoutSummaryScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Theme.of(
                   context,
-                ).colorScheme.onSurface.withOpacity(0.05),
+                ).colorScheme.onSurface.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
@@ -562,7 +960,7 @@ class WorkoutSummaryScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         border: Border.all(
-          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.2),
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.2),
         ),
         borderRadius: BorderRadius.circular(16),
       ),
@@ -580,7 +978,7 @@ class WorkoutSummaryScreen extends StatelessWidget {
                     fontSize: 14,
                     color: Theme.of(
                       context,
-                    ).colorScheme.onSurface.withOpacity(0.6),
+                    ).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -605,7 +1003,7 @@ class WorkoutSummaryScreen extends StatelessWidget {
                             fontSize: 16,
                             color: Theme.of(
                               context,
-                            ).colorScheme.onSurface.withOpacity(0.6),
+                            ).colorScheme.onSurface.withValues(alpha: 0.6),
                           ),
                         ),
                       ),

@@ -157,14 +157,14 @@ class _WorkoutStartScreenState extends State<WorkoutStartScreen> {
                 end: Alignment.bottomCenter,
                 colors: [
                   // 상단: secondary color (밝은 카키색)
-                  Theme.of(context).colorScheme.secondary.withOpacity(0.0),
-                  Theme.of(context).colorScheme.secondary.withOpacity(0.4),
-                  Theme.of(context).colorScheme.secondary.withOpacity(0.4),
+                  Theme.of(context).colorScheme.secondary.withValues(alpha: 0.0),
+                  Theme.of(context).colorScheme.secondary.withValues(alpha: 0.4),
+                  Theme.of(context).colorScheme.secondary.withValues(alpha: 0.4),
                   // 중심에서 색상 전환
-                  Theme.of(context).colorScheme.primary.withOpacity(0.4),
-                  Theme.of(context).colorScheme.primary.withOpacity(0.4),
+                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.4),
+                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.4),
                   // 하단: primary color
-                  Theme.of(context).colorScheme.primary.withOpacity(0.0),
+                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.0),
                 ],
                 stops: const [0.0, 0.2, 0.49, 0.51, 0.8, 1.0],
               ),
@@ -206,7 +206,7 @@ class _WorkoutStartScreenState extends State<WorkoutStartScreen> {
               '추후 구현 예정',
               style: TextStyle(
                 fontSize: 18,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
             const SizedBox(height: 8),
@@ -215,7 +215,7 @@ class _WorkoutStartScreenState extends State<WorkoutStartScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
               ),
             ),
           ],

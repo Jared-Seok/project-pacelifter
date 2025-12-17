@@ -125,9 +125,9 @@ class _AddWorkoutScreenState extends State<AddWorkoutScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 20),
         decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.2) : Colors.transparent,
+          color: isSelected ? color.withValues(alpha: 0.2) : Colors.transparent,
           border: Border.all(
-            color: isSelected ? color : Colors.grey.withOpacity(0.3),
+            color: isSelected ? color : Colors.grey.withValues(alpha: 0.3),
             width: 2,
           ),
           borderRadius: BorderRadius.circular(12),
@@ -259,7 +259,7 @@ class _AddWorkoutScreenState extends State<AddWorkoutScreen> {
               '페이스: 1km당 소요 시간 (예: 5분 30초/km)',
               style: TextStyle(
                 fontSize: 12,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
           ],
@@ -286,7 +286,7 @@ class _AddWorkoutScreenState extends State<AddWorkoutScreen> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
             ),
@@ -429,8 +429,6 @@ class _AddWorkoutScreenState extends State<AddWorkoutScreen> {
 
   Future<void> _saveEnduranceWorkout(DateTime start, DateTime end) async {
     final distance = double.parse(_distanceController.text);
-    final paceMin = int.parse(_paceMinController.text);
-    final paceSec = int.parse(_paceSecController.text);
 
     // 페이스로부터 칼로리 계산
     final durationMinutes = end.difference(start).inMinutes;

@@ -83,8 +83,6 @@ class WorkoutTrackingService extends ChangeNotifier {
 
     // 1.5 백그라운드 추적 설정
     _enableBackgroundTracking();
-
-    print('✅ 운동 시작: $_startTime');
   }
 
   // ==============================
@@ -102,7 +100,7 @@ class WorkoutTrackingService extends ChangeNotifier {
         Geolocator.getPositionStream(locationSettings: locationSettings).listen(
           _onLocationUpdate,
           onError: (error) {
-            print('❌ GPS 오류: $error');
+            // GPS 오류 무시
           },
         );
   }
@@ -306,7 +304,6 @@ class WorkoutTrackingService extends ChangeNotifier {
     _pausedTime = DateTime.now();
     _positionStream?.pause();
 
-    print('⏸️  운동 일시정지: $_pausedTime');
     _updateWorkoutState();
   }
 
@@ -324,7 +321,6 @@ class WorkoutTrackingService extends ChangeNotifier {
     _pausedTime = null;
     _positionStream?.resume();
 
-    print('▶️  운동 재개: $resumeTime (총 일시정지 시간: $_totalPausedDuration)');
     _updateWorkoutState();
   }
 
@@ -379,11 +375,6 @@ class WorkoutTrackingService extends ChangeNotifier {
     // 11.4 로컬 DB에 저장 (추후 구현)
     // TODO: Hive에 저장
 
-    print('✅ 운동 종료: $endTime');
-    print('📊 거리: ${(_totalDistance / 1000).toStringAsFixed(2)} km');
-    print('⏱️  시간: ${_formatDuration(activeDuration)}');
-    print('🔥 칼로리: ${summary.calories.toStringAsFixed(0)} kcal');
-
     return summary;
   }
 
@@ -405,7 +396,6 @@ class WorkoutTrackingService extends ChangeNotifier {
       );
 
       if (!workoutSaved) {
-        print('❌ HealthKit Workout 저장 실패');
         return;
       }
 
@@ -435,11 +425,8 @@ class WorkoutTrackingService extends ChangeNotifier {
         endTime: summary.stopTime, // stopTime 사용
       );
 
-      print('✅ HealthKit 저장 완료');
-      print('   - 운동 시간 기준: ${summary.startTime} ~ ${summary.stopTime}');
-      print('   - 경과 시간: ${summary.startTime} ~ ${summary.endTime}');
     } catch (e) {
-      print('❌ HealthKit 저장 오류: $e');
+      // HealthKit 저장 오류 무시
     }
   }
 
@@ -450,7 +437,6 @@ class WorkoutTrackingService extends ChangeNotifier {
   void _enableBackgroundTracking() {
     // iOS: Background Modes - Location updates 필요
     // TODO: workmanager 패키지 사용 (추후 구현)
-    print('⚙️  백그라운드 추적 활성화');
   }
 
   // ==============================
@@ -493,7 +479,6 @@ class WorkoutTrackingService extends ChangeNotifier {
       );
       return granted;
     } catch (e) {
-      print('❌ HealthKit 권한 요청 실패: $e');
       return false;
     }
   }
@@ -502,17 +487,6 @@ class WorkoutTrackingService extends ChangeNotifier {
   // 15. 유틸리티
   // ==============================
 
-  String _formatDuration(Duration duration) {
-    int hours = duration.inHours;
-    int minutes = duration.inMinutes.remainder(60);
-    int seconds = duration.inSeconds.remainder(60);
-
-    if (hours > 0) {
-      return '${hours}h ${minutes}m ${seconds}s';
-    } else {
-      return '${minutes}m ${seconds}s';
-    }
-  }
 
   // ==============================
   // 16. 정리

@@ -124,7 +124,7 @@ class _SplashScreenState extends State<SplashScreen>
                         fontSize: 21,
                         fontStyle: FontStyle.italic,
                         fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -134,7 +134,7 @@ class _SplashScreenState extends State<SplashScreen>
                       text: TextSpan(
                         style: TextStyle(
                           fontSize: 18,
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                         ),
                         children: [
                           const TextSpan(text: 'Welcome Hybrid '),

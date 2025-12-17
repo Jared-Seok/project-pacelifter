@@ -38,7 +38,7 @@ class _MainNavigationState extends State<MainNavigation> {
         },
         backgroundColor: Theme.of(context).colorScheme.surface,
         selectedItemColor: Theme.of(context).colorScheme.secondary,
-        unselectedItemColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+        unselectedItemColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
         type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(

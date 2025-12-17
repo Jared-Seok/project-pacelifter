@@ -60,7 +60,6 @@ class HealthService {
       }
       return true;
     } catch (e) {
-      print("권한 요청 실패: $e");
       return false;
     }
   }
@@ -78,7 +77,6 @@ class HealthService {
       );
       return health.removeDuplicates(healthData);
     } catch (e) {
-      print("데이터 가져오기 실패: $e");
       return [];
     }
   }
@@ -104,11 +102,9 @@ class HealthService {
 
         return healthData;
       } catch (e) {
-        print("운동 데이터 가져오기 실패: $e");
         return [];
       }
     } else {
-      print("건강 데이터 접근 권한이 거부되었습니다.");
       return [];
     }
   }
