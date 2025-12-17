@@ -45,9 +45,16 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   @override
   void initState() {
     super.initState();
+    _initializeData();
+  }
+
+  Future<void> _initializeData() async {
+    // Fetch native duration first to ensure accurate pace calculation
+    await _fetchNativeDuration();
+
+    // Then fetch heart rate and pace data
     _fetchHeartRateData();
     _fetchPaceData();
-    _fetchNativeDuration();
   }
 
   Future<void> _fetchHeartRateData() async {
@@ -117,14 +124,16 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       return;
     }
 
-    // NRC 방식: 실제 운동 시간 사용 (경과 시간이 아닌 활동 시간)
-    // Apple Health Workout에서 totalEnergyBurned가 있으면 실제 운동을 했다는 의미
-    // workout 객체 자체가 dateFrom ~ dateTo를 운동 시간으로 기록
-    final workoutDuration = widget.workoutData.dateTo.difference(widget.workoutData.dateFrom);
+    // Use native active duration (excluding pauses) for accurate pace calculation
+    // Priority 1: Native HKWorkout duration (most accurate)
+    // Priority 2: Fallback to elapsed time (dateTo - dateFrom)
+    final workoutDuration = _nativeActiveDuration ??
+        widget.workoutData.dateTo.difference(widget.workoutData.dateFrom);
 
     print('🔍 [PACE DEBUG] Workout duration: ${workoutDuration.inSeconds} seconds');
+    print('🔍 [PACE DEBUG] Using ${_nativeActiveDuration != null ? "native active duration" : "elapsed time (fallback)"}');
 
-    // 평균 페이스 계산 (분/km) - NRC와 동일한 방식
+    // 평균 페이스 계산 (분/km) - 운동 시간(활동 시간) 기준
     double avgPaceMinPerKm = 0;
     if (workoutDuration.inSeconds > 0 && totalDistance > 0) {
       avgPaceMinPerKm = (workoutDuration.inSeconds / 60) / (totalDistance / 1000);
@@ -586,6 +595,28 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         ),
         extraLinesData: ExtraLinesData(
           verticalLines: [
+            // 운동 종료 시점 표시 (일시정지가 있는 경우)
+            if (_hasNativeDuration &&
+                _nativeActiveDuration != null &&
+                _nativePausedDuration != null &&
+                _nativePausedDuration! > Duration.zero)
+              VerticalLine(
+                x: _nativeActiveDuration!.inSeconds.toDouble(),
+                color: Colors.orange.withValues(alpha: 0.8),
+                strokeWidth: 2,
+                dashArray: [8, 4],
+                label: VerticalLineLabel(
+                  show: true,
+                  alignment: Alignment.topRight,
+                  padding: const EdgeInsets.only(right: 4, bottom: 4),
+                  style: const TextStyle(
+                    color: Colors.orange,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  labelResolver: (line) => '운동 종료',
+                ),
+              ),
             // 차트 인터랙션 동기화: 터치된 지점 표시
             if (_touchedTimestamp != null)
               VerticalLine(
@@ -844,6 +875,28 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         ),
         extraLinesData: ExtraLinesData(
           verticalLines: [
+            // 운동 종료 시점 표시 (일시정지가 있는 경우)
+            if (_hasNativeDuration &&
+                _nativeActiveDuration != null &&
+                _nativePausedDuration != null &&
+                _nativePausedDuration! > Duration.zero)
+              VerticalLine(
+                x: _nativeActiveDuration!.inSeconds.toDouble(),
+                color: Colors.orange.withValues(alpha: 0.8),
+                strokeWidth: 2,
+                dashArray: [8, 4],
+                label: VerticalLineLabel(
+                  show: true,
+                  alignment: Alignment.topRight,
+                  padding: const EdgeInsets.only(right: 4, bottom: 4),
+                  style: const TextStyle(
+                    color: Colors.orange,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  labelResolver: (line) => '운동 종료',
+                ),
+              ),
             // 차트 인터랙션 동기화: 터치된 지점 표시
             if (_touchedTimestamp != null)
               VerticalLine(
@@ -1086,11 +1139,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
     final List<Widget> timeWidgets = [];
 
-    // Always show active time (활동 시간)
+    // Always show active time (운동 시간)
     timeWidgets.add(
       _buildInfoRow(
         Icons.play_circle_outline,
-        '활동 시간',
+        '운동 시간',
         _formatDuration(activeDuration),
       ),
     );
