@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:pacelifter/services/health_service.dart';
+import 'package:pacelifter/services/healthkit_bridge_service.dart';
 import 'package:pacelifter/screens/workout_share_screen.dart';
 import 'dart:math';
 
@@ -19,6 +20,8 @@ class WorkoutDetailScreen extends StatefulWidget {
 
 class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   final HealthService _healthService = HealthService();
+  final HealthKitBridgeService _healthKitBridge = HealthKitBridgeService();
+
   List<HealthDataPoint> _heartRateData = [];
   double _avgHeartRate = 0;
   bool _isLoading = true;
@@ -30,6 +33,12 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   String? _paceError;
   Duration? _movingTime;
 
+  // Native HealthKit duration data
+  Duration? _nativeActiveDuration;
+  Duration? _nativeElapsedTime;
+  Duration? _nativePausedDuration;
+  bool _hasNativeDuration = false;
+
   // 차트 인터랙션 동기화를 위한 공유 상태
   double? _touchedTimestamp; // 현재 터치된 지점의 x축 값 (초 단위)
 
@@ -38,6 +47,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     super.initState();
     _fetchHeartRateData();
     _fetchPaceData();
+    _fetchNativeDuration();
   }
 
   Future<void> _fetchHeartRateData() async {
@@ -187,6 +197,41 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           _isPaceLoading = false;
         });
       }
+    }
+  }
+
+  /// Fetch native HKWorkout duration data via HealthKit Bridge
+  Future<void> _fetchNativeDuration() async {
+    try {
+      final workoutUuid = widget.workoutData.uuid;
+      print('🔍 [NATIVE DURATION] Fetching duration for workout UUID: $workoutUuid');
+
+      final details = await _healthKitBridge.getWorkoutDetails(workoutUuid);
+
+      if (details != null) {
+        final parsed = _healthKitBridge.parseWorkoutDetails(details);
+
+        if (parsed != null) {
+          print('✅ [NATIVE DURATION] Active: ${parsed.activeDuration.inSeconds}s, '
+              'Elapsed: ${parsed.elapsedTime.inSeconds}s, '
+              'Paused: ${parsed.pausedDuration.inSeconds}s');
+
+          if (mounted) {
+            setState(() {
+              _nativeActiveDuration = parsed.activeDuration;
+              _nativeElapsedTime = parsed.elapsedTime;
+              _nativePausedDuration = parsed.pausedDuration;
+              _hasNativeDuration = true;
+            });
+          }
+        } else {
+          print('⚠️ [NATIVE DURATION] Failed to parse workout details');
+        }
+      } else {
+        print('⚠️ [NATIVE DURATION] No details returned (might be Android or error)');
+      }
+    } catch (e) {
+      print('❌ [NATIVE DURATION] Error: $e');
     }
   }
 
@@ -359,16 +404,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    _buildInfoRow(
-                      Icons.hourglass_empty,
-                      '운동 시간',
-                      _formatDuration(
-                        _movingTime ??
-                            widget.workoutData.dateTo.difference(
-                              widget.workoutData.dateFrom,
-                            ),
-                      ),
-                    ),
+                    ..._buildTimeSection(),
                     const Divider(height: 24),
                     _buildInfoRow(
                       Icons.access_time,
@@ -1011,6 +1047,76 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         ),
       ),
     );
+  }
+
+  List<Widget> _buildTimeSection() {
+    Duration activeDuration;
+    Duration? elapsedTime;
+    Duration? pausedDuration;
+
+    // Priority 1: Use native HKWorkout duration (most accurate)
+    if (_hasNativeDuration && _nativeActiveDuration != null) {
+      activeDuration = _nativeActiveDuration!;
+      elapsedTime = _nativeElapsedTime;
+      pausedDuration = _nativePausedDuration;
+      print('ℹ️ [TIME SECTION] Using native HKWorkout duration');
+    } else {
+      // Priority 2: Try PaceLifter metadata
+      activeDuration = _movingTime ??
+          widget.workoutData.dateTo.difference(widget.workoutData.dateFrom);
+
+      try {
+        final metadata = widget.workoutData.metadata;
+        if (metadata != null && metadata.containsKey('PaceLifter_PausedDuration')) {
+          final pausedSeconds = metadata['PaceLifter_PausedDuration'];
+          if (pausedSeconds is int) {
+            pausedDuration = Duration(seconds: pausedSeconds);
+            elapsedTime = activeDuration + pausedDuration;
+            print('ℹ️ [TIME SECTION] Using PaceLifter metadata for pause duration');
+          } else if (pausedSeconds is double) {
+            pausedDuration = Duration(seconds: pausedSeconds.toInt());
+            elapsedTime = activeDuration + pausedDuration;
+            print('ℹ️ [TIME SECTION] Using PaceLifter metadata for pause duration');
+          }
+        }
+      } catch (e) {
+        print('⚠️ [TIME SECTION] Could not extract pause duration from metadata: $e');
+      }
+    }
+
+    final List<Widget> timeWidgets = [];
+
+    // Always show active time (활동 시간)
+    timeWidgets.add(
+      _buildInfoRow(
+        Icons.play_circle_outline,
+        '활동 시간',
+        _formatDuration(activeDuration),
+      ),
+    );
+
+    // If we have pause information, show elapsed time and paused duration
+    if (pausedDuration != null && pausedDuration > Duration.zero) {
+      timeWidgets.add(const Divider(height: 24));
+      timeWidgets.add(
+        _buildInfoRow(
+          Icons.timelapse,
+          '경과 시간',
+          _formatDuration(elapsedTime ?? (activeDuration + pausedDuration)),
+        ),
+      );
+
+      timeWidgets.add(const Divider(height: 24));
+      timeWidgets.add(
+        _buildInfoRow(
+          Icons.pause_circle_outline,
+          '일시정지',
+          _formatDuration(pausedDuration),
+        ),
+      );
+    }
+
+    return timeWidgets;
   }
 
   Widget _buildInfoRow(IconData icon, String label, String value) {
