@@ -5,7 +5,7 @@ import 'package:pacelifter/screens/workout_detail_screen.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:pacelifter/models/time_period.dart';
 
-class WorkoutFeedScreen extends StatelessWidget {
+class WorkoutFeedScreen extends StatefulWidget {
   final List<HealthDataPoint> workoutData;
   final TimePeriod period;
   final String dateRangeText;
@@ -19,12 +19,19 @@ class WorkoutFeedScreen extends StatelessWidget {
     this.raceName,
   });
 
+  @override
+  State<WorkoutFeedScreen> createState() => _WorkoutFeedScreenState();
+}
+
+class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
+  bool _showTotalTime = false; // false: 총 거리, true: 총 시간
+
   String get periodTitle {
     // 레이스 이름이 있으면 레이스 이름 사용, 없으면 기간 표시
-    if (raceName != null) {
-      return raceName!;
+    if (widget.raceName != null) {
+      return widget.raceName!;
     }
-    switch (period) {
+    switch (widget.period) {
       case TimePeriod.week:
         return '주간';
       case TimePeriod.month:
@@ -110,8 +117,9 @@ class WorkoutFeedScreen extends StatelessWidget {
     int strengthCount = 0;
     int enduranceCount = 0;
     double totalDistance = 0.0;
+    Duration totalTime = Duration.zero;
 
-    for (final data in workoutData) {
+    for (final data in widget.workoutData) {
       final workout = data.value as WorkoutHealthValue;
       final type = workout.workoutActivityType.name;
       if (_isStrengthWorkout(type)) {
@@ -120,6 +128,10 @@ class WorkoutFeedScreen extends StatelessWidget {
         enduranceCount++;
       }
       totalDistance += workout.totalDistance ?? 0.0;
+
+      // 운동 시간 합산
+      final workoutDuration = data.dateTo.difference(data.dateFrom);
+      totalTime += workoutDuration;
     }
 
     return Scaffold(
@@ -150,7 +162,7 @@ class WorkoutFeedScreen extends StatelessWidget {
               children: [
                 // 날짜 범위 텍스트를 크고 하얗게 상단 배치
                 Text(
-                  dateRangeText,
+                  widget.dateRangeText,
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -159,39 +171,47 @@ class WorkoutFeedScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    _buildStatItem(
-                      context,
-                      '총 운동',
-                      '${workoutData.length}회',
-                      null,
-                      svgPath: 'assets/images/pllogo.svg',
-                      iconSize: 36, // 28에서 36으로 증가
-                      color: Theme.of(context).colorScheme.secondary,
-                    ),
-                    _buildStatItem(
-                      context,
-                      'Endurance',
-                      '$enduranceCount회',
-                      null,
-                      svgPath: 'assets/images/runner-icon.svg',
-                      color: Theme.of(context).colorScheme.secondary,
-                    ),
-                    _buildStatItem(
-                      context,
-                      'Strength',
-                      '$strengthCount회',
-                      null,
-                      svgPath: 'assets/images/lifter-icon.svg',
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    if (totalDistance > 0)
-                      _buildStatItem(
+                    Expanded(
+                      child: _buildStatItem(
                         context,
-                        '총 거리',
-                        '${(totalDistance / 1000).toStringAsFixed(1)}km',
-                        Icons.straighten,
+                        '총 운동',
+                        '${widget.workoutData.length}회',
+                        null,
+                        svgPath: 'assets/images/pllogo.svg',
+                        iconSize: 36, // 28에서 36으로 증가
+                        color: Theme.of(context).colorScheme.secondary,
+                      ),
+                    ),
+                    Expanded(
+                      child: _buildStatItem(
+                        context,
+                        'Endurance',
+                        '$enduranceCount회',
+                        null,
+                        svgPath: 'assets/images/runner-icon.svg',
+                        color: Theme.of(context).colorScheme.secondary,
+                      ),
+                    ),
+                    Expanded(
+                      child: _buildStatItem(
+                        context,
+                        'Strength',
+                        '$strengthCount회',
+                        null,
+                        svgPath: 'assets/images/lifter-icon.svg',
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                    // 총 거리/총 시간 토글 (클릭 가능)
+                    if (totalDistance > 0 || totalTime > Duration.zero)
+                      Expanded(
+                        child: _buildToggleableStatItem(
+                          context,
+                          totalDistance,
+                          totalTime,
+                        ),
                       ),
                   ],
                 ),
@@ -200,7 +220,7 @@ class WorkoutFeedScreen extends StatelessWidget {
           ),
           // Workout List
           Expanded(
-            child: workoutData.isEmpty
+            child: widget.workoutData.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -223,9 +243,9 @@ class WorkoutFeedScreen extends StatelessWidget {
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: workoutData.length,
+                    itemCount: widget.workoutData.length,
                     itemBuilder: (context, index) {
-                      return _buildWorkoutItem(context, workoutData[index]);
+                      return _buildWorkoutItem(context, widget.workoutData[index]);
                     },
                   ),
           ),
@@ -274,6 +294,74 @@ class WorkoutFeedScreen extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  /// 총 거리/총 시간 토글 가능한 통계 항목
+  Widget _buildToggleableStatItem(
+    BuildContext context,
+    double totalDistance,
+    Duration totalTime,
+  ) {
+    final displayColor = Theme.of(context).colorScheme.primary;
+    const size = 32.0;
+
+    // 시간 포맷팅
+    String formatDuration(Duration duration) {
+      final hours = duration.inHours;
+      final minutes = duration.inMinutes.remainder(60);
+      final seconds = duration.inSeconds.remainder(60);
+
+      if (hours > 0) {
+        return '${hours}시간 ${minutes}분';
+      } else if (minutes > 0) {
+        return '${minutes}분 ${seconds}초';
+      } else {
+        return '${seconds}초';
+      }
+    }
+
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _showTotalTime = !_showTotalTime;
+        });
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.all(4.0),
+        child: Column(
+          children: [
+            Icon(
+              _showTotalTime ? Icons.timer : Icons.straighten,
+              size: size,
+              color: displayColor,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _showTotalTime ? '총 시간' : '총 거리',
+              style: TextStyle(
+                fontSize: 13,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _showTotalTime
+                  ? formatDuration(totalTime)
+                  : '${(totalDistance / 1000).toStringAsFixed(1)}km',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: displayColor,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
     );
   }
 

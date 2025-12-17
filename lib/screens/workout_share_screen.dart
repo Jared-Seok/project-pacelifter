@@ -926,23 +926,36 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
       if (source == ImageSource.gallery && Platform.isIOS) {
         final status = await Permission.photos.status;
 
-        if (status.isDenied || status.isPermanentlyDenied) {
+        // 권한이 거부되었거나 제한된 경우 권한 요청
+        if (status.isDenied || status.isPermanentlyDenied || status.isLimited) {
           final result = await Permission.photos.request();
 
-          if (!result.isGranted) {
+          // 권한이 부여되지 않았거나 제한된 경우
+          if (!result.isGranted || result.isLimited) {
             if (mounted) {
+              // 기존 SnackBar 제거
+              ScaffoldMessenger.of(context).clearSnackBars();
+
+              final message = result.isLimited
+                  ? '전체 사진 라이브러리 접근을 위해 설정에서 "모든 사진" 접근을 허용해주세요.'
+                  : '사진 라이브러리 권한이 필요합니다. 설정에서 권한을 허용해주세요.';
+
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: const Text('사진 라이브러리 권한이 필요합니다. 설정에서 권한을 허용해주세요.'),
+                  content: Text(message),
                   action: SnackBarAction(
                     label: '설정',
                     onPressed: () => openAppSettings(),
                   ),
-                  duration: const Duration(seconds: 5),
+                  duration: const Duration(seconds: 4),
                 ),
               );
             }
-            return;
+
+            // 제한된 권한이라도 선택한 사진은 접근 가능하므로 계속 진행
+            if (!result.isLimited) {
+              return;
+            }
           }
         }
       }
@@ -960,6 +973,9 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
     } catch (e) {
       // 권한 거부 또는 기타 오류 처리
       if (mounted) {
+        // 기존 SnackBar 제거
+        ScaffoldMessenger.of(context).clearSnackBars();
+
         final errorMessage = e.toString().toLowerCase();
 
         // 권한 관련 오류인지 확인
@@ -977,7 +993,7 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
                 label: '설정',
                 onPressed: () => openAppSettings(),
               ),
-              duration: const Duration(seconds: 5),
+              duration: const Duration(seconds: 4),
             ),
           );
         } else {

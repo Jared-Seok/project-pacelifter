@@ -650,9 +650,16 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 final seconds = (spot.x % 60).toInt();
                 final timeStr = '$minutes:${seconds.toString().padLeft(2, '0')}';
 
-                // 해당 시점의 페이스 정보 가져오기
-                final paceInfo = _getPaceAtTimestamp(spot.x);
-                final paceText = paceInfo != null ? '\n$paceInfo' : '';
+                // 운동 종료 수직바 이전인지 확인 (활동 시간 내)
+                final isWithinActiveTime = _nativeActiveDuration == null ||
+                    spot.x <= _nativeActiveDuration!.inSeconds.toDouble();
+
+                // 활동 시간 내에서만 페이스 정보 표시
+                String paceText = '';
+                if (isWithinActiveTime) {
+                  final paceInfo = _getPaceAtTimestamp(spot.x);
+                  paceText = paceInfo != null ? '\n$paceInfo' : '';
+                }
 
                 return LineTooltipItem(
                   '$timeStr\n${spot.y.toInt()} bpm$paceText',
@@ -832,9 +839,14 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       smoothedPaces.add((rawPaces[rawPaces.length - 2] + rawPaces[rawPaces.length - 1]) / 2);
     }
 
-    // 3. 스무딩된 데이터를 FlSpot으로 변환
-    final spots = <FlSpot>[];
+    // 3. 활동 시간 계산 (X축 범위 결정)
     final workoutStartTime = widget.workoutData.dateFrom;
+    final activeDurationSeconds = _nativeActiveDuration?.inSeconds.toDouble() ??
+        widget.workoutData.dateTo.difference(workoutStartTime).inSeconds.toDouble();
+    final maxXSeconds = activeDurationSeconds == 0 ? 1.0 : activeDurationSeconds;
+
+    // 4. 스무딩된 데이터를 FlSpot으로 변환 (활동 시간 내의 데이터만 포함)
+    final spots = <FlSpot>[];
 
     for (int i = 0; i < smoothedPaces.length; i++) {
       // 원본 데이터의 타임스탬프를 사용
@@ -843,9 +855,12 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           .difference(workoutStartTime)
           .inSeconds
           .toDouble();
-      
-      // Y축 반전을 위해 음수 값 사용
-      spots.add(FlSpot(elapsedSeconds, -smoothedPaces[i]));
+
+      // 활동 시간 범위 내의 데이터만 포함 (일시정지 구간 제외)
+      if (elapsedSeconds <= maxXSeconds) {
+        // Y축 반전을 위해 음수 값 사용
+        spots.add(FlSpot(elapsedSeconds, -smoothedPaces[i]));
+      }
     }
 
     if (spots.isEmpty) {
@@ -855,11 +870,6 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     // Y축 범위 계산
     final minPace = spots.map((e) => e.y).reduce(min);
     final maxPace = spots.map((e) => e.y).reduce(max);
-
-    // X축 범위: 0 ~ 총 운동 시간 (초)
-    final workoutEndTime = widget.workoutData.dateTo;
-    final totalDurationSeconds = workoutEndTime.difference(workoutStartTime).inSeconds.toDouble();
-    final maxXSeconds = totalDurationSeconds == 0 ? 1.0 : totalDurationSeconds;
 
     return LineChart(
       LineChartData(
@@ -875,30 +885,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         ),
         extraLinesData: ExtraLinesData(
           verticalLines: [
-            // 운동 종료 시점 표시 (일시정지가 있는 경우)
-            if (_hasNativeDuration &&
-                _nativeActiveDuration != null &&
-                _nativePausedDuration != null &&
-                _nativePausedDuration! > Duration.zero)
-              VerticalLine(
-                x: _nativeActiveDuration!.inSeconds.toDouble(),
-                color: Colors.orange.withValues(alpha: 0.8),
-                strokeWidth: 2,
-                dashArray: [8, 4],
-                label: VerticalLineLabel(
-                  show: true,
-                  alignment: Alignment.topRight,
-                  padding: const EdgeInsets.only(right: 4, bottom: 4),
-                  style: const TextStyle(
-                    color: Colors.orange,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  labelResolver: (line) => '운동 종료',
-                ),
-              ),
+            // 페이스 차트는 활동 시간만 표시하므로 운동 종료 수직선 불필요
             // 차트 인터랙션 동기화: 터치된 지점 표시
-            if (_touchedTimestamp != null)
+            if (_touchedTimestamp != null && _touchedTimestamp! <= maxXSeconds)
               VerticalLine(
                 x: _touchedTimestamp!,
                 color: Colors.red.withValues(alpha: 0.7),
