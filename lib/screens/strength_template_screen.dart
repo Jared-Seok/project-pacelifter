@@ -4,21 +4,15 @@ import '../services/template_service.dart';
 import '../models/templates/workout_template.dart';
 import 'workout_setup_screen.dart';
 
-/// 환경별 세부 훈련 템플릿 선택 화면
-class EnduranceTemplateScreen extends StatefulWidget {
-  final String environmentType;
-
-  const EnduranceTemplateScreen({
-    super.key,
-    required this.environmentType,
-  });
+/// Strength 훈련 템플릿 선택 화면
+class StrengthTemplateScreen extends StatefulWidget {
+  const StrengthTemplateScreen({super.key});
 
   @override
-  State<EnduranceTemplateScreen> createState() =>
-      _EnduranceTemplateScreenState();
+  State<StrengthTemplateScreen> createState() => _StrengthTemplateScreenState();
 }
 
-class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
+class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> {
   List<WorkoutTemplate> _templates = [];
   bool _isLoading = true;
 
@@ -30,9 +24,7 @@ class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
 
   Future<void> _loadTemplates() async {
     try {
-      final templates = TemplateService.getEnduranceTemplatesByEnvironment(
-        widget.environmentType,
-      );
+      final templates = TemplateService.getTemplatesByCategory('Strength');
 
       if (mounted) {
         setState(() {
@@ -52,19 +44,27 @@ class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
     }
   }
 
+  String _getIconForTemplate(WorkoutTemplate template) {
+    if (template.subCategory != null &&
+        template.subCategory!.toLowerCase().contains('core')) {
+      return 'assets/images/core-icon.svg';
+    }
+    return 'assets/images/lifter-icon.svg';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        title: Text(widget.environmentType),
+        title: const Text('Strength'),
         backgroundColor: Theme.of(context).colorScheme.surface,
         foregroundColor: Theme.of(context).colorScheme.onSurface,
       ),
       body: _isLoading
           ? Center(
               child: CircularProgressIndicator(
-                color: Theme.of(context).colorScheme.secondary,
+                color: Theme.of(context).colorScheme.primary,
               ),
             )
           : SafeArea(
@@ -76,11 +76,11 @@ class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
                     Row(
                       children: [
                         SvgPicture.asset(
-                          'assets/images/runner-icon.svg',
+                          'assets/images/lifter-icon.svg',
                           width: 32,
                           height: 32,
                           colorFilter: ColorFilter.mode(
-                            Theme.of(context).colorScheme.secondary,
+                            Theme.of(context).colorScheme.primary,
                             BlendMode.srcIn,
                           ),
                         ),
@@ -98,7 +98,7 @@ class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '${widget.environmentType} 환경에 맞는 훈련을 선택하세요',
+                      '목표에 맞는 근력 훈련을 선택하세요',
                       style: TextStyle(
                         fontSize: 14,
                         color: Theme.of(context)
@@ -161,6 +161,8 @@ class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
     required BuildContext context,
     required WorkoutTemplate template,
   }) {
+    final iconPath = _getIconForTemplate(template);
+
     return InkWell(
       onTap: () {
         Navigator.push(
@@ -181,7 +183,7 @@ class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
           border: Border.all(
             color: Theme.of(context)
                 .colorScheme
-                .secondary
+                .primary
                 .withValues(alpha: 0.3),
             width: 1,
           ),
@@ -193,16 +195,16 @@ class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
               decoration: BoxDecoration(
                 color: Theme.of(context)
                     .colorScheme
-                    .secondary
+                    .primary
                     .withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: SvgPicture.asset(
-                'assets/images/runner-icon.svg',
+                iconPath,
                 width: 24,
                 height: 24,
                 colorFilter: ColorFilter.mode(
-                  Theme.of(context).colorScheme.secondary,
+                  Theme.of(context).colorScheme.primary,
                   BlendMode.srcIn,
                 ),
               ),
@@ -226,7 +228,7 @@ class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        color: Theme.of(context).colorScheme.secondary,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     ),
                   const SizedBox(height: 4),
@@ -248,7 +250,7 @@ class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
             const SizedBox(width: 12),
             Icon(
               Icons.arrow_forward_ios,
-              color: Theme.of(context).colorScheme.secondary,
+              color: Theme.of(context).colorScheme.primary,
               size: 16,
             ),
           ],

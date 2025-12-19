@@ -1,0 +1,146 @@
+{
+  "id": "strength_full_body_compound",
+  "name": "Full Body Compound",
+  "category": "Strength",
+  "subCategory": "Full Body",
+  "description": "전신 복합 운동으로 효율적인 근력 발달과 칼로리 소모를 목표로 합니다.",
+  "imagePath": "assets/images/lifter-icon.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_warmup",
+      "name": "Warm-up",
+      "description": "전신 워밍업",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "block_warmup_1",
+          "name": "Dynamic Warm-up",
+          "type": "rest",
+          "description": "동적 워밍업",
+          "targetDuration": 300,
+          "order": 0,
+          "notes": "전신 관절 가동 및 동적 스트레칭 5분"
+        },
+        {
+          "id": "block_warmup_2",
+          "name": "Light Cardio",
+          "type": "endurance",
+          "description": "가벼운 유산소",
+          "targetDuration": 300,
+          "intensityZone": "Z1",
+          "order": 1,
+          "notes": "로잉머신 또는 사이클 5분"
+        }
+      ]
+    },
+    {
+      "id": "phase_main",
+      "name": "Main Set",
+      "description": "전신 복합 운동 메인세트",
+      "order": 1,
+      "blocks": [
+        {
+          "id": "block_main_1",
+          "name": "Barbell Back Squat",
+          "type": "strength",
+          "description": "바벨 백 스쿼트",
+          "exerciseId": "ex_barbell_back_squat",
+          "sets": 4,
+          "reps": 6,
+          "weight": 100,
+          "weightType": "fixed",
+          "restSeconds": 180,
+          "order": 0,
+          "notes": "하체 주 운동"
+        },
+        {
+          "id": "block_main_2",
+          "name": "Barbell Bench Press",
+          "type": "strength",
+          "description": "바벨 벤치 프레스",
+          "exerciseId": "ex_barbell_bench_press",
+          "sets": 4,
+          "reps": 6,
+          "weight": 70,
+          "weightType": "fixed",
+          "restSeconds": 180,
+          "order": 1,
+          "notes": "상체 밀기 주 운동"
+        },
+        {
+          "id": "block_main_3",
+          "name": "Barbell Deadlift",
+          "type": "strength",
+          "description": "바벨 데드리프트",
+          "exerciseId": "ex_barbell_deadlift",
+          "sets": 3,
+          "reps": 8,
+          "weight": 100,
+          "weightType": "fixed",
+          "restSeconds": 180,
+          "order": 2,
+          "notes": "후면 사슬 주 운동"
+        },
+        {
+          "id": "block_main_4",
+          "name": "Barbell Bent-Over Row",
+          "type": "strength",
+          "description": "바벨 벤트오버 로우",
+          "exerciseId": "ex_barbell_row",
+          "sets": 3,
+          "reps": 8,
+          "weight": 60,
+          "weightType": "fixed",
+          "restSeconds": 120,
+          "order": 3,
+          "notes": "상체 당기기 주 운동"
+        },
+        {
+          "id": "block_main_5",
+          "name": "Barbell Overhead Press",
+          "type": "strength",
+          "description": "바벨 오버헤드 프레스",
+          "exerciseId": "ex_overhead_press",
+          "sets": 3,
+          "reps": 8,
+          "weight": 40,
+          "weightType": "fixed",
+          "restSeconds": 120,
+          "order": 4,
+          "notes": "어깨와 코어 통합 발달"
+        },
+        {
+          "id": "block_main_6",
+          "name": "Pull-ups",
+          "type": "strength",
+          "description": "풀업",
+          "exerciseId": "ex_pullup",
+          "sets": 3,
+          "reps": 10,
+          "weightType": "bodyweight",
+          "restSeconds": 90,
+          "order": 5,
+          "notes": "등 너비 발달"
+        }
+      ]
+    },
+    {
+      "id": "phase_cooldown",
+      "name": "Cool-down",
+      "description": "전신 스트레칭",
+      "order": 2,
+      "blocks": [
+        {
+          "id": "block_cooldown_1",
+          "name": "Full Body Stretch",
+          "type": "rest",
+          "description": "전신 정적 스트레칭",
+          "targetDuration": 600,
+          "order": 0,
+          "notes": "상하체 모든 근육군 스트레칭 10분"
+        }
+      ]
+    }
+  ]
+}

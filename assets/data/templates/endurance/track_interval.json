@@ -1,0 +1,229 @@
+{
+  "id": "endurance_track_interval",
+  "name": "Track Interval",
+  "category": "Endurance",
+  "environmentType": "Track",
+  "subCategory": "Interval",
+  "description": "트랙에서 진행하는 정통 인터벌 트레이닝입니다. 400m 반복 훈련으로 스피드를 향상시킵니다.",
+  "imagePath": "assets/images/runner-icon.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_warmup",
+      "name": "Warm-up",
+      "description": "충분한 준비운동",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "block_warmup_1",
+          "name": "Easy Jog",
+          "type": "endurance",
+          "description": "가벼운 조깅",
+          "targetDistance": 1600,
+          "targetDuration": 600,
+          "intensityZone": "Z1",
+          "targetHeartRate": 120,
+          "order": 0,
+          "notes": "트랙 4바퀴"
+        },
+        {
+          "id": "block_warmup_2",
+          "name": "Drills & Strides",
+          "type": "endurance",
+          "description": "러닝 드릴과 스트라이드",
+          "targetDuration": 300,
+          "intensityZone": "Z2",
+          "order": 1,
+          "notes": "동적 움직임과 4-5회 100m 가속"
+        }
+      ]
+    },
+    {
+      "id": "phase_main",
+      "name": "Main Set",
+      "description": "400m × 8회 (200m 조깅 회복)",
+      "order": 1,
+      "blocks": [
+        {
+          "id": "block_main_1",
+          "name": "400m Rep 1",
+          "type": "endurance",
+          "description": "400m 빠르게",
+          "targetDistance": 400,
+          "targetDuration": 90,
+          "intensityZone": "Z5",
+          "targetHeartRate": 180,
+          "order": 0,
+          "notes": "1분 30초 목표"
+        },
+        {
+          "id": "block_main_2",
+          "name": "Recovery Jog 1",
+          "type": "endurance",
+          "description": "200m 조깅",
+          "targetDistance": 200,
+          "targetDuration": 90,
+          "intensityZone": "Z1",
+          "order": 1
+        },
+        {
+          "id": "block_main_3",
+          "name": "400m Rep 2",
+          "type": "endurance",
+          "description": "400m 빠르게",
+          "targetDistance": 400,
+          "targetDuration": 90,
+          "intensityZone": "Z5",
+          "targetHeartRate": 180,
+          "order": 2
+        },
+        {
+          "id": "block_main_4",
+          "name": "Recovery Jog 2",
+          "type": "endurance",
+          "description": "200m 조깅",
+          "targetDistance": 200,
+          "targetDuration": 90,
+          "intensityZone": "Z1",
+          "order": 3
+        },
+        {
+          "id": "block_main_5",
+          "name": "400m Rep 3",
+          "type": "endurance",
+          "description": "400m 빠르게",
+          "targetDistance": 400,
+          "targetDuration": 90,
+          "intensityZone": "Z5",
+          "targetHeartRate": 180,
+          "order": 4
+        },
+        {
+          "id": "block_main_6",
+          "name": "Recovery Jog 3",
+          "type": "endurance",
+          "description": "200m 조깅",
+          "targetDistance": 200,
+          "targetDuration": 90,
+          "intensityZone": "Z1",
+          "order": 5
+        },
+        {
+          "id": "block_main_7",
+          "name": "400m Rep 4",
+          "type": "endurance",
+          "description": "400m 빠르게",
+          "targetDistance": 400,
+          "targetDuration": 90,
+          "intensityZone": "Z5",
+          "targetHeartRate": 180,
+          "order": 6
+        },
+        {
+          "id": "block_main_8",
+          "name": "Recovery Jog 4",
+          "type": "endurance",
+          "description": "200m 조깅",
+          "targetDistance": 200,
+          "targetDuration": 90,
+          "intensityZone": "Z1",
+          "order": 7
+        },
+        {
+          "id": "block_main_9",
+          "name": "400m Rep 5",
+          "type": "endurance",
+          "description": "400m 빠르게",
+          "targetDistance": 400,
+          "targetDuration": 90,
+          "intensityZone": "Z5",
+          "targetHeartRate": 180,
+          "order": 8
+        },
+        {
+          "id": "block_main_10",
+          "name": "Recovery Jog 5",
+          "type": "endurance",
+          "description": "200m 조깅",
+          "targetDistance": 200,
+          "targetDuration": 90,
+          "intensityZone": "Z1",
+          "order": 9
+        },
+        {
+          "id": "block_main_11",
+          "name": "400m Rep 6",
+          "type": "endurance",
+          "description": "400m 빠르게",
+          "targetDistance": 400,
+          "targetDuration": 90,
+          "intensityZone": "Z5",
+          "targetHeartRate": 180,
+          "order": 10
+        },
+        {
+          "id": "block_main_12",
+          "name": "Recovery Jog 6",
+          "type": "endurance",
+          "description": "200m 조깅",
+          "targetDistance": 200,
+          "targetDuration": 90,
+          "intensityZone": "Z1",
+          "order": 11
+        },
+        {
+          "id": "block_main_13",
+          "name": "400m Rep 7",
+          "type": "endurance",
+          "description": "400m 빠르게",
+          "targetDistance": 400,
+          "targetDuration": 90,
+          "intensityZone": "Z5",
+          "targetHeartRate": 180,
+          "order": 12
+        },
+        {
+          "id": "block_main_14",
+          "name": "Recovery Jog 7",
+          "type": "endurance",
+          "description": "200m 조깅",
+          "targetDistance": 200,
+          "targetDuration": 90,
+          "intensityZone": "Z1",
+          "order": 13
+        },
+        {
+          "id": "block_main_15",
+          "name": "400m Rep 8",
+          "type": "endurance",
+          "description": "400m 빠르게",
+          "targetDistance": 400,
+          "targetDuration": 90,
+          "intensityZone": "Z5",
+          "targetHeartRate": 180,
+          "order": 14
+        }
+      ]
+    },
+    {
+      "id": "phase_cooldown",
+      "name": "Cool-down",
+      "description": "충분한 쿨다운",
+      "order": 2,
+      "blocks": [
+        {
+          "id": "block_cooldown_1",
+          "name": "Easy Jog",
+          "type": "endurance",
+          "description": "천천히 조깅",
+          "targetDistance": 1600,
+          "targetDuration": 900,
+          "intensityZone": "Z1",
+          "targetHeartRate": 110,
+          "order": 0,
+          "notes": "트랙 4바퀴로 회복"
+        }
+      ]
+    }
+  ]
+}

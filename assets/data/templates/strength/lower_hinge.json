@@ -1,0 +1,140 @@
+{
+  "id": "strength_lower_hinge",
+  "name": "Lower Body Hinge",
+  "category": "Strength",
+  "subCategory": "Lower Hinge",
+  "description": "힌지 패턴을 중심으로 하체 후면(햄스트링, 둔근, 척추기립근)을 집중 훈련합니다.",
+  "imagePath": "assets/images/lifter-icon.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_warmup",
+      "name": "Warm-up",
+      "description": "하체 후면 워밍업",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "block_warmup_1",
+          "name": "Glute Bridges",
+          "type": "strength",
+          "description": "글루트 브릿지",
+          "exerciseId": "ex_glute_bridge",
+          "sets": 2,
+          "reps": 15,
+          "weightType": "bodyweight",
+          "restSeconds": 30,
+          "order": 0,
+          "notes": "둔근 활성화"
+        },
+        {
+          "id": "block_warmup_2",
+          "name": "Good Mornings (Light)",
+          "type": "strength",
+          "description": "굿모닝 (가벼운 무게)",
+          "exerciseId": "ex_good_morning",
+          "sets": 2,
+          "reps": 12,
+          "weight": 20,
+          "weightType": "fixed",
+          "restSeconds": 60,
+          "order": 1,
+          "notes": "힌지 패턴 연습"
+        }
+      ]
+    },
+    {
+      "id": "phase_main",
+      "name": "Main Set",
+      "description": "메인 하체 힌지 운동",
+      "order": 1,
+      "blocks": [
+        {
+          "id": "block_main_1",
+          "name": "Barbell Deadlift",
+          "type": "strength",
+          "description": "바벨 데드리프트",
+          "exerciseId": "ex_barbell_deadlift",
+          "sets": 5,
+          "reps": 5,
+          "weight": 120,
+          "weightType": "fixed",
+          "restSeconds": 240,
+          "order": 0,
+          "notes": "전신 복합운동. 척추 중립 유지 필수"
+        },
+        {
+          "id": "block_main_2",
+          "name": "Romanian Deadlift",
+          "type": "strength",
+          "description": "루마니안 데드리프트",
+          "exerciseId": "ex_romanian_deadlift",
+          "sets": 4,
+          "reps": 8,
+          "weight": 80,
+          "weightType": "fixed",
+          "restSeconds": 180,
+          "order": 1,
+          "notes": "햄스트링 집중. 무릎을 약간만 굽힘"
+        },
+        {
+          "id": "block_main_3",
+          "name": "Barbell Hip Thrust",
+          "type": "strength",
+          "description": "바벨 힙 쓰러스트",
+          "exerciseId": "ex_hip_thrust",
+          "sets": 4,
+          "reps": 10,
+          "weight": 100,
+          "weightType": "fixed",
+          "restSeconds": 120,
+          "order": 2,
+          "notes": "둔근 발달의 최고 운동"
+        },
+        {
+          "id": "block_main_4",
+          "name": "Leg Curls",
+          "type": "strength",
+          "description": "레그 컬",
+          "exerciseId": "ex_leg_curl",
+          "sets": 3,
+          "reps": 12,
+          "weight": 40,
+          "weightType": "fixed",
+          "restSeconds": 90,
+          "order": 3,
+          "notes": "햄스트링 고립. 머신 사용"
+        },
+        {
+          "id": "block_main_5",
+          "name": "Back Extensions",
+          "type": "strength",
+          "description": "백 익스텐션",
+          "exerciseId": "ex_back_extension",
+          "sets": 3,
+          "reps": 15,
+          "weightType": "bodyweight",
+          "restSeconds": 60,
+          "order": 4,
+          "notes": "척추기립근 강화"
+        }
+      ]
+    },
+    {
+      "id": "phase_cooldown",
+      "name": "Cool-down",
+      "description": "하체 후면 스트레칭",
+      "order": 2,
+      "blocks": [
+        {
+          "id": "block_cooldown_1",
+          "name": "Posterior Chain Stretch",
+          "type": "rest",
+          "description": "후면 사슬 스트레칭",
+          "targetDuration": 300,
+          "order": 0,
+          "notes": "햄스트링, 둔근, 허리 스트레칭 5분"
+        }
+      ]
+    }
+  ]
+}

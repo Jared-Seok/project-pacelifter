@@ -1,0 +1,70 @@
+{
+  "id": "endurance_outdoor_lsd",
+  "name": "Outdoor LSD",
+  "category": "Endurance",
+  "environmentType": "Outdoor",
+  "subCategory": "LSD",
+  "description": "야외에서 진행하는 장거리 유산소 훈련입니다. 자연 속에서 여유롭게 달립니다.",
+  "imagePath": "assets/images/runner-icon.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_warmup",
+      "name": "Warm-up",
+      "description": "가볍게 시작하여 몸을 풀어줍니다",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "block_warmup_1",
+          "name": "Easy Jog",
+          "type": "endurance",
+          "description": "편안한 페이스로 워밍업",
+          "targetDuration": 600,
+          "intensityZone": "Z1",
+          "targetHeartRate": 120,
+          "order": 0,
+          "notes": "첫 10분은 천천히 시작합니다"
+        }
+      ]
+    },
+    {
+      "id": "phase_main",
+      "name": "Main Set",
+      "description": "일정한 페이스로 장거리 달리기",
+      "order": 1,
+      "blocks": [
+        {
+          "id": "block_main_1",
+          "name": "Long Run",
+          "type": "endurance",
+          "description": "낮은 강도로 장시간 달리기",
+          "targetDistance": 15000,
+          "targetDuration": 5400,
+          "intensityZone": "Z2",
+          "targetHeartRate": 140,
+          "order": 0,
+          "notes": "편안한 페이스를 유지하세요. 지형 변화에 따라 페이스 조절이 필요합니다."
+        }
+      ]
+    },
+    {
+      "id": "phase_cooldown",
+      "name": "Cool-down",
+      "description": "가볍게 마무리",
+      "order": 2,
+      "blocks": [
+        {
+          "id": "block_cooldown_1",
+          "name": "Easy Jog & Walk",
+          "type": "endurance",
+          "description": "조깅과 걷기를 섞어서",
+          "targetDuration": 300,
+          "intensityZone": "Z1",
+          "targetHeartRate": 110,
+          "order": 0,
+          "notes": "마지막 5분은 걷기를 포함해도 좋습니다"
+        }
+      ]
+    }
+  ]
+}

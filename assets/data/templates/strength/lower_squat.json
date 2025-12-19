@@ -1,0 +1,136 @@
+{
+  "id": "strength_lower_squat",
+  "name": "Lower Body Squat",
+  "category": "Strength",
+  "subCategory": "Lower Squat",
+  "description": "스쿼트 패턴을 중심으로 하체 앞면(쿼드, 내전근)을 집중 훈련합니다.",
+  "imagePath": "assets/images/lifter-icon.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_warmup",
+      "name": "Warm-up",
+      "description": "하체 워밍업 및 관절 가동",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "block_warmup_1",
+          "name": "Bodyweight Squats",
+          "type": "strength",
+          "description": "맨몸 스쿼트",
+          "exerciseId": "ex_bodyweight_squat",
+          "sets": 2,
+          "reps": 20,
+          "weightType": "bodyweight",
+          "restSeconds": 30,
+          "order": 0,
+          "notes": "고관절과 무릎 가동범위 확보"
+        },
+        {
+          "id": "block_warmup_2",
+          "name": "Leg Swings",
+          "type": "rest",
+          "description": "레그 스윙",
+          "targetDuration": 120,
+          "order": 1,
+          "notes": "전후, 좌우 다리 스윙 각 20회"
+        }
+      ]
+    },
+    {
+      "id": "phase_main",
+      "name": "Main Set",
+      "description": "메인 하체 스쿼트 운동",
+      "order": 1,
+      "blocks": [
+        {
+          "id": "block_main_1",
+          "name": "Barbell Back Squat",
+          "type": "strength",
+          "description": "바벨 백 스쿼트",
+          "exerciseId": "ex_barbell_back_squat",
+          "sets": 5,
+          "reps": 5,
+          "weight": 100,
+          "weightType": "fixed",
+          "restSeconds": 240,
+          "order": 0,
+          "notes": "하체 훈련의 왕. 깊게 앉을수록 효과적"
+        },
+        {
+          "id": "block_main_2",
+          "name": "Front Squat",
+          "type": "strength",
+          "description": "프론트 스쿼트",
+          "exerciseId": "ex_front_squat",
+          "sets": 3,
+          "reps": 8,
+          "weight": 60,
+          "weightType": "fixed",
+          "restSeconds": 180,
+          "order": 1,
+          "notes": "쿼드 집중. 상체를 세우고 수행"
+        },
+        {
+          "id": "block_main_3",
+          "name": "Bulgarian Split Squat",
+          "type": "strength",
+          "description": "불가리안 스플릿 스쿼트",
+          "exerciseId": "ex_bulgarian_split_squat",
+          "sets": 3,
+          "reps": 10,
+          "weight": 20,
+          "weightType": "fixed",
+          "restSeconds": 120,
+          "order": 2,
+          "notes": "편측 운동. 각 다리 3세트씩. 덤벨 사용"
+        },
+        {
+          "id": "block_main_4",
+          "name": "Leg Press",
+          "type": "strength",
+          "description": "레그 프레스",
+          "exerciseId": "ex_leg_press",
+          "sets": 3,
+          "reps": 12,
+          "weight": 150,
+          "weightType": "fixed",
+          "restSeconds": 120,
+          "order": 3,
+          "notes": "머신 운동. 안전하게 고중량 가능"
+        },
+        {
+          "id": "block_main_5",
+          "name": "Leg Extensions",
+          "type": "strength",
+          "description": "레그 익스텐션",
+          "exerciseId": "ex_leg_extension",
+          "sets": 3,
+          "reps": 15,
+          "weight": 50,
+          "weightType": "fixed",
+          "restSeconds": 60,
+          "order": 4,
+          "notes": "쿼드 고립. 마무리 운동"
+        }
+      ]
+    },
+    {
+      "id": "phase_cooldown",
+      "name": "Cool-down",
+      "description": "하체 스트레칭",
+      "order": 2,
+      "blocks": [
+        {
+          "id": "block_cooldown_1",
+          "name": "Lower Body Stretch",
+          "type": "rest",
+          "description": "하체 정적 스트레칭",
+          "targetDuration": 300,
+          "order": 0,
+          "notes": "쿼드, 햄스트링, 둔근, 고관절 스트레칭 5분"
+        }
+      ]
+    }
+  ]
+}

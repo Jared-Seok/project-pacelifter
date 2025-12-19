@@ -1,0 +1,151 @@
+{
+  "id": "hybrid_strength_endurance",
+  "name": "Strength Endurance",
+  "category": "Hybrid",
+  "subCategory": "Strength-Endurance",
+  "description": "근지구력을 향상시키는 훈련입니다. 중간 무게로 높은 반복수와 짧은 휴식 시간을 사용합니다.",
+  "imagePath": "assets/images/pllogo.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_warmup",
+      "name": "Warm-up",
+      "description": "전신 워밍업",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "block_warmup_1",
+          "name": "Rowing",
+          "type": "endurance",
+          "description": "로잉",
+          "targetDistance": 1000,
+          "targetDuration": 300,
+          "intensityZone": "Z2",
+          "order": 0,
+          "notes": "1000m 로잉으로 전신 활성화"
+        },
+        {
+          "id": "block_warmup_2",
+          "name": "Dynamic Stretching",
+          "type": "rest",
+          "description": "동적 스트레칭",
+          "targetDuration": 300,
+          "order": 1,
+          "notes": "전신 관절 가동 5분"
+        }
+      ]
+    },
+    {
+      "id": "phase_main",
+      "name": "Main Set",
+      "description": "슈퍼셋 형식 (3라운드)",
+      "order": 1,
+      "blocks": [
+        {
+          "id": "block_main_1",
+          "name": "Superset 1A: Goblet Squats",
+          "type": "strength",
+          "description": "고블릿 스쿼트 20회",
+          "exerciseId": "ex_goblet_squat",
+          "sets": 3,
+          "reps": 20,
+          "weight": 24,
+          "weightType": "fixed",
+          "restSeconds": 0,
+          "order": 0,
+          "notes": "바로 다음 운동으로"
+        },
+        {
+          "id": "block_main_2",
+          "name": "Superset 1B: Jump Rope",
+          "type": "endurance",
+          "description": "줄넘기 100회",
+          "targetDuration": 60,
+          "intensityZone": "Z3",
+          "restSeconds": 120,
+          "order": 1,
+          "notes": "100회 또는 1분. 2분 휴식 후 다음 라운드"
+        },
+        {
+          "id": "block_main_3",
+          "name": "Superset 2A: Dumbbell Push Press",
+          "type": "strength",
+          "description": "덤벨 푸시 프레스 15회",
+          "exerciseId": "ex_push_press",
+          "sets": 3,
+          "reps": 15,
+          "weight": 15,
+          "weightType": "fixed",
+          "restSeconds": 0,
+          "order": 2,
+          "notes": "바로 다음 운동으로"
+        },
+        {
+          "id": "block_main_4",
+          "name": "Superset 2B: Rowing",
+          "type": "endurance",
+          "description": "로잉 250m",
+          "targetDistance": 250,
+          "intensityZone": "Z4",
+          "restSeconds": 120,
+          "order": 3,
+          "notes": "250m 전력. 2분 휴식 후 다음 라운드"
+        },
+        {
+          "id": "block_main_5",
+          "name": "Superset 3A: Dumbbell Romanian Deadlift",
+          "type": "strength",
+          "description": "덤벨 루마니안 데드리프트 15회",
+          "exerciseId": "ex_romanian_deadlift",
+          "sets": 3,
+          "reps": 15,
+          "weight": 30,
+          "weightType": "fixed",
+          "restSeconds": 0,
+          "order": 4,
+          "notes": "바로 다음 운동으로"
+        },
+        {
+          "id": "block_main_6",
+          "name": "Superset 3B: Burpees",
+          "type": "strength",
+          "description": "버피 15회",
+          "exerciseId": "ex_burpee",
+          "sets": 3,
+          "reps": 15,
+          "weightType": "bodyweight",
+          "restSeconds": 120,
+          "order": 5,
+          "notes": "15회 연속. 2분 휴식 후 다음 라운드"
+        }
+      ]
+    },
+    {
+      "id": "phase_cooldown",
+      "name": "Cool-down",
+      "description": "쿨다운 및 회복",
+      "order": 2,
+      "blocks": [
+        {
+          "id": "block_cooldown_1",
+          "name": "Easy Bike",
+          "type": "endurance",
+          "description": "가벼운 자전거",
+          "targetDuration": 600,
+          "intensityZone": "Z1",
+          "order": 0,
+          "notes": "10분간 천천히"
+        },
+        {
+          "id": "block_cooldown_2",
+          "name": "Full Body Stretch",
+          "type": "rest",
+          "description": "전신 스트레칭",
+          "targetDuration": 600,
+          "order": 1,
+          "notes": "전신 정적 스트레칭 10분"
+        }
+      ]
+    }
+  ]
+}

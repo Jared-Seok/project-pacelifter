@@ -1,0 +1,170 @@
+{
+  "id": "hybrid_crossfit_metcon",
+  "name": "CrossFit MetCon",
+  "category": "Hybrid",
+  "subCategory": "CrossFit",
+  "description": "크로스핏 스타일의 메타볼릭 컨디셔닝 운동입니다. 고강도로 짧은 시간 내 최대 효과를 냅니다.",
+  "imagePath": "assets/images/pllogo.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_warmup",
+      "name": "Warm-up",
+      "description": "크로스핏 워밍업",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "block_warmup_1",
+          "name": "General Warm-up",
+          "type": "endurance",
+          "description": "일반 워밍업",
+          "targetDuration": 300,
+          "intensityZone": "Z2",
+          "order": 0,
+          "notes": "로잉 200m, 자전거 500m, 줄넘기 100회"
+        },
+        {
+          "id": "block_warmup_2",
+          "name": "Specific Warm-up",
+          "type": "rest",
+          "description": "특정 동작 워밍업",
+          "targetDuration": 300,
+          "order": 1,
+          "notes": "에어 스쿼트, 푸시업, 링로우 각 10회씩 2세트"
+        }
+      ]
+    },
+    {
+      "id": "phase_main",
+      "name": "Main Set",
+      "description": "21-15-9 for Time",
+      "order": 1,
+      "blocks": [
+        {
+          "id": "block_main_1",
+          "name": "Round 1: Thrusters (21 reps)",
+          "type": "strength",
+          "description": "스러스터 21회",
+          "exerciseId": "ex_thruster",
+          "reps": 21,
+          "weight": 40,
+          "weightType": "fixed",
+          "order": 0,
+          "notes": "바벨 또는 덤벨 사용"
+        },
+        {
+          "id": "block_main_2",
+          "name": "Round 1: Pull-ups (21 reps)",
+          "type": "strength",
+          "description": "풀업 21회",
+          "exerciseId": "ex_pullup",
+          "reps": 21,
+          "weightType": "bodyweight",
+          "order": 1,
+          "notes": "키핑 풀업 허용"
+        },
+        {
+          "id": "block_main_3",
+          "name": "Round 1: Box Jumps (21 reps)",
+          "type": "strength",
+          "description": "박스 점프 21회",
+          "exerciseId": "ex_box_jump",
+          "reps": 21,
+          "weightType": "bodyweight",
+          "order": 2,
+          "notes": "60cm 박스"
+        },
+        {
+          "id": "block_main_4",
+          "name": "Round 2: Thrusters (15 reps)",
+          "type": "strength",
+          "description": "스러스터 15회",
+          "exerciseId": "ex_thruster",
+          "reps": 15,
+          "weight": 40,
+          "weightType": "fixed",
+          "order": 3
+        },
+        {
+          "id": "block_main_5",
+          "name": "Round 2: Pull-ups (15 reps)",
+          "type": "strength",
+          "description": "풀업 15회",
+          "exerciseId": "ex_pullup",
+          "reps": 15,
+          "weightType": "bodyweight",
+          "order": 4
+        },
+        {
+          "id": "block_main_6",
+          "name": "Round 2: Box Jumps (15 reps)",
+          "type": "strength",
+          "description": "박스 점프 15회",
+          "exerciseId": "ex_box_jump",
+          "reps": 15,
+          "weightType": "bodyweight",
+          "order": 5
+        },
+        {
+          "id": "block_main_7",
+          "name": "Round 3: Thrusters (9 reps)",
+          "type": "strength",
+          "description": "스러스터 9회",
+          "exerciseId": "ex_thruster",
+          "reps": 9,
+          "weight": 40,
+          "weightType": "fixed",
+          "order": 6
+        },
+        {
+          "id": "block_main_8",
+          "name": "Round 3: Pull-ups (9 reps)",
+          "type": "strength",
+          "description": "풀업 9회",
+          "exerciseId": "ex_pullup",
+          "reps": 9,
+          "weightType": "bodyweight",
+          "order": 7
+        },
+        {
+          "id": "block_main_9",
+          "name": "Round 3: Box Jumps (9 reps)",
+          "type": "strength",
+          "description": "박스 점프 9회",
+          "exerciseId": "ex_box_jump",
+          "reps": 9,
+          "weightType": "bodyweight",
+          "order": 8,
+          "notes": "최대한 빠르게 완료. 목표: 12분 이내"
+        }
+      ]
+    },
+    {
+      "id": "phase_cooldown",
+      "name": "Cool-down",
+      "description": "회복 및 스트레칭",
+      "order": 2,
+      "blocks": [
+        {
+          "id": "block_cooldown_1",
+          "name": "Light Activity",
+          "type": "endurance",
+          "description": "가벼운 활동",
+          "targetDuration": 300,
+          "intensityZone": "Z1",
+          "order": 0,
+          "notes": "걷기 또는 가벼운 자전거 5분"
+        },
+        {
+          "id": "block_cooldown_2",
+          "name": "Static Stretch",
+          "type": "rest",
+          "description": "정적 스트레칭",
+          "targetDuration": 600,
+          "order": 1,
+          "notes": "전신 스트레칭 10분"
+        }
+      ]
+    }
+  ]
+}

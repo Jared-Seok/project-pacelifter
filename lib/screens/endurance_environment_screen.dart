@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'endurance_template_screen.dart';
 
-/// Endurance 운동 환경 선택 화면 (로드/트레일/트레드밀)
+/// Endurance 운동 환경 선택 화면 (로드/트레일/실내)
 class EnduranceEnvironmentScreen extends StatelessWidget {
   const EnduranceEnvironmentScreen({super.key});
 
@@ -23,7 +23,7 @@ class EnduranceEnvironmentScreen extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Text(
                 '운동 환경을 선택하세요',
@@ -34,17 +34,18 @@ class EnduranceEnvironmentScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                '운동할 환경에 맞는 템플릿을 선택해주세요',
+                '어디서 달리실 건가요?',
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.grey[600],
                 ),
               ),
               const SizedBox(height: 24),
+              // 로드 (Road) -> Outdoor
               _buildEnvironmentCard(
                 context: context,
                 title: '로드',
-                subtitle: '실외 로드 및 트랙 러닝',
+                subtitle: '도로 및 야외 러닝',
                 iconPath: 'assets/images/runner-icon.svg',
                 color: Theme.of(context).colorScheme.secondary,
                 onTap: () {
@@ -52,17 +53,18 @@ class EnduranceEnvironmentScreen extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (context) => const EnduranceTemplateScreen(
-                        environmentType: '로드',
+                        environmentType: 'Outdoor',
                       ),
                     ),
                   );
                 },
               ),
               const SizedBox(height: 16),
+              // 트레일 (Trail) -> Track (Mapped for data consistency)
               _buildEnvironmentCard(
                 context: context,
                 title: '트레일',
-                subtitle: '산악 및 오프로드 러닝',
+                subtitle: '산악 및 오프로드',
                 iconPath: 'assets/images/trail-icon.svg',
                 color: Colors.green,
                 onTap: () {
@@ -70,17 +72,18 @@ class EnduranceEnvironmentScreen extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (context) => const EnduranceTemplateScreen(
-                        environmentType: '트레일',
+                        environmentType: 'Track',
                       ),
                     ),
                   );
                 },
               ),
               const SizedBox(height: 16),
+              // 실내 (Indoor) -> Indoor
               _buildEnvironmentCard(
                 context: context,
-                title: '트레드밀',
-                subtitle: '실내 러닝머신 운동',
+                title: '실내',
+                subtitle: '러닝머신 (Treadmill)',
                 iconPath: 'assets/images/runner-icon.svg',
                 color: Colors.orange,
                 onTap: () {
@@ -88,7 +91,7 @@ class EnduranceEnvironmentScreen extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (context) => const EnduranceTemplateScreen(
-                        environmentType: '트레드밀',
+                        environmentType: 'Indoor',
                       ),
                     ),
                   );
@@ -133,8 +136,8 @@ class EnduranceEnvironmentScreen extends StatelessWidget {
               ),
               child: SvgPicture.asset(
                 iconPath,
-                width: 48,
-                height: 48,
+                width: 32,
+                height: 32,
                 colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
               ),
             ),

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'endurance_environment_screen.dart';
+import 'strength_template_screen.dart';
+import 'hybrid_template_screen.dart';
 
-/// 운동 시작 화면
+/// 운동 시작 화면 (Bento Grid Layout)
 ///
-/// 좌측: Endurance (러닝), 우측: Strength (웨이트)
-/// 각 섹션 선택 시 해당 훈련 템플릿 화면으로 전환
+/// 상단: Endurance (1) : Strength (1) 비율로 배치
+/// 하단: Hybrid 배치
 class WorkoutStartScreen extends StatefulWidget {
   const WorkoutStartScreen({super.key});
 
@@ -13,32 +15,32 @@ class WorkoutStartScreen extends StatefulWidget {
   State<WorkoutStartScreen> createState() => _WorkoutStartScreenState();
 }
 
-enum WorkoutType { none, endurance, strength }
+enum WorkoutType { none, endurance, strength, hybrid }
 
 class _WorkoutStartScreenState extends State<WorkoutStartScreen> {
-  WorkoutType _selectedType = WorkoutType.none;
-
   void _selectWorkoutType(WorkoutType type) {
     if (type == WorkoutType.endurance) {
-      // Endurance 선택 시 바로 환경 선택 화면으로 이동
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => const EnduranceEnvironmentScreen(),
         ),
       );
-    } else {
-      // Strength는 기존 방식대로 상태 변경
-      setState(() {
-        _selectedType = type;
-      });
+    } else if (type == WorkoutType.strength) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const StrengthTemplateScreen(),
+        ),
+      );
+    } else if (type == WorkoutType.hybrid) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const HybridTemplateScreen(),
+        ),
+      );
     }
-  }
-
-  void _goBack() {
-    setState(() {
-      _selectedType = WorkoutType.none;
-    });
   }
 
   @override
@@ -46,179 +48,170 @@ class _WorkoutStartScreenState extends State<WorkoutStartScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        title: Text(_selectedType == WorkoutType.none
-            ? '운동 시작'
-            : 'Strength'),
+        title: const Text('운동 시작'),
         backgroundColor: Theme.of(context).colorScheme.surface,
         foregroundColor: Theme.of(context).colorScheme.onSurface,
-        leading: _selectedType != WorkoutType.none
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: _goBack,
-              )
-            : null,
       ),
-      body: _selectedType == WorkoutType.none
-          ? _buildSelectionScreen()
-          : _buildStrengthTemplateScreen(),
-    );
-  }
-
-  /// 초기 선택 화면: 좌측 Endurance, 우측 Strength
-  Widget _buildSelectionScreen() {
-    return Row(
-      children: [
-        // 좌측: Endurance 섹션
-        Expanded(
-          child: GestureDetector(
-            onTap: () => _selectWorkoutType(WorkoutType.endurance),
-            child: Container(
-              color: Colors.transparent,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SvgPicture.asset(
-                    'assets/images/runner-icon.svg',
-                    width: 120,
-                    height: 120,
-                    colorFilter: ColorFilter.mode(
-                      Theme.of(context).colorScheme.secondary,
-                      BlendMode.srcIn,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Endurance',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.secondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        // 중앙: 구분 바 (fade-out 효과)
-        _buildDividerBar(),
-        // 우측: Strength 섹션
-        Expanded(
-          child: GestureDetector(
-            onTap: () => _selectWorkoutType(WorkoutType.strength),
-            child: Container(
-              color: Colors.transparent,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SvgPicture.asset(
-                    'assets/images/lifter-icon.svg',
-                    width: 132,
-                    height: 132,
-                    colorFilter: ColorFilter.mode(
-                      Theme.of(context).colorScheme.primary,
-                      BlendMode.srcIn,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Strength',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// 중앙 구분 바 위젯 (fade-out 효과 적용, 상하 색상 분리)
-  Widget _buildDividerBar() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final screenHeight = MediaQuery.of(context).size.height;
-        final appBarHeight = kToolbarHeight + MediaQuery.of(context).padding.top;
-        final availableHeight = screenHeight - appBarHeight;
-        final barHeight = availableHeight * 0.5; // 화면의 50% 높이
-
-        return SizedBox(
-          width: 2,
-          height: barHeight,
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  // 상단: secondary color (밝은 카키색)
-                  Theme.of(context).colorScheme.secondary.withValues(alpha: 0.0),
-                  Theme.of(context).colorScheme.secondary.withValues(alpha: 0.4),
-                  Theme.of(context).colorScheme.secondary.withValues(alpha: 0.4),
-                  // 중심에서 색상 전환
-                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.4),
-                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.4),
-                  // 하단: primary color
-                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.0),
-                ],
-                stops: const [0.0, 0.2, 0.49, 0.51, 0.8, 1.0],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  /// Strength 템플릿 (웨이트) - 추후 구현
-  Widget _buildStrengthTemplateScreen() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SvgPicture.asset(
-              'assets/images/lifter-icon.svg',
-              width: 100,
-              height: 100,
-              colorFilter: ColorFilter.mode(
-                Theme.of(context).colorScheme.primary,
-                BlendMode.srcIn,
-              ),
-            ),
-            const SizedBox(height: 32),
-            Text(
-              'Strength 템플릿',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
+            // 상단 Row: Endurance (1) : Strength (1)
+            Expanded(
+              flex: 3,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildBentoCard(
+                      type: WorkoutType.endurance,
+                      title: 'Endurance',
+                      subtitle: '러닝 & 지구력',
+                      iconPath: 'assets/images/runner-icon.svg',
+                      color: Theme.of(context).colorScheme.secondary,
+                      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildBentoCard(
+                      type: WorkoutType.strength,
+                      title: 'Strength',
+                      subtitle: '웨이트 & 근력',
+                      iconPath: 'assets/images/lifter-icon.svg',
+                      color: Theme.of(context).colorScheme.primary,
+                      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 16),
-            Text(
-              '추후 구현 예정',
-              style: TextStyle(
-                fontSize: 18,
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '웨이트 트레이닝 템플릿 기능이\n추가될 예정입니다.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+            // 하단: Hybrid
+            Expanded(
+              flex: 2,
+              child: _buildBentoCard(
+                type: WorkoutType.hybrid,
+                title: 'Hybrid',
+                subtitle: 'Endurance + Strength 복합 훈련',
+                iconPath: 'assets/images/pllogo.svg',
+                color: Theme.of(context).colorScheme.tertiary,
+                backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                iconSize: 56,
+                isHorizontal: true, // 가로형 레이아웃
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBentoCard({
+    required WorkoutType type,
+    required String title,
+    required String subtitle,
+    required String iconPath,
+    required Color color,
+    required Color backgroundColor,
+    double iconSize = 64,
+    bool isHorizontal = false,
+  }) {
+    return GestureDetector(
+      onTap: () => _selectWorkoutType(type),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(24), // 둥근 모서리 강화
+          border: Border.all(
+            color: color.withValues(alpha: 0.1),
+            width: 1,
+          ),
+        ),
+        child: isHorizontal
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildIcon(iconPath, color, iconSize),
+                  const SizedBox(width: 24),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: color,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withValues(alpha: 0.7),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    color: color.withValues(alpha: 0.5),
+                  ),
+                ],
+              )
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildIcon(iconPath, color, iconSize),
+                  const SizedBox(height: 24),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    subtitle,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _buildIcon(String iconPath, Color color, double size) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        shape: BoxShape.circle,
+      ),
+      child: SvgPicture.asset(
+        iconPath,
+        width: size,
+        height: size,
+        colorFilter: ColorFilter.mode(
+          color,
+          BlendMode.srcIn,
         ),
       ),
     );

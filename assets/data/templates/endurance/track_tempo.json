@@ -1,0 +1,72 @@
+{
+  "id": "endurance_track_tempo",
+  "name": "Track Tempo",
+  "category": "Endurance",
+  "environmentType": "Track",
+  "subCategory": "Tempo",
+  "description": "트랙에서 진행하는 템포 런입니다. 정확한 페이스 컨트롤이 가능합니다.",
+  "imagePath": "assets/images/runner-icon.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_warmup",
+      "name": "Warm-up",
+      "description": "템포 런 준비",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "block_warmup_1",
+          "name": "Easy Jog",
+          "type": "endurance",
+          "description": "가벼운 조깅",
+          "targetDistance": 1600,
+          "targetDuration": 600,
+          "intensityZone": "Z1",
+          "targetHeartRate": 120,
+          "order": 0,
+          "notes": "트랙 4바퀴로 워밍업"
+        }
+      ]
+    },
+    {
+      "id": "phase_main",
+      "name": "Main Set",
+      "description": "템포 페이스 유지",
+      "order": 1,
+      "blocks": [
+        {
+          "id": "block_main_1",
+          "name": "Tempo Run",
+          "type": "endurance",
+          "description": "일정한 템포 페이스",
+          "targetDistance": 6000,
+          "targetDuration": 1800,
+          "intensityZone": "Z3",
+          "targetHeartRate": 160,
+          "order": 0,
+          "notes": "트랙 15바퀴. 400m당 2분 페이스로 유지"
+        }
+      ]
+    },
+    {
+      "id": "phase_cooldown",
+      "name": "Cool-down",
+      "description": "쿨다운",
+      "order": 2,
+      "blocks": [
+        {
+          "id": "block_cooldown_1",
+          "name": "Easy Jog",
+          "type": "endurance",
+          "description": "천천히 조깅",
+          "targetDistance": 1200,
+          "targetDuration": 600,
+          "intensityZone": "Z1",
+          "targetHeartRate": 110,
+          "order": 0,
+          "notes": "트랙 3바퀴로 마무리"
+        }
+      ]
+    }
+  ]
+}

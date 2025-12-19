@@ -1,0 +1,117 @@
+{
+  "id": "hybrid_amrap_endurance",
+  "name": "AMRAP Endurance",
+  "category": "Hybrid",
+  "subCategory": "AMRAP",
+  "description": "As Many Rounds As Possible - 정해진 시간 내에 최대한 많은 라운드를 완료합니다.",
+  "imagePath": "assets/images/pllogo.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_warmup",
+      "name": "Warm-up",
+      "description": "워밍업",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "block_warmup_1",
+          "name": "Light Cardio",
+          "type": "endurance",
+          "description": "가벼운 유산소",
+          "targetDuration": 300,
+          "intensityZone": "Z2",
+          "order": 0,
+          "notes": "조깅 또는 자전거 5분"
+        },
+        {
+          "id": "block_warmup_2",
+          "name": "Movement Prep",
+          "type": "rest",
+          "description": "동작 준비",
+          "targetDuration": 300,
+          "order": 1,
+          "notes": "운동 동작 연습 각 5회씩"
+        }
+      ]
+    },
+    {
+      "id": "phase_main",
+      "name": "Main Set",
+      "description": "15분 AMRAP (최대한 많은 라운드)",
+      "order": 1,
+      "blocks": [
+        {
+          "id": "block_main_1",
+          "name": "Run 400m",
+          "type": "endurance",
+          "description": "400m 달리기",
+          "targetDistance": 400,
+          "intensityZone": "Z3",
+          "order": 0,
+          "notes": "트랙 1바퀴 또는 트레드밀"
+        },
+        {
+          "id": "block_main_2",
+          "name": "Kettlebell Swings x 15",
+          "type": "strength",
+          "description": "케틀벨 스윙 15회",
+          "exerciseId": "ex_kettlebell_swing",
+          "reps": 15,
+          "weight": 24,
+          "weightType": "fixed",
+          "order": 1,
+          "notes": "러시안 스윙"
+        },
+        {
+          "id": "block_main_3",
+          "name": "Box Jumps x 10",
+          "type": "strength",
+          "description": "박스 점프 10회",
+          "exerciseId": "ex_box_jump",
+          "reps": 10,
+          "weightType": "bodyweight",
+          "order": 2,
+          "notes": "60cm 박스"
+        },
+        {
+          "id": "block_main_4",
+          "name": "Push-ups x 15",
+          "type": "strength",
+          "description": "푸시업 15회",
+          "exerciseId": "ex_pushup",
+          "reps": 15,
+          "weightType": "bodyweight",
+          "order": 3,
+          "notes": "표준 푸시업"
+        }
+      ]
+    },
+    {
+      "id": "phase_cooldown",
+      "name": "Cool-down",
+      "description": "회복 및 스트레칭",
+      "order": 2,
+      "blocks": [
+        {
+          "id": "block_cooldown_1",
+          "name": "Easy Walk",
+          "type": "endurance",
+          "description": "가벼운 걷기",
+          "targetDuration": 600,
+          "intensityZone": "Z1",
+          "order": 0,
+          "notes": "10분간 천천히 걷기"
+        },
+        {
+          "id": "block_cooldown_2",
+          "name": "Full Body Stretch",
+          "type": "rest",
+          "description": "전신 스트레칭",
+          "targetDuration": 600,
+          "order": 1,
+          "notes": "전신 정적 스트레칭 10분"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "id": "endurance_indoor_lsd",
+  "name": "Indoor LSD",
+  "category": "Endurance",
+  "environmentType": "Indoor",
+  "subCategory": "LSD",
+  "description": "Long Slow Distance - 낮은 강도로 장시간 유산소 능력을 향상시키는 훈련입니다. 트레드밀이나 실내 트랙에서 진행합니다.",
+  "imagePath": "assets/images/runner-icon.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_warmup",
+      "name": "Warm-up",
+      "description": "가벼운 조깅으로 몸을 풀어줍니다",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "block_warmup_1",
+          "name": "Easy Jog",
+          "type": "endurance",
+          "description": "편안한 페이스로 워밍업",
+          "targetDuration": 600,
+          "intensityZone": "Z1",
+          "targetHeartRate": 120,
+          "order": 0,
+          "notes": "대화가 가능한 편안한 속도로 달리세요"
+        }
+      ]
+    },
+    {
+      "id": "phase_main",
+      "name": "Main Set",
+      "description": "일정한 페이스로 장거리 달리기",
+      "order": 1,
+      "blocks": [
+        {
+          "id": "block_main_1",
+          "name": "LSD Run",
+          "type": "endurance",
+          "description": "낮은 강도로 장시간 달리기",
+          "targetDistance": 10000,
+          "targetDuration": 3600,
+          "intensityZone": "Z2",
+          "targetHeartRate": 140,
+          "order": 0,
+          "notes": "최대 심박수의 60-70% 수준을 유지하세요. 코로 숨을 쉴 수 있는 강도입니다."
+        }
+      ]
+    },
+    {
+      "id": "phase_cooldown",
+      "name": "Cool-down",
+      "description": "가볍게 조깅하며 마무리",
+      "order": 2,
+      "blocks": [
+        {
+          "id": "block_cooldown_1",
+          "name": "Easy Jog",
+          "type": "endurance",
+          "description": "천천히 속도를 줄이며 마무리",
+          "targetDuration": 300,
+          "intensityZone": "Z1",
+          "targetHeartRate": 110,
+          "order": 0,
+          "notes": "심박수를 천천히 낮추며 회복합니다"
+        }
+      ]
+    }
+  ]
+}

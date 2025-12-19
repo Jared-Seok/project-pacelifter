@@ -1,0 +1,126 @@
+{
+  "id": "strength_upper_push",
+  "name": "Upper Body Push",
+  "category": "Strength",
+  "subCategory": "Upper Push",
+  "description": "가슴, 어깨, 삼두근을 집중적으로 단련하는 상체 밀기 운동 프로그램입니다.",
+  "imagePath": "assets/images/lifter-icon.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_warmup",
+      "name": "Warm-up",
+      "description": "상체 워밍업 및 관절 가동",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "block_warmup_1",
+          "name": "Push-up Warm-up",
+          "type": "strength",
+          "description": "푸시업으로 워밍업",
+          "exerciseId": "ex_pushup",
+          "sets": 2,
+          "reps": 15,
+          "weightType": "bodyweight",
+          "restSeconds": 60,
+          "order": 0,
+          "notes": "천천히 수행하며 가동범위를 늘려갑니다"
+        }
+      ]
+    },
+    {
+      "id": "phase_main",
+      "name": "Main Set",
+      "description": "메인 상체 밀기 운동",
+      "order": 1,
+      "blocks": [
+        {
+          "id": "block_main_1",
+          "name": "Barbell Bench Press",
+          "type": "strength",
+          "description": "바벨 벤치 프레스",
+          "exerciseId": "ex_barbell_bench_press",
+          "sets": 4,
+          "reps": 8,
+          "weight": 60,
+          "weightType": "fixed",
+          "restSeconds": 180,
+          "order": 0,
+          "notes": "복합운동. 가슴 발달의 핵심 운동입니다."
+        },
+        {
+          "id": "block_main_2",
+          "name": "Incline Dumbbell Press",
+          "type": "strength",
+          "description": "인클라인 덤벨 프레스",
+          "exerciseId": "ex_incline_dumbbell_press",
+          "sets": 3,
+          "reps": 10,
+          "weight": 20,
+          "weightType": "fixed",
+          "restSeconds": 120,
+          "order": 1,
+          "notes": "상부 가슴 집중. 각도는 30-45도"
+        },
+        {
+          "id": "block_main_3",
+          "name": "Dumbbell Shoulder Press",
+          "type": "strength",
+          "description": "덤벨 숄더 프레스",
+          "exerciseId": "ex_dumbbell_shoulder_press",
+          "sets": 3,
+          "reps": 10,
+          "weight": 15,
+          "weightType": "fixed",
+          "restSeconds": 120,
+          "order": 2,
+          "notes": "어깨 전면과 측면 발달"
+        },
+        {
+          "id": "block_main_4",
+          "name": "Tricep Dips",
+          "type": "strength",
+          "description": "트라이셉 딥스",
+          "exerciseId": "ex_tricep_dips",
+          "sets": 3,
+          "reps": 12,
+          "weightType": "bodyweight",
+          "restSeconds": 90,
+          "order": 3,
+          "notes": "삼두근 고립 운동"
+        },
+        {
+          "id": "block_main_5",
+          "name": "Lateral Raises",
+          "type": "strength",
+          "description": "래터럴 레이즈",
+          "exerciseId": "ex_lateral_raises",
+          "sets": 3,
+          "reps": 15,
+          "weight": 10,
+          "weightType": "fixed",
+          "restSeconds": 60,
+          "order": 4,
+          "notes": "어깨 측면 고립. 가벼운 무게로 정확한 폼"
+        }
+      ]
+    },
+    {
+      "id": "phase_cooldown",
+      "name": "Cool-down",
+      "description": "상체 스트레칭",
+      "order": 2,
+      "blocks": [
+        {
+          "id": "block_cooldown_1",
+          "name": "Upper Body Stretch",
+          "type": "rest",
+          "description": "상체 정적 스트레칭",
+          "targetDuration": 300,
+          "order": 0,
+          "notes": "가슴, 어깨, 삼두근 스트레칭 5분"
+        }
+      ]
+    }
+  ]
+}

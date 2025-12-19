@@ -1,0 +1,146 @@
+{
+  "id": "strength_core_stability",
+  "name": "Core Stability",
+  "category": "Strength",
+  "subCategory": "Core",
+  "description": "복부, 허리, 골반 안정성을 강화하는 코어 훈련 프로그램입니다.",
+  "imagePath": "assets/images/core-icon.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_warmup",
+      "name": "Warm-up",
+      "description": "코어 활성화",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "block_warmup_1",
+          "name": "Cat-Cow Stretch",
+          "type": "rest",
+          "description": "캣-카우 스트레치",
+          "targetDuration": 120,
+          "order": 0,
+          "notes": "척추 가동성 향상. 20회 반복"
+        },
+        {
+          "id": "block_warmup_2",
+          "name": "Dead Bugs",
+          "type": "strength",
+          "description": "데드 버그",
+          "exerciseId": "ex_dead_bug",
+          "sets": 2,
+          "reps": 10,
+          "weightType": "bodyweight",
+          "restSeconds": 30,
+          "order": 1,
+          "notes": "코어 안정화 패턴 연습"
+        }
+      ]
+    },
+    {
+      "id": "phase_main",
+      "name": "Main Set",
+      "description": "코어 안정성 메인 운동",
+      "order": 1,
+      "blocks": [
+        {
+          "id": "block_main_1",
+          "name": "Plank",
+          "type": "strength",
+          "description": "플랭크",
+          "exerciseId": "ex_plank",
+          "sets": 4,
+          "targetDuration": 60,
+          "weightType": "bodyweight",
+          "restSeconds": 60,
+          "order": 0,
+          "notes": "복부 전면 안정화. 60초 유지"
+        },
+        {
+          "id": "block_main_2",
+          "name": "Side Plank",
+          "type": "strength",
+          "description": "사이드 플랭크",
+          "exerciseId": "ex_side_plank",
+          "sets": 3,
+          "targetDuration": 45,
+          "weightType": "bodyweight",
+          "restSeconds": 45,
+          "order": 1,
+          "notes": "복사근 안정화. 각 측면 45초"
+        },
+        {
+          "id": "block_main_3",
+          "name": "Pallof Press",
+          "type": "strength",
+          "description": "팔로프 프레스",
+          "exerciseId": "ex_pallof_press",
+          "sets": 3,
+          "reps": 12,
+          "weight": 15,
+          "weightType": "fixed",
+          "restSeconds": 60,
+          "order": 2,
+          "notes": "회전 저항 훈련. 각 측면 12회"
+        },
+        {
+          "id": "block_main_4",
+          "name": "Russian Twists",
+          "type": "strength",
+          "description": "러시안 트위스트",
+          "exerciseId": "ex_russian_twist",
+          "sets": 3,
+          "reps": 30,
+          "weight": 10,
+          "weightType": "fixed",
+          "restSeconds": 60,
+          "order": 3,
+          "notes": "복사근 회전력. 좌우 합산 30회"
+        },
+        {
+          "id": "block_main_5",
+          "name": "Bird Dog",
+          "type": "strength",
+          "description": "버드 독",
+          "exerciseId": "ex_bird_dog",
+          "sets": 3,
+          "reps": 20,
+          "weightType": "bodyweight",
+          "restSeconds": 45,
+          "order": 4,
+          "notes": "척추 안정화와 균형. 좌우 합산 20회"
+        },
+        {
+          "id": "block_main_6",
+          "name": "Hanging Leg Raises",
+          "type": "strength",
+          "description": "행잉 레그 레이즈",
+          "exerciseId": "ex_hanging_leg_raise",
+          "sets": 3,
+          "reps": 12,
+          "weightType": "bodyweight",
+          "restSeconds": 90,
+          "order": 5,
+          "notes": "하복부 집중. 무릎을 굽혀서 시작 가능"
+        }
+      ]
+    },
+    {
+      "id": "phase_cooldown",
+      "name": "Cool-down",
+      "description": "코어 스트레칭",
+      "order": 2,
+      "blocks": [
+        {
+          "id": "block_cooldown_1",
+          "name": "Core Stretch",
+          "type": "rest",
+          "description": "코어 정적 스트레칭",
+          "targetDuration": 300,
+          "order": 0,
+          "notes": "복부, 허리, 골반 스트레칭 5분"
+        }
+      ]
+    }
+  ]
+}

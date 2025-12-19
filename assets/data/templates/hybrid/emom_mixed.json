@@ -1,0 +1,86 @@
+{
+  "id": "hybrid_emom_mixed",
+  "name": "EMOM Mixed",
+  "category": "Hybrid",
+  "subCategory": "EMOM",
+  "description": "Every Minute On the Minute - 매 분마다 정해진 운동을 수행하고 남은 시간은 휴식합니다.",
+  "imagePath": "assets/images/pllogo.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_warmup",
+      "name": "Warm-up",
+      "description": "워밍업",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "block_warmup_1",
+          "name": "General Warm-up",
+          "type": "endurance",
+          "description": "일반 워밍업",
+          "targetDuration": 600,
+          "intensityZone": "Z2",
+          "order": 0,
+          "notes": "가벼운 조깅 또는 로잉 10분"
+        }
+      ]
+    },
+    {
+      "id": "phase_main",
+      "name": "Main Set",
+      "description": "20분 EMOM (짝수분/홀수분 교대)",
+      "order": 1,
+      "blocks": [
+        {
+          "id": "block_main_1",
+          "name": "Minute 1 (Odd): Barbell Thrusters",
+          "type": "strength",
+          "description": "바벨 스러스터 12회",
+          "exerciseId": "ex_thruster",
+          "reps": 12,
+          "weight": 40,
+          "weightType": "fixed",
+          "order": 0,
+          "notes": "홀수 분(1,3,5,7,9,11,13,15,17,19): 스러스터 12회"
+        },
+        {
+          "id": "block_main_2",
+          "name": "Minute 2 (Even): Rowing",
+          "type": "endurance",
+          "description": "로잉 200m",
+          "targetDistance": 200,
+          "intensityZone": "Z4",
+          "order": 1,
+          "notes": "짝수 분(2,4,6,8,10,12,14,16,18,20): 로잉 200m"
+        }
+      ]
+    },
+    {
+      "id": "phase_cooldown",
+      "name": "Cool-down",
+      "description": "회복",
+      "order": 2,
+      "blocks": [
+        {
+          "id": "block_cooldown_1",
+          "name": "Easy Walk",
+          "type": "endurance",
+          "description": "가벼운 걷기",
+          "targetDuration": 300,
+          "intensityZone": "Z1",
+          "order": 0,
+          "notes": "5분간 천천히 걷기"
+        },
+        {
+          "id": "block_cooldown_2",
+          "name": "Static Stretch",
+          "type": "rest",
+          "description": "정적 스트레칭",
+          "targetDuration": 300,
+          "order": 1,
+          "notes": "전신 스트레칭 5분"
+        }
+      ]
+    }
+  ]
+}

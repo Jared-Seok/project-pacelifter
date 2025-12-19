@@ -936,26 +936,36 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
               // 기존 SnackBar 제거
               ScaffoldMessenger.of(context).clearSnackBars();
 
+              // isLimited: "선택한 사진" 또는 "사진 추가만" 권한
+              // 전체 사진 라이브러리 접근을 위해서는 "모든 사진" 권한 필요
               final message = result.isLimited
-                  ? '전체 사진 라이브러리 접근을 위해 설정에서 "모든 사진" 접근을 허용해주세요.'
+                  ? '이미지 배경 선택을 위해 전체 사진 라이브러리 접근이 필요합니다.\n설정 > PaceLifter > 사진 > "모든 사진"을 선택해주세요.'
                   : '사진 라이브러리 권한이 필요합니다. 설정에서 권한을 허용해주세요.';
 
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('사진 라이브러리 접근 권한 필요'),
                   content: Text(message),
-                  action: SnackBarAction(
-                    label: '설정',
-                    onPressed: () => openAppSettings(),
-                  ),
-                  duration: const Duration(seconds: 4),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('취소'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        openAppSettings();
+                      },
+                      child: const Text('설정 열기'),
+                    ),
+                  ],
                 ),
               );
             }
 
-            // 제한된 권한이라도 선택한 사진은 접근 가능하므로 계속 진행
-            if (!result.isLimited) {
-              return;
-            }
+            // 전체 접근 권한이 없으면 진행하지 않음
+            return;
           }
         }
       }

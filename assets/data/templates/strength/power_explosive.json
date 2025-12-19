@@ -1,0 +1,154 @@
+{
+  "id": "strength_power_explosive",
+  "name": "Power & Explosive",
+  "category": "Strength",
+  "subCategory": "Power",
+  "description": "순발력과 폭발적인 힘을 개발하는 플라이오메트릭 및 파워 훈련 프로그램입니다.",
+  "imagePath": "assets/images/lifter-icon.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_warmup",
+      "name": "Warm-up",
+      "description": "폭발력 훈련 준비",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "block_warmup_1",
+          "name": "Dynamic Stretching",
+          "type": "rest",
+          "description": "동적 스트레칭",
+          "targetDuration": 300,
+          "order": 0,
+          "notes": "다리 스윙, 하이니, 버트킥 등 5분"
+        },
+        {
+          "id": "block_warmup_2",
+          "name": "Jump Rope",
+          "type": "endurance",
+          "description": "줄넘기",
+          "targetDuration": 180,
+          "intensityZone": "Z2",
+          "order": 1,
+          "notes": "가벼운 점프로 신경계 활성화 3분"
+        }
+      ]
+    },
+    {
+      "id": "phase_main",
+      "name": "Main Set",
+      "description": "폭발력 메인 운동",
+      "order": 1,
+      "blocks": [
+        {
+          "id": "block_main_1",
+          "name": "Box Jumps",
+          "type": "strength",
+          "description": "박스 점프",
+          "exerciseId": "ex_box_jump",
+          "sets": 4,
+          "reps": 8,
+          "weightType": "bodyweight",
+          "restSeconds": 120,
+          "order": 0,
+          "notes": "60-75cm 높이 박스. 부드럽게 착지"
+        },
+        {
+          "id": "block_main_2",
+          "name": "Medicine Ball Slams",
+          "type": "strength",
+          "description": "메디신볼 슬램",
+          "exerciseId": "ex_medicine_ball_slam",
+          "sets": 4,
+          "reps": 10,
+          "weight": 10,
+          "weightType": "fixed",
+          "restSeconds": 90,
+          "order": 1,
+          "notes": "최대 힘으로 바닥에 내리침"
+        },
+        {
+          "id": "block_main_3",
+          "name": "Power Clean",
+          "type": "strength",
+          "description": "파워 클린",
+          "exerciseId": "ex_power_clean",
+          "sets": 5,
+          "reps": 3,
+          "weight": 60,
+          "weightType": "fixed",
+          "restSeconds": 180,
+          "order": 2,
+          "notes": "올림픽 리프팅. 기술적 숙련 필요"
+        },
+        {
+          "id": "block_main_4",
+          "name": "Broad Jumps",
+          "type": "strength",
+          "description": "브로드 점프 (멀리뛰기)",
+          "exerciseId": "ex_broad_jump",
+          "sets": 4,
+          "reps": 6,
+          "weightType": "bodyweight",
+          "restSeconds": 90,
+          "order": 3,
+          "notes": "수평 폭발력 훈련"
+        },
+        {
+          "id": "block_main_5",
+          "name": "Plyometric Push-ups",
+          "type": "strength",
+          "description": "플라이오메트릭 푸시업",
+          "exerciseId": "ex_plyo_pushup",
+          "sets": 3,
+          "reps": 8,
+          "weightType": "bodyweight",
+          "restSeconds": 90,
+          "order": 4,
+          "notes": "손이 땅에서 떨어지게. 박수 가능"
+        },
+        {
+          "id": "block_main_6",
+          "name": "Kettlebell Swings",
+          "type": "strength",
+          "description": "케틀벨 스윙",
+          "exerciseId": "ex_kettlebell_swing",
+          "sets": 4,
+          "reps": 15,
+          "weight": 24,
+          "weightType": "fixed",
+          "restSeconds": 90,
+          "order": 5,
+          "notes": "둔근과 햄스트링 폭발력"
+        }
+      ]
+    },
+    {
+      "id": "phase_cooldown",
+      "name": "Cool-down",
+      "description": "쿨다운 및 회복",
+      "order": 2,
+      "blocks": [
+        {
+          "id": "block_cooldown_1",
+          "name": "Light Walk",
+          "type": "endurance",
+          "description": "가벼운 걷기",
+          "targetDuration": 300,
+          "intensityZone": "Z1",
+          "order": 0,
+          "notes": "심박수를 천천히 낮춥니다"
+        },
+        {
+          "id": "block_cooldown_2",
+          "name": "Static Stretch",
+          "type": "rest",
+          "description": "정적 스트레칭",
+          "targetDuration": 300,
+          "order": 1,
+          "notes": "전신 스트레칭 5분"
+        }
+      ]
+    }
+  ]
+}

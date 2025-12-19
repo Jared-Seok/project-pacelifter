@@ -1,0 +1,126 @@
+{
+  "id": "strength_upper_pull",
+  "name": "Upper Body Pull",
+  "category": "Strength",
+  "subCategory": "Upper Pull",
+  "description": "등, 이두근, 후면 어깨를 집중적으로 단련하는 상체 당기기 운동 프로그램입니다.",
+  "imagePath": "assets/images/lifter-icon.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_warmup",
+      "name": "Warm-up",
+      "description": "상체 후면 워밍업",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "block_warmup_1",
+          "name": "Band Pull-aparts",
+          "type": "strength",
+          "description": "밴드 풀 어파트",
+          "exerciseId": "ex_band_pull_apart",
+          "sets": 2,
+          "reps": 20,
+          "weightType": "bodyweight",
+          "restSeconds": 30,
+          "order": 0,
+          "notes": "어깨 후면과 상부 등 활성화"
+        }
+      ]
+    },
+    {
+      "id": "phase_main",
+      "name": "Main Set",
+      "description": "메인 상체 당기기 운동",
+      "order": 1,
+      "blocks": [
+        {
+          "id": "block_main_1",
+          "name": "Barbell Bent-Over Row",
+          "type": "strength",
+          "description": "바벨 벤트오버 로우",
+          "exerciseId": "ex_barbell_row",
+          "sets": 4,
+          "reps": 8,
+          "weight": 60,
+          "weightType": "fixed",
+          "restSeconds": 180,
+          "order": 0,
+          "notes": "등 두께 발달의 핵심 운동"
+        },
+        {
+          "id": "block_main_2",
+          "name": "Pull-ups",
+          "type": "strength",
+          "description": "풀업",
+          "exerciseId": "ex_pullup",
+          "sets": 4,
+          "reps": 10,
+          "weightType": "bodyweight",
+          "restSeconds": 150,
+          "order": 1,
+          "notes": "등 너비 발달. 필요시 어시스트 사용"
+        },
+        {
+          "id": "block_main_3",
+          "name": "Dumbbell Single-Arm Row",
+          "type": "strength",
+          "description": "덤벨 원암 로우",
+          "exerciseId": "ex_dumbbell_row",
+          "sets": 3,
+          "reps": 12,
+          "weight": 25,
+          "weightType": "fixed",
+          "restSeconds": 90,
+          "order": 2,
+          "notes": "편측 운동. 각 팔 3세트씩"
+        },
+        {
+          "id": "block_main_4",
+          "name": "Face Pulls",
+          "type": "strength",
+          "description": "페이스 풀",
+          "exerciseId": "ex_face_pulls",
+          "sets": 3,
+          "reps": 15,
+          "weight": 20,
+          "weightType": "fixed",
+          "restSeconds": 60,
+          "order": 3,
+          "notes": "후면 어깨와 상부 등. 케이블 머신 사용"
+        },
+        {
+          "id": "block_main_5",
+          "name": "Barbell Bicep Curls",
+          "type": "strength",
+          "description": "바벨 바이셉 컬",
+          "exerciseId": "ex_barbell_curl",
+          "sets": 3,
+          "reps": 12,
+          "weight": 25,
+          "weightType": "fixed",
+          "restSeconds": 90,
+          "order": 4,
+          "notes": "이두근 고립 운동"
+        }
+      ]
+    },
+    {
+      "id": "phase_cooldown",
+      "name": "Cool-down",
+      "description": "상체 후면 스트레칭",
+      "order": 2,
+      "blocks": [
+        {
+          "id": "block_cooldown_1",
+          "name": "Upper Back Stretch",
+          "type": "rest",
+          "description": "상체 정적 스트레칭",
+          "targetDuration": 300,
+          "order": 0,
+          "notes": "등, 이두근, 후면 어깨 스트레칭 5분"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "id": "endurance_outdoor_tempo",
+  "name": "Outdoor Tempo",
+  "category": "Endurance",
+  "environmentType": "Outdoor",
+  "subCategory": "Tempo",
+  "description": "야외에서 진행하는 템포 런입니다. 일정한 중강도 페이스를 유지합니다.",
+  "imagePath": "assets/images/runner-icon.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_warmup",
+      "name": "Warm-up",
+      "description": "템포 런 준비",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "block_warmup_1",
+          "name": "Easy Jog",
+          "type": "endurance",
+          "description": "가벼운 조깅",
+          "targetDuration": 900,
+          "intensityZone": "Z1",
+          "targetHeartRate": 120,
+          "order": 0,
+          "notes": "평지에서 15분간 워밍업"
+        }
+      ]
+    },
+    {
+      "id": "phase_main",
+      "name": "Main Set",
+      "description": "지속 가능한 빠른 페이스",
+      "order": 1,
+      "blocks": [
+        {
+          "id": "block_main_1",
+          "name": "Tempo Run",
+          "type": "endurance",
+          "description": "템포 페이스로 달리기",
+          "targetDistance": 8000,
+          "targetDuration": 2400,
+          "intensityZone": "Z3",
+          "targetHeartRate": 160,
+          "order": 0,
+          "notes": "편안하게 힘든(comfortably hard) 페이스. 마라톤 레이스 페이스보다 약간 빠릅니다."
+        }
+      ]
+    },
+    {
+      "id": "phase_cooldown",
+      "name": "Cool-down",
+      "description": "쿨다운",
+      "order": 2,
+      "blocks": [
+        {
+          "id": "block_cooldown_1",
+          "name": "Easy Jog",
+          "type": "endurance",
+          "description": "천천히 조깅",
+          "targetDuration": 600,
+          "intensityZone": "Z1",
+          "targetHeartRate": 110,
+          "order": 0,
+          "notes": "10분간 회복"
+        }
+      ]
+    }
+  ]
+}

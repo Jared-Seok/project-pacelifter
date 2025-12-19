@@ -1,0 +1,149 @@
+{
+  "id": "endurance_outdoor_interval",
+  "name": "Outdoor Interval",
+  "category": "Endurance",
+  "environmentType": "Outdoor",
+  "subCategory": "Interval",
+  "description": "야외에서 진행하는 인터벌 트레이닝입니다. 언덕이나 평지를 활용할 수 있습니다.",
+  "imagePath": "assets/images/runner-icon.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_warmup",
+      "name": "Warm-up",
+      "description": "충분한 워밍업",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "block_warmup_1",
+          "name": "Easy Jog",
+          "type": "endurance",
+          "description": "가볍게 조깅",
+          "targetDuration": 900,
+          "intensityZone": "Z1",
+          "targetHeartRate": 120,
+          "order": 0,
+          "notes": "15분간 충분히 몸을 풀어줍니다"
+        }
+      ]
+    },
+    {
+      "id": "phase_main",
+      "name": "Main Set",
+      "description": "5분 빠르게 - 2분 회복 반복",
+      "order": 1,
+      "blocks": [
+        {
+          "id": "block_main_1",
+          "name": "Interval 1: Fast",
+          "type": "endurance",
+          "description": "빠른 페이스",
+          "targetDuration": 300,
+          "intensityZone": "Z4",
+          "targetHeartRate": 170,
+          "order": 0,
+          "notes": "10km 레이스 페이스"
+        },
+        {
+          "id": "block_main_2",
+          "name": "Recovery 1",
+          "type": "endurance",
+          "description": "회복 조깅",
+          "targetDuration": 120,
+          "intensityZone": "Z2",
+          "targetHeartRate": 130,
+          "order": 1
+        },
+        {
+          "id": "block_main_3",
+          "name": "Interval 2: Fast",
+          "type": "endurance",
+          "description": "빠른 페이스",
+          "targetDuration": 300,
+          "intensityZone": "Z4",
+          "targetHeartRate": 170,
+          "order": 2
+        },
+        {
+          "id": "block_main_4",
+          "name": "Recovery 2",
+          "type": "endurance",
+          "description": "회복 조깅",
+          "targetDuration": 120,
+          "intensityZone": "Z2",
+          "targetHeartRate": 130,
+          "order": 3
+        },
+        {
+          "id": "block_main_5",
+          "name": "Interval 3: Fast",
+          "type": "endurance",
+          "description": "빠른 페이스",
+          "targetDuration": 300,
+          "intensityZone": "Z4",
+          "targetHeartRate": 170,
+          "order": 4
+        },
+        {
+          "id": "block_main_6",
+          "name": "Recovery 3",
+          "type": "endurance",
+          "description": "회복 조깅",
+          "targetDuration": 120,
+          "intensityZone": "Z2",
+          "targetHeartRate": 130,
+          "order": 5
+        },
+        {
+          "id": "block_main_7",
+          "name": "Interval 4: Fast",
+          "type": "endurance",
+          "description": "빠른 페이스",
+          "targetDuration": 300,
+          "intensityZone": "Z4",
+          "targetHeartRate": 170,
+          "order": 6
+        },
+        {
+          "id": "block_main_8",
+          "name": "Recovery 4",
+          "type": "endurance",
+          "description": "회복 조깅",
+          "targetDuration": 120,
+          "intensityZone": "Z2",
+          "targetHeartRate": 130,
+          "order": 7
+        },
+        {
+          "id": "block_main_9",
+          "name": "Interval 5: Fast",
+          "type": "endurance",
+          "description": "빠른 페이스",
+          "targetDuration": 300,
+          "intensityZone": "Z4",
+          "targetHeartRate": 170,
+          "order": 8
+        }
+      ]
+    },
+    {
+      "id": "phase_cooldown",
+      "name": "Cool-down",
+      "description": "충분한 쿨다운",
+      "order": 2,
+      "blocks": [
+        {
+          "id": "block_cooldown_1",
+          "name": "Easy Jog",
+          "type": "endurance",
+          "description": "천천히 조깅",
+          "targetDuration": 600,
+          "intensityZone": "Z1",
+          "targetHeartRate": 110,
+          "order": 0,
+          "notes": "10분간 천천히 회복합니다"
+        }
+      ]
+    }
+  ]
+}

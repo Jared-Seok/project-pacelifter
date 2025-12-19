@@ -1,0 +1,173 @@
+{
+  "id": "hybrid_hyrox_simulation",
+  "name": "Hyrox Simulation",
+  "category": "Hybrid",
+  "subCategory": "Hyrox",
+  "description": "하이록스 대회를 시뮬레이션하는 훈련입니다. 러닝과 기능성 운동을 번갈아 수행합니다.",
+  "imagePath": "assets/images/pllogo.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_warmup",
+      "name": "Warm-up",
+      "description": "전신 워밍업",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "block_warmup_1",
+          "name": "Dynamic Warm-up",
+          "type": "rest",
+          "description": "동적 워밍업",
+          "targetDuration": 600,
+          "order": 0,
+          "notes": "전신 관절 가동 및 동적 스트레칭 10분"
+        }
+      ]
+    },
+    {
+      "id": "phase_main",
+      "name": "Main Set",
+      "description": "하이록스 시뮬레이션 (축소 버전)",
+      "order": 1,
+      "blocks": [
+        {
+          "id": "block_main_1",
+          "name": "Run 1km",
+          "type": "endurance",
+          "description": "1km 달리기",
+          "targetDistance": 1000,
+          "intensityZone": "Z3",
+          "targetHeartRate": 155,
+          "order": 0,
+          "notes": "템포 페이스로 달리기"
+        },
+        {
+          "id": "block_main_2",
+          "name": "SkiErg 500m",
+          "type": "strength",
+          "description": "스키에르그 500m",
+          "exerciseId": "ex_ski_erg",
+          "reps": 500,
+          "weightType": "bodyweight",
+          "order": 1,
+          "notes": "목표: 2분 30초 이내"
+        },
+        {
+          "id": "block_main_3",
+          "name": "Run 1km",
+          "type": "endurance",
+          "description": "1km 달리기",
+          "targetDistance": 1000,
+          "intensityZone": "Z3",
+          "targetHeartRate": 160,
+          "order": 2
+        },
+        {
+          "id": "block_main_4",
+          "name": "Sled Push 25m",
+          "type": "strength",
+          "description": "슬레드 푸시 25m",
+          "exerciseId": "ex_sled_push",
+          "sets": 2,
+          "weight": 80,
+          "weightType": "fixed",
+          "restSeconds": 60,
+          "order": 3,
+          "notes": "왕복 2회 (50m 총 거리)"
+        },
+        {
+          "id": "block_main_5",
+          "name": "Run 1km",
+          "type": "endurance",
+          "description": "1km 달리기",
+          "targetDistance": 1000,
+          "intensityZone": "Z3",
+          "targetHeartRate": 165,
+          "order": 4
+        },
+        {
+          "id": "block_main_6",
+          "name": "Sled Pull 25m",
+          "type": "strength",
+          "description": "슬레드 풀 25m",
+          "exerciseId": "ex_sled_pull",
+          "sets": 2,
+          "weight": 60,
+          "weightType": "fixed",
+          "restSeconds": 60,
+          "order": 5,
+          "notes": "왕복 2회 (50m 총 거리)"
+        },
+        {
+          "id": "block_main_7",
+          "name": "Run 1km",
+          "type": "endurance",
+          "description": "1km 달리기",
+          "targetDistance": 1000,
+          "intensityZone": "Z3",
+          "targetHeartRate": 165,
+          "order": 6
+        },
+        {
+          "id": "block_main_8",
+          "name": "Burpee Broad Jumps",
+          "type": "strength",
+          "description": "버피 브로드 점프",
+          "exerciseId": "ex_burpee_broad_jump",
+          "reps": 40,
+          "weightType": "bodyweight",
+          "order": 7,
+          "notes": "40회 연속"
+        },
+        {
+          "id": "block_main_9",
+          "name": "Run 1km",
+          "type": "endurance",
+          "description": "1km 달리기",
+          "targetDistance": 1000,
+          "intensityZone": "Z3",
+          "targetHeartRate": 170,
+          "order": 8
+        },
+        {
+          "id": "block_main_10",
+          "name": "Rowing 500m",
+          "type": "strength",
+          "description": "로잉 500m",
+          "exerciseId": "ex_rowing_machine",
+          "reps": 500,
+          "weightType": "bodyweight",
+          "order": 9,
+          "notes": "목표: 2분 이내"
+        }
+      ]
+    },
+    {
+      "id": "phase_cooldown",
+      "name": "Cool-down",
+      "description": "충분한 회복",
+      "order": 2,
+      "blocks": [
+        {
+          "id": "block_cooldown_1",
+          "name": "Easy Walk",
+          "type": "endurance",
+          "description": "가벼운 걷기",
+          "targetDuration": 600,
+          "intensityZone": "Z1",
+          "order": 0,
+          "notes": "10분간 천천히 걷기"
+        },
+        {
+          "id": "block_cooldown_2",
+          "name": "Full Body Stretch",
+          "type": "rest",
+          "description": "전신 스트레칭",
+          "targetDuration": 600,
+          "order": 1,
+          "notes": "전신 정적 스트레칭 10분"
+        }
+      ]
+    }
+  ]
+}

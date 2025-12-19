@@ -313,11 +313,11 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
       final seconds = duration.inSeconds.remainder(60);
 
       if (hours > 0) {
-        return '${hours}시간 ${minutes}분';
+        return '$hours시간 $minutes분';
       } else if (minutes > 0) {
-        return '${minutes}분 ${seconds}초';
+        return '$minutes분 $seconds초';
       } else {
-        return '${seconds}초';
+        return '$seconds초';
       }
     }
 

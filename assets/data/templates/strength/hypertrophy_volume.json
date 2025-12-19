@@ -1,0 +1,161 @@
+{
+  "id": "strength_hypertrophy_volume",
+  "name": "Hypertrophy Volume",
+  "category": "Strength",
+  "subCategory": "Hypertrophy",
+  "description": "근비대를 목표로 하는 고볼륨 훈련 프로그램입니다. 중간 무게로 많은 반복수를 수행합니다.",
+  "imagePath": "assets/images/lifter-icon.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_warmup",
+      "name": "Warm-up",
+      "description": "근육 활성화 및 준비",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "block_warmup_1",
+          "name": "Light Cardio",
+          "type": "endurance",
+          "description": "가벼운 유산소",
+          "targetDuration": 300,
+          "intensityZone": "Z1",
+          "order": 0,
+          "notes": "자전거 또는 로잉 5분"
+        },
+        {
+          "id": "block_warmup_2",
+          "name": "Activation Exercises",
+          "type": "rest",
+          "description": "근육 활성화 운동",
+          "targetDuration": 300,
+          "order": 1,
+          "notes": "밴드 운동, 가벼운 덤벨로 타겟 근육 활성화"
+        }
+      ]
+    },
+    {
+      "id": "phase_main",
+      "name": "Main Set",
+      "description": "고볼륨 근비대 운동",
+      "order": 1,
+      "blocks": [
+        {
+          "id": "block_main_1",
+          "name": "Incline Barbell Bench Press",
+          "type": "strength",
+          "description": "인클라인 바벨 벤치 프레스",
+          "exerciseId": "ex_incline_barbell_press",
+          "sets": 4,
+          "reps": 12,
+          "weight": 50,
+          "weightType": "fixed",
+          "restSeconds": 90,
+          "order": 0,
+          "notes": "상부 가슴 집중. 12RM 무게 사용"
+        },
+        {
+          "id": "block_main_2",
+          "name": "Dumbbell Flyes",
+          "type": "strength",
+          "description": "덤벨 플라이",
+          "exerciseId": "ex_dumbbell_flyes",
+          "sets": 4,
+          "reps": 15,
+          "weight": 15,
+          "weightType": "fixed",
+          "restSeconds": 60,
+          "order": 1,
+          "notes": "가슴 스트레칭 집중. 천천히 수행"
+        },
+        {
+          "id": "block_main_3",
+          "name": "Cable Crossovers",
+          "type": "strength",
+          "description": "케이블 크로스오버",
+          "exerciseId": "ex_cable_crossover",
+          "sets": 3,
+          "reps": 15,
+          "weight": 20,
+          "weightType": "fixed",
+          "restSeconds": 60,
+          "order": 2,
+          "notes": "가슴 수축 느끼며 수행"
+        },
+        {
+          "id": "block_main_4",
+          "name": "Dumbbell Shoulder Press",
+          "type": "strength",
+          "description": "덤벨 숄더 프레스",
+          "exerciseId": "ex_dumbbell_shoulder_press",
+          "sets": 4,
+          "reps": 12,
+          "weight": 18,
+          "weightType": "fixed",
+          "restSeconds": 75,
+          "order": 3,
+          "notes": "어깨 전면과 측면 발달"
+        },
+        {
+          "id": "block_main_5",
+          "name": "Lateral Raises",
+          "type": "strength",
+          "description": "래터럴 레이즈",
+          "exerciseId": "ex_lateral_raises",
+          "sets": 4,
+          "reps": 15,
+          "weight": 10,
+          "weightType": "fixed",
+          "restSeconds": 45,
+          "order": 4,
+          "notes": "어깨 측면 고립. 가벼운 무게"
+        },
+        {
+          "id": "block_main_6",
+          "name": "Tricep Rope Pushdowns",
+          "type": "strength",
+          "description": "트라이셉 로프 푸시다운",
+          "exerciseId": "ex_tricep_pushdown",
+          "sets": 4,
+          "reps": 15,
+          "weight": 25,
+          "weightType": "fixed",
+          "restSeconds": 60,
+          "order": 5,
+          "notes": "삼두근 펌핑. 케이블 사용"
+        },
+        {
+          "id": "block_main_7",
+          "name": "Overhead Tricep Extension",
+          "type": "strength",
+          "description": "오버헤드 트라이셉 익스텐션",
+          "exerciseId": "ex_overhead_tricep_extension",
+          "sets": 3,
+          "reps": 12,
+          "weight": 20,
+          "weightType": "fixed",
+          "restSeconds": 60,
+          "order": 6,
+          "notes": "삼두근 장두 집중"
+        }
+      ]
+    },
+    {
+      "id": "phase_cooldown",
+      "name": "Cool-down",
+      "description": "근육 이완 및 스트레칭",
+      "order": 2,
+      "blocks": [
+        {
+          "id": "block_cooldown_1",
+          "name": "Static Stretch",
+          "type": "rest",
+          "description": "정적 스트레칭",
+          "targetDuration": 600,
+          "order": 0,
+          "notes": "훈련한 근육군 집중 스트레칭 10분"
+        }
+      ]
+    }
+  ]
+}

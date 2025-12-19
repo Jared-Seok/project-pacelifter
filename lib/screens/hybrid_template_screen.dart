@@ -4,21 +4,15 @@ import '../services/template_service.dart';
 import '../models/templates/workout_template.dart';
 import 'workout_setup_screen.dart';
 
-/// 환경별 세부 훈련 템플릿 선택 화면
-class EnduranceTemplateScreen extends StatefulWidget {
-  final String environmentType;
-
-  const EnduranceTemplateScreen({
-    super.key,
-    required this.environmentType,
-  });
+/// Hybrid 훈련 템플릿 선택 화면
+class HybridTemplateScreen extends StatefulWidget {
+  const HybridTemplateScreen({super.key});
 
   @override
-  State<EnduranceTemplateScreen> createState() =>
-      _EnduranceTemplateScreenState();
+  State<HybridTemplateScreen> createState() => _HybridTemplateScreenState();
 }
 
-class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
+class _HybridTemplateScreenState extends State<HybridTemplateScreen> {
   List<WorkoutTemplate> _templates = [];
   bool _isLoading = true;
 
@@ -30,9 +24,7 @@ class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
 
   Future<void> _loadTemplates() async {
     try {
-      final templates = TemplateService.getEnduranceTemplatesByEnvironment(
-        widget.environmentType,
-      );
+      final templates = TemplateService.getTemplatesByCategory('Hybrid');
 
       if (mounted) {
         setState(() {
@@ -57,7 +49,7 @@ class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        title: Text(widget.environmentType),
+        title: const Text('Hybrid'),
         backgroundColor: Theme.of(context).colorScheme.surface,
         foregroundColor: Theme.of(context).colorScheme.onSurface,
       ),
@@ -76,7 +68,7 @@ class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
                     Row(
                       children: [
                         SvgPicture.asset(
-                          'assets/images/runner-icon.svg',
+                          'assets/images/pllogo.svg',
                           width: 32,
                           height: 32,
                           colorFilter: ColorFilter.mode(
@@ -98,7 +90,7 @@ class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '${widget.environmentType} 환경에 맞는 훈련을 선택하세요',
+                      '근력과 지구력을 함께 향상시키는 하이브리드 훈련',
                       style: TextStyle(
                         fontSize: 14,
                         color: Theme.of(context)
@@ -198,7 +190,7 @@ class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: SvgPicture.asset(
-                'assets/images/runner-icon.svg',
+                'assets/images/pllogo.svg',
                 width: 24,
                 height: 24,
                 colorFilter: ColorFilter.mode(

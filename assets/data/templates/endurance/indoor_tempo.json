@@ -1,0 +1,70 @@
+{
+  "id": "endurance_indoor_tempo",
+  "name": "Indoor Tempo",
+  "category": "Endurance",
+  "environmentType": "Indoor",
+  "subCategory": "Tempo",
+  "description": "중간 강도로 일정한 페이스를 유지하는 템포 런입니다. 젖산 역치를 향상시킵니다.",
+  "imagePath": "assets/images/runner-icon.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_warmup",
+      "name": "Warm-up",
+      "description": "템포 런을 위한 준비",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "block_warmup_1",
+          "name": "Easy Jog",
+          "type": "endurance",
+          "description": "가벼운 조깅",
+          "targetDuration": 900,
+          "intensityZone": "Z1",
+          "targetHeartRate": 120,
+          "order": 0,
+          "notes": "15분간 천천히 몸을 풀어줍니다"
+        }
+      ]
+    },
+    {
+      "id": "phase_main",
+      "name": "Main Set",
+      "description": "편안하게 힘든 페이스로 달리기",
+      "order": 1,
+      "blocks": [
+        {
+          "id": "block_main_1",
+          "name": "Tempo Run",
+          "type": "endurance",
+          "description": "일정한 템포로 달리기",
+          "targetDistance": 5000,
+          "targetDuration": 1500,
+          "intensityZone": "Z3",
+          "targetHeartRate": 160,
+          "order": 0,
+          "notes": "하프 마라톤 레이스 페이스 수준. 힘들지만 대화는 가능한 정도입니다."
+        }
+      ]
+    },
+    {
+      "id": "phase_cooldown",
+      "name": "Cool-down",
+      "description": "쿨다운으로 마무리",
+      "order": 2,
+      "blocks": [
+        {
+          "id": "block_cooldown_1",
+          "name": "Easy Jog",
+          "type": "endurance",
+          "description": "천천히 조깅",
+          "targetDuration": 600,
+          "intensityZone": "Z1",
+          "targetHeartRate": 110,
+          "order": 0,
+          "notes": "10분간 천천히 회복합니다"
+        }
+      ]
+    }
+  ]
+}

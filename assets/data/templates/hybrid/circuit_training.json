@@ -1,0 +1,171 @@
+{
+  "id": "hybrid_circuit_training",
+  "name": "Circuit Training",
+  "category": "Hybrid",
+  "subCategory": "Circuit",
+  "description": "여러 운동을 연속으로 수행하는 서킷 트레이닝입니다. 근력과 심폐 능력을 동시에 향상시킵니다.",
+  "imagePath": "assets/images/pllogo.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_warmup",
+      "name": "Warm-up",
+      "description": "전신 워밍업",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "block_warmup_1",
+          "name": "Light Cardio",
+          "type": "endurance",
+          "description": "가벼운 유산소",
+          "targetDuration": 300,
+          "intensityZone": "Z2",
+          "order": 0,
+          "notes": "조깅, 자전거, 로잉 중 선택 5분"
+        },
+        {
+          "id": "block_warmup_2",
+          "name": "Dynamic Stretching",
+          "type": "rest",
+          "description": "동적 스트레칭",
+          "targetDuration": 300,
+          "order": 1,
+          "notes": "전신 관절 가동 5분"
+        }
+      ]
+    },
+    {
+      "id": "phase_main",
+      "name": "Main Set",
+      "description": "서킷 3라운드 (각 운동 45초 수행, 15초 휴식)",
+      "order": 1,
+      "blocks": [
+        {
+          "id": "block_main_1",
+          "name": "Station 1: Kettlebell Swings",
+          "type": "strength",
+          "description": "케틀벨 스윙",
+          "exerciseId": "ex_kettlebell_swing",
+          "targetDuration": 45,
+          "weight": 20,
+          "weightType": "fixed",
+          "restSeconds": 15,
+          "order": 0,
+          "notes": "45초간 최대 반복"
+        },
+        {
+          "id": "block_main_2",
+          "name": "Station 2: Push-ups",
+          "type": "strength",
+          "description": "푸시업",
+          "exerciseId": "ex_pushup",
+          "targetDuration": 45,
+          "weightType": "bodyweight",
+          "restSeconds": 15,
+          "order": 1,
+          "notes": "45초간 최대 반복"
+        },
+        {
+          "id": "block_main_3",
+          "name": "Station 3: Jump Squats",
+          "type": "strength",
+          "description": "점프 스쿼트",
+          "exerciseId": "ex_jump_squat",
+          "targetDuration": 45,
+          "weightType": "bodyweight",
+          "restSeconds": 15,
+          "order": 2,
+          "notes": "45초간 최대 반복"
+        },
+        {
+          "id": "block_main_4",
+          "name": "Station 4: Dumbbell Rows",
+          "type": "strength",
+          "description": "덤벨 로우",
+          "exerciseId": "ex_dumbbell_row",
+          "targetDuration": 45,
+          "weight": 20,
+          "weightType": "fixed",
+          "restSeconds": 15,
+          "order": 3,
+          "notes": "45초간 각 팔 교대로"
+        },
+        {
+          "id": "block_main_5",
+          "name": "Station 5: Mountain Climbers",
+          "type": "strength",
+          "description": "마운틴 클라이머",
+          "exerciseId": "ex_mountain_climber",
+          "targetDuration": 45,
+          "weightType": "bodyweight",
+          "restSeconds": 15,
+          "order": 4,
+          "notes": "45초간 최대 반복"
+        },
+        {
+          "id": "block_main_6",
+          "name": "Station 6: Battle Ropes",
+          "type": "strength",
+          "description": "배틀 로프",
+          "exerciseId": "ex_battle_ropes",
+          "targetDuration": 45,
+          "weightType": "bodyweight",
+          "restSeconds": 15,
+          "order": 5,
+          "notes": "45초간 파동 만들기"
+        },
+        {
+          "id": "block_main_7",
+          "name": "Station 7: Bicycle Crunches",
+          "type": "strength",
+          "description": "바이시클 크런치",
+          "exerciseId": "ex_bicycle_crunch",
+          "targetDuration": 45,
+          "weightType": "bodyweight",
+          "restSeconds": 15,
+          "order": 6,
+          "notes": "45초간 최대 반복"
+        },
+        {
+          "id": "block_main_8",
+          "name": "Station 8: Burpees",
+          "type": "strength",
+          "description": "버피",
+          "exerciseId": "ex_burpee",
+          "targetDuration": 45,
+          "weightType": "bodyweight",
+          "restSeconds": 180,
+          "order": 7,
+          "notes": "45초간 최대 반복. 라운드 간 3분 휴식"
+        }
+      ]
+    },
+    {
+      "id": "phase_cooldown",
+      "name": "Cool-down",
+      "description": "쿨다운 및 스트레칭",
+      "order": 2,
+      "blocks": [
+        {
+          "id": "block_cooldown_1",
+          "name": "Easy Walk",
+          "type": "endurance",
+          "description": "가벼운 걷기",
+          "targetDuration": 300,
+          "intensityZone": "Z1",
+          "order": 0,
+          "notes": "5분간 천천히 걷기"
+        },
+        {
+          "id": "block_cooldown_2",
+          "name": "Full Body Stretch",
+          "type": "rest",
+          "description": "전신 스트레칭",
+          "targetDuration": 600,
+          "order": 1,
+          "notes": "전신 정적 스트레칭 10분"
+        }
+      ]
+    }
+  ]
+}
