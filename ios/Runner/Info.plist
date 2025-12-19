@@ -30,12 +30,6 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>운동 기록을 이미지로 남기기 위해 카메라 권한이 필요합니다</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>운동 기록을 이미지로 공유하기 위해 사진 라이브러리 접근 권한이 필요합니다</string>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>운동 기록 이미지를 저장하기 위해 사진 라이브러리 저장 권한이 필요합니다</string>
-	<key>PHPhotoLibraryPreventAutomaticLimitedAccessAlert</key>
-	<true/>
 	<key>NSHealthClinicalHealthRecordsShareUsageDescription</key>
 	<string>운동 데이터를 기록하고 분석하기 위해 건강 데이터 기록 권한이 필요합니다.</string>
 	<key>NSHealthShareUsageDescription</key>
@@ -50,6 +44,12 @@
 	<string>러닝 중 경로를 기록하기 위해 위치 권한이 필요합니다</string>
 	<key>NSMotionUsageDescription</key>
 	<string>운동 동작을 추적하기 위해 모션 센서 접근이 필요합니다</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>운동 기록을 이미지로 공유하기 위해 사진 라이브러리 접근 권한이 필요합니다</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>운동 기록 이미지를 저장하기 위해 사진 라이브러리 저장 권한이 필요합니다</string>
+	<key>PHPhotoLibraryPreventAutomaticLimitedAccessAlert</key>
+	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UIBackgroundModes</key>

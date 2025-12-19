@@ -10,6 +10,7 @@ import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../widgets/grid_painter.dart';
 
 /// 운동 공유 화면
 class WorkoutShareScreen extends StatefulWidget {
@@ -68,6 +69,12 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
                   // 이미지 선택 섹션
                   _buildImageSection(),
                   const SizedBox(height: 24),
+
+                  // 비율 선택 섹션 (이미지 선택 후에만 표시)
+                  if (_selectedImage != null) ...[
+                    _buildAspectRatioSelection(),
+                    const SizedBox(height: 24),
+                  ],
 
                   // 레이아웃 선택 섹션
                   if (_selectedImage != null) ...[
@@ -136,19 +143,78 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
                 ),
               ],
             ),
-            if (_selectedImage != null) ...[
-              const SizedBox(height: 16),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.file(
-                  _selectedImage!,
-                  height: 200,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ],
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAspectRatioSelection() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '이미지 비율',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                _buildAspectRatioButton('Free', 'free'),
+                const SizedBox(width: 8),
+                _buildAspectRatioButton('1:1', '1:1'),
+                const SizedBox(width: 8),
+                _buildAspectRatioButton('4:3', '4:3'),
+                const SizedBox(width: 8),
+                _buildAspectRatioButton('16:9', '16:9'),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAspectRatioButton(String label, String ratio) {
+    final isSelected = _aspectRatio == ratio;
+    return Expanded(
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            _aspectRatio = ratio;
+          });
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? Theme.of(context).colorScheme.secondary
+                : Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isSelected
+                  ? Theme.of(context).colorScheme.secondary
+                  : Colors.grey.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: isSelected
+                    ? Theme.of(context).colorScheme.onSecondary
+                    : Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -165,28 +231,28 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
       {
         'value': 'minimal',
         'title': '미니멀',
-        'description': '핵심 지표',
+        'type': 'icon', // 타입 구분
         'icon': Icons.view_compact,
       },
       {
         'value': 'detailed',
         'title': '상세',
-        'description': '전체 통계',
+        'type': 'icon',
         'icon': Icons.view_headline,
       },
       if (isRunning)
         {
           'value': 'running',
           'title': '러닝',
-          'description': '러닝 전용',
-          'icon': Icons.directions_run,
+          'type': 'svg', // SVG 타입
+          'path': 'assets/images/runner-icon.svg',
         },
       if (isStrength)
         {
           'value': 'strength',
           'title': '근력',
-          'description': '근력 전용',
-          'icon': Icons.fitness_center,
+          'type': 'svg', // SVG로 변경 (통일성 위해)
+          'path': 'assets/images/lifter-icon.svg',
         },
     ];
 
@@ -204,76 +270,81 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            // 가로 스크롤 레이아웃 옵션
-            SizedBox(
-              height: 90,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: availableLayouts.length,
-                separatorBuilder: (context, index) => const SizedBox(width: 12),
-                itemBuilder: (context, index) {
-                  final layout = availableLayouts[index];
-                  final isSelected = _selectedLayout == layout['value'];
-
-                  return InkWell(
-                    onTap: () {
-                      setState(() {
-                        _selectedLayout = layout['value'] as String;
-                      });
-                    },
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      width: 100,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: isSelected
-                              ? Theme.of(context).colorScheme.secondary
-                              : Colors.grey.shade300,
-                          width: isSelected ? 2 : 1,
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                        color: isSelected
-                            ? Theme.of(context).colorScheme.secondary.withValues(alpha: 0.15)
-                            : Colors.grey.shade50,
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            layout['icon'] as IconData,
+            // Row with Expanded children to fill width
+            Row(
+              children: availableLayouts.asMap().entries.map((entry) {
+                final index = entry.key;
+                final layout = entry.value;
+                final isSelected = _selectedLayout == layout['value'];
+                
+                return Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      right: index < availableLayouts.length - 1 ? 8.0 : 0,
+                    ),
+                    child: InkWell(
+                      onTap: () {
+                        setState(() {
+                          _selectedLayout = layout['value'] as String;
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          border: Border.all(
                             color: isSelected
                                 ? Theme.of(context).colorScheme.secondary
-                                : Colors.grey.shade600,
-                            size: 32,
+                                : Colors.grey.shade300,
+                            width: isSelected ? 2 : 1,
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            layout['title'] as String,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: isSelected
-                                  ? Theme.of(context).colorScheme.secondary
-                                  : Colors.grey.shade800,
+                          borderRadius: BorderRadius.circular(12),
+                          color: isSelected
+                              ? Theme.of(context).colorScheme.secondary.withValues(alpha: 0.15)
+                              : Colors.grey.shade50,
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (layout['type'] == 'svg')
+                              SvgPicture.asset(
+                                layout['path'] as String,
+                                width: 28,
+                                height: 28,
+                                colorFilter: ColorFilter.mode(
+                                  isSelected
+                                      ? Theme.of(context).colorScheme.secondary
+                                      : Colors.grey.shade600,
+                                  BlendMode.srcIn,
+                                ),
+                              )
+                            else
+                              Icon(
+                                layout['icon'] as IconData,
+                                color: isSelected
+                                    ? Theme.of(context).colorScheme.secondary
+                                    : Colors.grey.shade600,
+                                size: 28,
+                              ),
+                            const SizedBox(height: 8),
+                            Text(
+                              layout['title'] as String,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: isSelected
+                                    ? Theme.of(context).colorScheme.secondary
+                                    : Colors.grey.shade800,
+                              ),
+                              textAlign: TextAlign.center,
                             ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            layout['description'] as String,
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.grey.shade600,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  );
-                },
-              ),
+                  ),
+                );
+              }).toList(),
             ),
           ],
         ),
@@ -289,7 +360,7 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              '미리보기',
+              '미리보기 (텍스트 드래그 가능)',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -306,110 +377,155 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
     );
   }
 
+  double _getAspectRatioValue() {
+    switch (_aspectRatio) {
+      case '1:1': return 1.0;
+      case '4:3': return 4.0 / 3.0;
+      case '16:9': return 16.0 / 9.0;
+      case 'free': 
+      default: return 1.0; // Default fallback, but handled by null check usually
+    }
+  }
+
   Widget _buildWorkoutOverlay() {
     final workout = widget.workoutData.value as WorkoutHealthValue;
     final workoutType = workout.workoutActivityType.name;
+    final isFreeRatio = _aspectRatio == 'free';
 
-    return SizedBox(
-      height: 500,
-      width: double.infinity,
-      child: Stack(
-        children: [
-          // 배경 이미지
-          if (_selectedImage != null)
-            Positioned.fill(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.file(
-                  _selectedImage!,
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-
-          // 그라데이션 오버레이
+    Widget content = Stack(
+      children: [
+        // 배경 이미지
+        if (_selectedImage != null)
           Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.3),
-                    Colors.black.withValues(alpha: 0.7),
-                  ],
-                ),
-              ),
+            child: Image.file(
+              _selectedImage!,
+              fit: BoxFit.cover,
             ),
           ),
 
-          // 로고 (좌측 상단 고정)
-          Positioned(
-            top: 24,
-            left: 24,
-            child: SvgPicture.asset(
-              'assets/images/pllogo.svg',
-              width: 40,
-              height: 40,
-              colorFilter: ColorFilter.mode(
-                Theme.of(context).colorScheme.secondary,
-                BlendMode.srcIn,
+        // 그라데이션 오버레이
+        Positioned.fill(
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.3),
+                  Colors.black.withValues(alpha: 0.7),
+                ],
               ),
             ),
           ),
+        ),
 
-          // 드래그 및 스케일 가능한 운동 정보
-          Positioned(
-            left: _contentPosition.dx * 500,
-            top: _contentPosition.dy * 500,
-            child: GestureDetector(
-              onScaleStart: (details) {
-                setState(() {
-                  _isDragging = true;
-                });
-              },
-              onScaleUpdate: (details) {
-                setState(() {
-                  // 스케일 업데이트 (0.5 ~ 2.0 범위로 제한)
-                  _contentScale = (_contentScale * details.scale).clamp(0.5, 2.0);
+        // 3x3 가이드라인 (드래그 중에만 표시)
+        if (_isDragging)
+          Positioned.fill(
+            child: CustomPaint(
+              painter: GridPainter(),
+            ),
+          ),
 
-                  // 위치 업데이트 (드래그)
-                  double newDx = (_contentPosition.dx * 500 + details.focalPointDelta.dx) / 500;
-                  double newDy = (_contentPosition.dy * 500 + details.focalPointDelta.dy) / 500;
+        // 로고 (좌측 상단 고정)
+        Positioned(
+          top: 24,
+          left: 24,
+          child: SvgPicture.asset(
+            'assets/images/pllogo.svg',
+            width: 40,
+            height: 40,
+            colorFilter: ColorFilter.mode(
+              Theme.of(context).colorScheme.secondary,
+              BlendMode.srcIn,
+            ),
+          ),
+        ),
 
-                  // 경계 제한
-                  newDx = newDx.clamp(0.0, 0.9);
-                  newDy = newDy.clamp(0.1, 0.9);
+        // 드래그 및 스케일 가능한 운동 정보
+        // GestureDetector를 Stack 전체를 덮도록 배치하여 터치 반응성 향상
+        Positioned.fill(
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent, // 투명 영역에서도 터치 감지
+            onScaleStart: (details) {
+              setState(() {
+                _isDragging = true;
+              });
+            },
+            onScaleUpdate: (details) {
+              setState(() {
+                // 스케일 업데이트 (0.5 ~ 2.0 범위로 제한)
+                _contentScale = (_contentScale * details.scale).clamp(0.5, 2.0);
 
-                  _contentPosition = Offset(newDx, newDy);
-                });
-              },
-              onScaleEnd: (_) {
-                setState(() {
-                  _isDragging = false;
-                });
-              },
-              child: Transform.scale(
-                scale: _contentScale,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: _isDragging
-                        ? Colors.white.withValues(alpha: 0.1)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(8),
-                    border: _isDragging
-                        ? Border.all(color: Colors.white.withValues(alpha: 0.5), width: 2)
-                        : null,
+                // 위치 업데이트 (드래그) - 500은 기준 높이
+                // 화면 전체에서의 이동을 상대 좌표로 변환
+                final renderBox = context.findRenderObject() as RenderBox?;
+                final size = renderBox?.size ?? Size(300, 300); // Fallback size
+                
+                double newDx = _contentPosition.dx + (details.focalPointDelta.dx / size.width);
+                double newDy = _contentPosition.dy + (details.focalPointDelta.dy / size.height);
+
+                // 경계 제한 (0.0 ~ 1.0)
+                newDx = newDx.clamp(0.0, 1.0);
+                newDy = newDy.clamp(0.0, 1.0);
+
+                _contentPosition = Offset(newDx, newDy);
+              });
+            },
+            onScaleEnd: (_) {
+              setState(() {
+                _isDragging = false;
+              });
+            },
+            child: Stack(
+              children: [
+                Align(
+                  alignment: FractionalOffset(_contentPosition.dx, _contentPosition.dy),
+                  child: Transform.scale(
+                    scale: _contentScale,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: _isDragging
+                            ? Colors.white.withValues(alpha: 0.1)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8),
+                        border: _isDragging
+                            ? Border.all(color: Colors.white.withValues(alpha: 0.5), width: 1)
+                            : null,
+                      ),
+                      child: IgnorePointer( // 텍스트 내부 터치 무시하고 부모 GestureDetector가 처리
+                        child: _buildLayoutContent(workoutType, workout),
+                      ),
+                    ),
                   ),
-                  child: _buildLayoutContent(workoutType, workout),
                 ),
-              ),
+              ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
+
+    // AspectRatio 위젯으로 감싸기 (Free 비율이 아닐 경우)
+    if (!isFreeRatio) {
+      return AspectRatio(
+        aspectRatio: _getAspectRatioValue(),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: content,
+        ),
+      );
+    } else {
+      // Free 비율일 경우 원본 이미지 비율 유지 또는 고정 높이
+      return SizedBox(
+        height: 400, // Free 모드 기본 높이
+        width: double.infinity,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: content,
+        ),
+      );
+    }
   }
 
   Widget _buildLayoutContent(String workoutType, WorkoutHealthValue workout) {
@@ -922,50 +1038,35 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
 
   Future<void> _pickImage(ImageSource source) async {
     try {
-      // iOS에서는 갤러리 접근 시 명시적으로 권한 요청
-      if (source == ImageSource.gallery && Platform.isIOS) {
-        final status = await Permission.photos.status;
-
-        // 권한이 거부되었거나 제한된 경우 권한 요청
-        if (status.isDenied || status.isPermanentlyDenied || status.isLimited) {
-          final result = await Permission.photos.request();
-
-          // 권한이 부여되지 않았거나 제한된 경우
-          if (!result.isGranted || result.isLimited) {
+      // iOS 카메라 접근 시 권한 확인
+      if (source == ImageSource.camera && Platform.isIOS) {
+        final status = await Permission.camera.status;
+        if (status.isDenied || status.isPermanentlyDenied) {
+          final result = await Permission.camera.request();
+          if (!result.isGranted) {
             if (mounted) {
-              // 기존 SnackBar 제거
-              ScaffoldMessenger.of(context).clearSnackBars();
-
-              // isLimited: "선택한 사진" 또는 "사진 추가만" 권한
-              // 전체 사진 라이브러리 접근을 위해서는 "모든 사진" 권한 필요
-              final message = result.isLimited
-                  ? '이미지 배경 선택을 위해 전체 사진 라이브러리 접근이 필요합니다.\n설정 > PaceLifter > 사진 > "모든 사진"을 선택해주세요.'
-                  : '사진 라이브러리 권한이 필요합니다. 설정에서 권한을 허용해주세요.';
-
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('사진 라이브러리 접근 권한 필요'),
-                  content: Text(message),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('취소'),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        openAppSettings();
-                      },
-                      child: const Text('설정 열기'),
-                    ),
-                  ],
-                ),
-              );
+              _showPermissionDialog('카메라 권한이 필요합니다. 설정에서 권한을 허용해주세요.');
             }
-
-            // 전체 접근 권한이 없으면 진행하지 않음
             return;
+          }
+        }
+      }
+      
+      // iOS 갤러리 접근 시 '전체 접근 권한' 요청 (사용자 요구사항)
+      if (source == ImageSource.gallery && Platform.isIOS) {
+        // Permission.photos는 iOS에서 전체 라이브러리 접근 권한을 의미함
+        var status = await Permission.photos.status;
+        
+        if (status.isDenied || status.isLimited || status.isPermanentlyDenied) {
+          // 권한이 없거나 제한된 경우 요청
+          final result = await Permission.photos.request();
+          
+          if (!result.isGranted && !result.isLimited) {
+             // 거부됨
+             if (mounted) {
+               _showPermissionDialog('사진 라이브러리 전체 접근 권한이 필요합니다.\n설정 > PaceLifter > 사진 > "모든 사진"을 선택해주세요.');
+             }
+             return;
           }
         }
       }
@@ -977,45 +1078,42 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
       );
 
       if (image != null) {
-        // 크롭 옵션 표시
-        await _showCropOptions(File(image.path));
+        setState(() {
+          _selectedImage = File(image.path);
+          // 이미지 변경 시 비율 초기화 또는 유지? 사용자가 선택하게 둠.
+          // 여기서는 일단 이미지만 교체.
+        });
       }
     } catch (e) {
-      // 권한 거부 또는 기타 오류 처리
       if (mounted) {
-        // 기존 SnackBar 제거
-        ScaffoldMessenger.of(context).clearSnackBars();
-
-        final errorMessage = e.toString().toLowerCase();
-
-        // 권한 관련 오류인지 확인
-        if (errorMessage.contains('permission') ||
-            errorMessage.contains('denied') ||
-            errorMessage.contains('authorization')) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                source == ImageSource.camera
-                    ? '카메라 권한이 거부되었습니다. 설정에서 권한을 허용해주세요.'
-                    : '사진 라이브러리 권한이 거부되었습니다. 설정에서 권한을 허용해주세요.',
-              ),
-              action: SnackBarAction(
-                label: '설정',
-                onPressed: () => openAppSettings(),
-              ),
-              duration: const Duration(seconds: 4),
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('이미지 선택 실패: $e'),
-              duration: const Duration(seconds: 3),
-            ),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('이미지 선택 실패: $e')),
+        );
       }
     }
+  }
+
+  void _showPermissionDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('권한 필요'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              openAppSettings();
+            },
+            child: const Text('설정 열기'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _showCropOptions(File imageFile) async {
@@ -1118,12 +1216,8 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
         );
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('이미지가 저장되었습니다')),
-          );
+          _showAdModal(); // 저장 완료 후 광고 모달 표시
         }
-
-        // TODO: 광고 표시 (나중에 추가)
       }
     } catch (e) {
       if (mounted) {
@@ -1155,12 +1249,19 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
         await file.writeAsBytes(imageBytes);
 
         // 공유
+        final box = context.findRenderObject() as RenderBox?;
+        
         await Share.shareXFiles(
           [XFile(file.path)],
           text: 'PaceLifter로 기록한 운동 🏃‍♂️💪',
+          sharePositionOrigin: box != null 
+              ? box.localToGlobal(Offset.zero) & box.size 
+              : null,
         );
 
-        // TODO: 광고 표시 (나중에 추가)
+        if (mounted) {
+          _showAdModal(); // 공유 완료 후 광고 모달 표시
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -1173,6 +1274,53 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
         _isProcessing = false;
       });
     }
+  }
+
+  void _showAdModal() {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // 광고는 강제로 닫아야 함 (선택 사항)
+      builder: (context) => AlertDialog(
+        title: const Text('공유 완료!'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.check_circle_outline,
+              color: Colors.green,
+              size: 64,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              '이미지 저장이 완료되었습니다.',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            Container(
+              width: double.infinity,
+              height: 150,
+              color: Colors.grey.shade200,
+              child: const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.ad_units, size: 48, color: Colors.grey),
+                    SizedBox(height: 8),
+                    Text('광고 영역', style: TextStyle(color: Colors.grey)),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('닫기'),
+          ),
+        ],
+      ),
+    );
   }
 
   bool _isStrengthWorkout(String type) {
