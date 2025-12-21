@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:async';
@@ -148,15 +149,15 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
       ),
       body: Column(
         children: [
-          // 1. 상단 섹션 (맵 또는 템플릿 정보)
+          // 1. 상단 섹션 (맵 또는 템플릿 정보) - 크기 축소 (flex 2)
           Expanded(
-            flex: _shouldShowMap() ? 3 : 2,
+            flex: 2,
             child: _shouldShowMap() ? _buildMapSection() : _buildTemplateInfoSection(),
           ),
           
-          // 2. 하단 섹션 (커스터마이징 및 목표 설정)
+          // 2. 하단 섹션 (커스터마이징 및 목표 설정) - 공간 확대 (flex 5)
           Expanded(
-            flex: 3,
+            flex: 5,
             child: Container(
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,
@@ -193,18 +194,40 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
           ),
         ],
       ),
-      floatingActionButton: _shouldShowMap() && _currentPosition == null
-          ? null // 위치 로딩 중이면 버튼 숨김 (맵이 있는 경우)
-          : FloatingActionButton.large(
-              onPressed: _startWorkout,
-              backgroundColor: Theme.of(context).colorScheme.secondary,
-              child: Icon(
-                Icons.play_arrow,
-                size: 48,
-                color: Theme.of(context).colorScheme.onSecondary,
-              ),
-            ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+          child: _shouldShowMap() && _currentPosition == null && _locationError == null
+              ? const SizedBox(
+                  height: 60,
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              : SizedBox(
+                  height: 60,
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _startWorkout,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.secondary,
+                      foregroundColor: Theme.of(context).colorScheme.onSecondary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 4,
+                    ),
+                    icon: const Icon(Icons.play_arrow, size: 28),
+                    label: const Text(
+                      '운동 시작',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ),
+                ),
+        ),
+      ),
     );
   }
 
@@ -212,14 +235,23 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
   Widget _buildMapSection() {
     if (_isLoadingLocation) {
       return Container(
-        color: Colors.grey[300],
+        color: Colors.grey[900],
         child: const Center(child: CircularProgressIndicator()),
       );
     }
     if (_locationError != null) {
       return Container(
-        color: Colors.grey[200],
-        child: Center(child: Text(_locationError!, textAlign: TextAlign.center)),
+        color: Colors.grey[900],
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Text(
+              _locationError!, 
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white70),
+            ),
+          ),
+        ),
       );
     }
     if (_currentPosition == null) {
@@ -242,34 +274,42 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
-      color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        border: Border(
+          bottom: BorderSide(
+            color: Theme.of(context).colorScheme.outlineVariant,
+            width: 1,
+          ),
+        ),
+      ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            _getIconForCategory(_editableTemplate.category),
-            size: 64,
+          _buildCategoryIcon(
+            _editableTemplate.category,
+            size: 48, // 크기 살짝 축소
             color: Theme.of(context).colorScheme.primary,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Text(
             _editableTemplate.description,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 14,
               color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           // 칩 형태로 태그 표시
           Wrap(
             spacing: 8,
             children: [
-              Chip(label: Text(_editableTemplate.category)),
+              _buildSmallChip(_editableTemplate.category),
               if (_editableTemplate.subCategory != null)
-                Chip(label: Text(_editableTemplate.subCategory!)),
+                _buildSmallChip(_editableTemplate.subCategory!),
               if (_editableTemplate.environmentType != null)
-                Chip(label: Text(_editableTemplate.environmentType!)),
+                _buildSmallChip(_editableTemplate.environmentType!),
             ],
           ),
         ],
@@ -277,23 +317,55 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     );
   }
 
-  IconData _getIconForCategory(String category) {
+  Widget _buildSmallChip(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          color: Theme.of(context).colorScheme.secondary,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryIcon(String category, {double size = 24, Color? color}) {
+    final effectiveColor = color ?? Theme.of(context).colorScheme.primary;
     switch (category) {
       case 'Endurance':
-        return Icons.directions_run;
+        return SvgPicture.asset(
+          'assets/images/runner-icon.svg',
+          width: size,
+          height: size,
+          colorFilter: ColorFilter.mode(effectiveColor, BlendMode.srcIn),
+        );
       case 'Strength':
-        return Icons.fitness_center;
+        return SvgPicture.asset(
+          'assets/images/lifter-icon.svg',
+          width: size,
+          height: size,
+          colorFilter: ColorFilter.mode(effectiveColor, BlendMode.srcIn),
+        );
       case 'Hybrid':
-        return Icons.layers;
+        return Icon(Icons.layers, size: size, color: effectiveColor);
       default:
-        return Icons.fitness_center;
+        return Icon(Icons.fitness_center, size: size, color: effectiveColor);
     }
   }
 
   // 탭 1: 세부 조정 (Phases & Blocks)
   Widget _buildCustomizationTab() {
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 80), // FAB 공간 확보
+      padding: const EdgeInsets.all(16), // Padding 축소 (하단 가림 없음)
       itemCount: _editableTemplate.phases.length,
       itemBuilder: (context, phaseIndex) {
         final phase = _editableTemplate.phases[phaseIndex];
@@ -321,8 +393,8 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2),
-        child: Icon(
-          _getIconForBlockType(block.type),
+        child: _buildBlockIcon(
+          block.type,
           size: 16,
           color: Theme.of(context).colorScheme.secondary,
         ),
@@ -336,11 +408,26 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     );
   }
 
-  IconData _getIconForBlockType(String type) {
-    if (type == 'strength') return Icons.fitness_center;
-    if (type == 'endurance') return Icons.directions_run;
-    if (type == 'rest') return Icons.timer;
-    return Icons.circle;
+  Widget _buildBlockIcon(String type, {double size = 24, Color? color}) {
+    final effectiveColor = color ?? Theme.of(context).colorScheme.secondary;
+    if (type == 'strength') {
+      return SvgPicture.asset(
+        'assets/images/lifter-icon.svg',
+        width: size,
+        height: size,
+        colorFilter: ColorFilter.mode(effectiveColor, BlendMode.srcIn),
+      );
+    }
+    if (type == 'endurance') {
+      return SvgPicture.asset(
+        'assets/images/runner-icon.svg',
+        width: size,
+        height: size,
+        colorFilter: ColorFilter.mode(effectiveColor, BlendMode.srcIn),
+      );
+    }
+    if (type == 'rest') return Icon(Icons.timer, size: size, color: effectiveColor);
+    return Icon(Icons.circle, size: size, color: effectiveColor);
   }
 
   String _getBlockSummary(TemplateBlock block) {

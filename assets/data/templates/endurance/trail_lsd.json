@@ -1,0 +1,69 @@
+{
+  "id": "endurance_trail_lsd",
+  "name": "Trail Long Run",
+  "category": "Endurance",
+  "environmentType": "Trail",
+  "subCategory": "LSD",
+  "description": "트레일 코스에서 진행하는 장거리 훈련입니다. 자연 지형을 즐기며 지구력을 기릅니다.",
+  "imagePath": "assets/images/trail-icon.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_warmup",
+      "name": "Warm-up",
+      "description": "지형 적응",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "block_warmup_1",
+          "name": "Trail Walk/Jog",
+          "type": "endurance",
+          "description": "지형을 파악하며 걷기 및 가벼운 조깅",
+          "targetDuration": 900,
+          "intensityZone": "Z1",
+          "targetHeartRate": 115,
+          "order": 0,
+          "notes": "발목을 풀어주고 코스 상태 확인"
+        }
+      ]
+    },
+    {
+      "id": "phase_main",
+      "name": "Main Set",
+      "description": "자연스러운 페이스의 장거리 러닝",
+      "order": 1,
+      "blocks": [
+        {
+          "id": "block_main_1",
+          "name": "Trail LSD",
+          "type": "endurance",
+          "description": "심박수 Z2-Z3 유지하며 러닝",
+          "targetDuration": 3600,
+          "intensityZone": "Z2",
+          "targetHeartRate": 140,
+          "order": 0,
+          "notes": "오르막에서는 보폭을 줄이고, 내리막은 부드럽게"
+        }
+      ]
+    },
+    {
+      "id": "phase_cooldown",
+      "name": "Cool-down",
+      "description": "스트레칭 및 쿨다운",
+      "order": 2,
+      "blocks": [
+        {
+          "id": "block_cooldown_1",
+          "name": "Cool-down Walk",
+          "type": "endurance",
+          "description": "천천히 걷기",
+          "targetDuration": 600,
+          "intensityZone": "Z1",
+          "targetHeartRate": 100,
+          "order": 0,
+          "notes": "호흡을 정리하고 근육 이완"
+        }
+      ]
+    }
+  ]
+}

@@ -9,7 +9,6 @@ import 'package:pacelifter/screens/hybrid_template_screen.dart';
 import 'package:pacelifter/models/templates/workout_template.dart';
 import 'package:pacelifter/models/templates/template_phase.dart';
 import 'package:pacelifter/models/templates/template_block.dart';
-import 'package:pacelifter/services/template_service.dart';
 
 // Mock TemplateService or ensure Hive is initialized
 void main() {

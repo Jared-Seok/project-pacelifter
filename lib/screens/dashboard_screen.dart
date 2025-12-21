@@ -13,6 +13,8 @@ import 'package:pacelifter/screens/race_list_screen.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:pacelifter/screens/workout_detail_screen.dart';
 import 'package:pacelifter/screens/workout_feed_screen.dart';
+import 'package:pacelifter/services/workout_history_service.dart';
+import 'package:pacelifter/models/sessions/workout_session.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -43,6 +45,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // 무한 스크롤 관련 변수
   String _currentVisibleMonth = '';
   final Map<String, GlobalKey> _monthKeyMap = {};
+  
+  Map<String, WorkoutSession> _sessionMap = {};
 
   @override
   void initState() {
@@ -51,6 +55,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _racePageController = PageController();
     _scrollController.addListener(_onScroll);
     _initialize();
+  }
+
+  void _loadSessions() {
+    final sessions = WorkoutHistoryService().getAllSessions();
+    final map = <String, WorkoutSession>{};
+    for (var session in sessions) {
+      if (session.healthKitWorkoutId != null) {
+        map[session.healthKitWorkoutId!] = session;
+      }
+    }
+    if (mounted) {
+      setState(() {
+        _sessionMap = map;
+      });
+    }
   }
 
   @override
@@ -197,6 +216,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _calculateStatistics();
             _isLoading = false;
           });
+          _loadSessions();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
                 content: Text('${workoutData.length}개의 운동 기록을 동기화했습니다!'),
@@ -1324,22 +1344,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final workoutCategory = _getWorkoutCategory(type);
     final color = _getCategoryColor(workoutCategory);
 
-    final String displayName;
-    final upperType = type.toUpperCase();
-    if (type == 'TRADITIONAL_STRENGTH_TRAINING') {
-      displayName = 'STRENGTH TRAINING';
-    } else if (type == 'CORE_TRAINING') {
-      displayName = 'CORE TRAINING';
-    } else if (upperType.contains('RUNNING')) {
-      displayName = 'RUNNING';
+    // 저장된 세션이 있는지 확인하고 표시 이름 결정
+    String displayName;
+    final session = _sessionMap[data.uuid];
+    
+    if (session != null) {
+      displayName = session.templateName; // 저장된 템플릿 이름 사용
     } else {
-      displayName = type;
+      final upperType = type.toUpperCase();
+      if (type == 'TRADITIONAL_STRENGTH_TRAINING') {
+        displayName = 'STRENGTH TRAINING';
+      } else if (type == 'CORE_TRAINING') {
+        displayName = 'CORE TRAINING';
+      } else if (upperType.contains('RUNNING')) {
+        displayName = 'RUNNING';
+      } else {
+        displayName = type;
+      }
     }
 
     final Color backgroundColor;
     final Color iconColor;
 
     // CORE TRAINING: secondary color 아이콘, primary color 배경 (Strength와 동일)
+    final upperType = type.toUpperCase();
     if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
       backgroundColor = Theme.of(context).colorScheme.primary.withValues(alpha: 0.2);
       iconColor = Theme.of(context).colorScheme.secondary;
@@ -1370,12 +1398,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
           key: isFirstOfMonth && monthKey == _currentVisibleMonth ? _monthKeyMap[monthKey] : null,
           margin: const EdgeInsets.only(bottom: 12),
           child: ListTile(
-            onTap: () {
-              Navigator.of(context).push(
+            onTap: () async {
+              await Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (context) => WorkoutDetailScreen(workoutData: data),
                 ),
               );
+              // 돌아왔을 때 세션 정보 새로고침
+              _loadSessions();
             },
             leading: Container(
               padding: const EdgeInsets.all(8),
@@ -1383,11 +1413,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 color: backgroundColor,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: _getWorkoutIconWidget(type, iconColor),
+              child: _getWorkoutIconWidget(type, iconColor, environmentType: session?.environmentType),
             ),
             title: Text(displayName,
                 style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text(DateFormat('yyyy-MM-dd').format(data.dateFrom)),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(DateFormat('yyyy-MM-dd').format(data.dateFrom)),
+                if (session != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6.0),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.5),
+                          width: 0.5,
+                        ),
+                      ),
+                      child: Text(
+                        session.templateName,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Theme.of(context).colorScheme.secondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
             trailing: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.end,
@@ -1439,10 +1497,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Widget _getWorkoutIconWidget(String type, Color color) {
+  Widget _getWorkoutIconWidget(String type, Color color, {String? environmentType}) {
     final upperType = type.toUpperCase();
     String iconPath;
     double iconSize = 24;
+
+    // 트레일 러닝 환경이면 트레일 아이콘 우선 사용
+    if (environmentType == 'Trail') {
+      return SvgPicture.asset(
+        'assets/images/trail-icon.svg',
+        width: iconSize,
+        height: iconSize,
+        colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+      );
+    }
 
     if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
       iconPath = 'assets/images/core-icon.svg';

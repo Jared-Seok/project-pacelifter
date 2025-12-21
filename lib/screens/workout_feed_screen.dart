@@ -4,6 +4,10 @@ import 'package:intl/intl.dart';
 import 'package:pacelifter/screens/workout_detail_screen.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:pacelifter/models/time_period.dart';
+import 'package:pacelifter/services/workout_history_service.dart';
+import 'package:pacelifter/models/sessions/workout_session.dart';
+import 'package:pacelifter/models/templates/workout_template.dart';
+import 'package:pacelifter/services/template_service.dart';
 
 class WorkoutFeedScreen extends StatefulWidget {
   final List<HealthDataPoint> workoutData;
@@ -25,6 +29,29 @@ class WorkoutFeedScreen extends StatefulWidget {
 
 class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
   bool _showTotalTime = false; // false: 총 거리, true: 총 시간
+  Map<String, WorkoutSession> _sessionMap = {};
+  String _filterType = 'All'; // 'All', 'Set', 'Unset'
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSessions();
+  }
+
+  void _loadSessions() {
+    final sessions = WorkoutHistoryService().getAllSessions();
+    final map = <String, WorkoutSession>{};
+    for (var session in sessions) {
+      if (session.healthKitWorkoutId != null) {
+        map[session.healthKitWorkoutId!] = session;
+      }
+    }
+    if (mounted) {
+      setState(() {
+        _sessionMap = map;
+      });
+    }
+  }
 
   String get periodTitle {
     // 레이스 이름이 있으면 레이스 이름 사용, 없으면 기간 표시
@@ -74,8 +101,18 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
     }
   }
 
-  Widget _getWorkoutIconWidget(String type, Color color, {double iconSize = 24}) {
+  Widget _getWorkoutIconWidget(String type, Color color, {double iconSize = 24, String? environmentType}) {
     final upperType = type.toUpperCase();
+
+    // 트레일 러닝 환경이면 트레일 아이콘 우선 사용
+    if (environmentType == 'Trail') {
+      return SvgPicture.asset(
+        'assets/images/trail-icon.svg',
+        width: iconSize,
+        height: iconSize,
+        colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+      );
+    }
 
     if (upperType.contains('RUNNING') ||
         upperType.contains('WALKING') ||
@@ -113,7 +150,16 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Calculate statistics
+    // 필터링된 데이터 생성
+    final filteredData = widget.workoutData.where((data) {
+      if (_filterType == 'All') return true;
+      final hasSession = _sessionMap.containsKey(data.uuid);
+      if (_filterType == 'Set') return hasSession;
+      if (_filterType == 'Unset') return !hasSession;
+      return true;
+    }).toList();
+
+    // Calculate statistics (filtered 기준이 아닌 전체 기준 유지 권장 혹은 필터 기준 선택 가능)
     int strengthCount = 0;
     int enduranceCount = 0;
     double totalDistance = 0.0;
@@ -372,22 +418,30 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
     final workoutCategory = _getWorkoutCategory(type);
     final color = _getCategoryColor(workoutCategory, context);
 
-    final String displayName;
-    final upperType = type.toUpperCase();
-    if (type == 'TRADITIONAL_STRENGTH_TRAINING') {
-      displayName = 'STRENGTH TRAINING';
-    } else if (type == 'CORE_TRAINING') {
-      displayName = 'CORE TRAINING';
-    } else if (upperType.contains('RUNNING')) {
-      displayName = 'RUNNING';
+    // 저장된 세션이 있는지 확인하고 표시 이름 결정
+    String displayName;
+    final session = _sessionMap[data.uuid];
+    
+    if (session != null) {
+      displayName = session.templateName; // 저장된 템플릿 이름 사용
     } else {
-      displayName = type;
+      final upperType = type.toUpperCase();
+      if (type == 'TRADITIONAL_STRENGTH_TRAINING') {
+        displayName = 'STRENGTH TRAINING';
+      } else if (type == 'CORE_TRAINING') {
+        displayName = 'CORE TRAINING';
+      } else if (upperType.contains('RUNNING')) {
+        displayName = 'RUNNING';
+      } else {
+        displayName = type;
+      }
     }
 
     final Color backgroundColor;
     final Color iconColor;
 
     // CORE TRAINING: secondary color 아이콘, primary color 배경 (Strength와 동일)
+    final upperType = type.toUpperCase();
     if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
       backgroundColor = Theme.of(context).colorScheme.primary.withValues(alpha: 0.2);
       iconColor = Theme.of(context).colorScheme.secondary;
@@ -406,16 +460,47 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
             ),
           );
         },
+        onLongPress: () {
+          _showTemplateSelectionDialog(context, data);
+        },
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: backgroundColor,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: _getWorkoutIconWidget(type, iconColor),
+          child: _getWorkoutIconWidget(type, iconColor, environmentType: session?.environmentType),
         ),
         title: Text(displayName, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(DateFormat('yyyy-MM-dd').format(data.dateFrom)),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(DateFormat('yyyy-MM-dd HH:mm').format(data.dateFrom)),
+            if (session != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 6.0),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.5),
+                      width: 0.5,
+                    ),
+                  ),
+                  child: Text(
+                    session.templateName,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Theme.of(context).colorScheme.secondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
         trailing: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.end,
@@ -429,6 +514,88 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showTemplateSelectionDialog(BuildContext context, HealthDataPoint data) {
+    final workout = data.value as WorkoutHealthValue;
+    final type = workout.workoutActivityType.name;
+    final category = _getWorkoutCategory(type);
+    
+    // 해당 카테고리의 템플릿만 로드 (없으면 전체 로드)
+    final templates = TemplateService.getTemplatesByCategory(category);
+    if (templates.isEmpty) {
+      templates.addAll(TemplateService.getAllTemplates());
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.7,
+          minChildSize: 0.5,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (context, scrollController) {
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text(
+                    '템플릿 설정',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    controller: scrollController,
+                    itemCount: templates.length,
+                    itemBuilder: (context, index) {
+                      final template = templates[index];
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
+                          child: Icon(Icons.bookmark_border, color: Theme.of(context).colorScheme.secondary),
+                        ),
+                        title: Text(template.name),
+                        subtitle: Text(template.description, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        onTap: () async {
+                          // 템플릿 연결
+                          await WorkoutHistoryService().linkTemplateToWorkout(
+                            healthKitId: data.uuid,
+                            template: template,
+                            startTime: data.dateFrom,
+                            endTime: data.dateTo,
+                            totalDistance: (workout.totalDistance ?? 0).toDouble(),
+                            calories: (workout.totalEnergyBurned ?? 0).toDouble(),
+                          );
+                          
+                          if (mounted) {
+                            Navigator.pop(context);
+                            _loadSessions(); // 목록 새로고침
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('${template.name} 템플릿으로 설정되었습니다.')),
+                            );
+                          }
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

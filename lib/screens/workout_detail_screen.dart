@@ -6,6 +6,10 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:pacelifter/services/health_service.dart';
 import 'package:pacelifter/services/healthkit_bridge_service.dart';
 import 'package:pacelifter/screens/workout_share_screen.dart';
+import 'package:pacelifter/services/workout_history_service.dart';
+import 'package:pacelifter/models/sessions/workout_session.dart';
+import 'package:pacelifter/services/template_service.dart';
+import 'package:pacelifter/models/templates/workout_template.dart';
 import 'dart:math';
 
 /// 운동 세부 정보 화면
@@ -42,6 +46,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   // 차트 인터랙션 동기화를 위한 공유 상태
   double? _touchedTimestamp; // 현재 터치된 지점의 x축 값 (초 단위)
 
+  WorkoutSession? _session;
+
   @override
   void initState() {
     super.initState();
@@ -49,12 +55,24 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   }
 
   Future<void> _initializeData() async {
+    // Fetch linked session
+    _fetchLinkedSession();
+
     // Fetch native duration first to ensure accurate pace calculation
     await _fetchNativeDuration();
 
     // Then fetch heart rate and pace data
     _fetchHeartRateData();
     _fetchPaceData();
+  }
+
+  void _fetchLinkedSession() {
+    final session = WorkoutHistoryService().getSessionByHealthKitId(widget.workoutData.uuid);
+    if (mounted) {
+      setState(() {
+        _session = session;
+      });
+    }
   }
 
   Future<void> _fetchHeartRateData() async {
@@ -321,6 +339,88 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     return pacePoints;
   }
 
+  void _showTemplateSelectionDialog(BuildContext context) {
+    final workout = widget.workoutData.value as WorkoutHealthValue;
+    final type = workout.workoutActivityType.name;
+    final category = _getWorkoutCategory(type);
+    
+    // 해당 카테고리의 템플릿만 로드 (없으면 전체 로드)
+    final templates = TemplateService.getTemplatesByCategory(category);
+    if (templates.isEmpty) {
+      templates.addAll(TemplateService.getAllTemplates());
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.7,
+          minChildSize: 0.5,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (context, scrollController) {
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text(
+                    '템플릿 설정',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    controller: scrollController,
+                    itemCount: templates.length,
+                    itemBuilder: (context, index) {
+                      final template = templates[index];
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
+                          child: Icon(Icons.bookmark_border, color: Theme.of(context).colorScheme.secondary),
+                        ),
+                        title: Text(template.name),
+                        subtitle: Text(template.description, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        onTap: () async {
+                          // 템플릿 연결
+                          await WorkoutHistoryService().linkTemplateToWorkout(
+                            healthKitId: widget.workoutData.uuid,
+                            template: template,
+                            startTime: widget.workoutData.dateFrom,
+                            endTime: widget.workoutData.dateTo,
+                            totalDistance: (workout.totalDistance ?? 0).toDouble(),
+                            calories: (workout.totalEnergyBurned ?? 0).toDouble(),
+                          );
+                          
+                          if (mounted) {
+                            Navigator.pop(context);
+                            _fetchLinkedSession(); // 세션 정보 새로고침
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('${template.name} 템플릿으로 설정되었습니다.')),
+                            );
+                          }
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final workout = widget.workoutData.value as WorkoutHealthValue;
@@ -392,6 +492,51 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                           ),
                         ),
                       ),
+                      const SizedBox(height: 16),
+                      // 템플릿 설정/표시 버튼
+                      InkWell(
+                        onTap: () => _showTemplateSelectionDialog(context),
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+                            ),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.bookmark_border,
+                                size: 18,
+                                color: _session != null ? color : Colors.grey,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _session != null 
+                                  ? _session!.templateName 
+                                  : '템플릿 설정하기',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: _session != null ? FontWeight.bold : FontWeight.normal,
+                                  color: _session != null ? color : Colors.grey,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.arrow_drop_down,
+                                size: 20,
+                                color: _session != null ? color : Colors.grey,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -405,6 +550,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+
                     const Text(
                       '운동 데이터',
                       style: TextStyle(

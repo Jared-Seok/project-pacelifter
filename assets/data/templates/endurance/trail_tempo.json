@@ -1,0 +1,69 @@
+{
+  "id": "endurance_trail_tempo",
+  "name": "Trail Tempo",
+  "category": "Endurance",
+  "environmentType": "Trail",
+  "subCategory": "Tempo",
+  "description": "트레일에서 일정한 강도를 유지하는 훈련입니다. 지형 변화에 맞춰 노력을 일정하게 유지하는 것이 목표입니다.",
+  "imagePath": "assets/images/trail-icon.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_warmup",
+      "name": "Warm-up",
+      "description": "트레일 진입 전 웜업",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "block_warmup_1",
+          "name": "Approach Run",
+          "type": "endurance",
+          "description": "트레일 입구까지 가벼운 러닝",
+          "targetDuration": 900,
+          "intensityZone": "Z1",
+          "targetHeartRate": 125,
+          "order": 0,
+          "notes": "평지에서 시작하여 서서히 산길로 진입"
+        }
+      ]
+    },
+    {
+      "id": "phase_main",
+      "name": "Main Set",
+      "description": "노력 지속주 (Effort-based Tempo)",
+      "order": 1,
+      "blocks": [
+        {
+          "id": "block_main_1",
+          "name": "Trail Tempo",
+          "type": "endurance",
+          "description": "속도가 아닌 노력(Effort)을 Z3-Z4로 유지",
+          "targetDuration": 1800,
+          "intensityZone": "Z3",
+          "targetHeartRate": 160,
+          "order": 0,
+          "notes": "오르막에서도 숨이 차지만 대화가 간신히 가능한 강도 유지"
+        }
+      ]
+    },
+    {
+      "id": "phase_cooldown",
+      "name": "Cool-down",
+      "description": "하산 및 쿨다운",
+      "order": 2,
+      "blocks": [
+        {
+          "id": "block_cooldown_1",
+          "name": "Easy Descent",
+          "type": "endurance",
+          "description": "부드러운 하산 조깅",
+          "targetDuration": 600,
+          "intensityZone": "Z1",
+          "targetHeartRate": 110,
+          "order": 0,
+          "notes": "무릎 충격에 주의하며 천천히 내려오기"
+        }
+      ]
+    }
+  ]
+}

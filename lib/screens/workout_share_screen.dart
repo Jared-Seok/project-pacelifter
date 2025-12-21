@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui' as ui; // 추가
 import 'package:flutter/material.dart';
 import 'package:health/health.dart';
 import 'package:image_picker/image_picker.dart';
@@ -42,11 +43,17 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
   File? _selectedImage;
   String _selectedLayout = 'minimal';
   String _aspectRatio = 'free'; // 'free', '1:1', '4:3', '16:9'
+  double _imageAspectRatio = 1.0; // 실제 이미지 비율 저장
   bool _isProcessing = false;
 
   // 드래그 가능한 레이아웃 위치 및 크기
   Offset _contentPosition = const Offset(0.5, 0.75); // 중앙 하단
   double _contentScale = 1.0; // 크기 배율 (0.5 ~ 2.0)
+  
+  // 제스처 기준점 저장용
+  Offset _basePosition = const Offset(0.5, 0.75);
+  double _baseScale = 1.0;
+  
   bool _isDragging = false;
 
   @override
@@ -69,12 +76,6 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
                   // 이미지 선택 섹션
                   _buildImageSection(),
                   const SizedBox(height: 24),
-
-                  // 비율 선택 섹션 (이미지 선택 후에만 표시)
-                  if (_selectedImage != null) ...[
-                    _buildAspectRatioSelection(),
-                    const SizedBox(height: 24),
-                  ],
 
                   // 레이아웃 선택 섹션
                   if (_selectedImage != null) ...[
@@ -144,77 +145,6 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
               ],
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAspectRatioSelection() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '이미지 비율',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _buildAspectRatioButton('Free', 'free'),
-                const SizedBox(width: 8),
-                _buildAspectRatioButton('1:1', '1:1'),
-                const SizedBox(width: 8),
-                _buildAspectRatioButton('4:3', '4:3'),
-                const SizedBox(width: 8),
-                _buildAspectRatioButton('16:9', '16:9'),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAspectRatioButton(String label, String ratio) {
-    final isSelected = _aspectRatio == ratio;
-    return Expanded(
-      child: InkWell(
-        onTap: () {
-          setState(() {
-            _aspectRatio = ratio;
-          });
-        },
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? Theme.of(context).colorScheme.secondary
-                : Theme.of(context).colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isSelected
-                  ? Theme.of(context).colorScheme.secondary
-                  : Colors.grey.withValues(alpha: 0.3),
-            ),
-          ),
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: isSelected
-                    ? Theme.of(context).colorScheme.onSecondary
-                    : Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
-          ),
         ),
       ),
     );
@@ -377,155 +307,132 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
     );
   }
 
-  double _getAspectRatioValue() {
-    switch (_aspectRatio) {
-      case '1:1': return 1.0;
-      case '4:3': return 4.0 / 3.0;
-      case '16:9': return 16.0 / 9.0;
-      case 'free': 
-      default: return 1.0; // Default fallback, but handled by null check usually
-    }
-  }
-
   Widget _buildWorkoutOverlay() {
     final workout = widget.workoutData.value as WorkoutHealthValue;
     final workoutType = workout.workoutActivityType.name;
-    final isFreeRatio = _aspectRatio == 'free';
 
-    Widget content = Stack(
-      children: [
-        // 배경 이미지
-        if (_selectedImage != null)
-          Positioned.fill(
-            child: Image.file(
-              _selectedImage!,
-              fit: BoxFit.cover,
-            ),
-          ),
+    if (_selectedImage == null) return const SizedBox.shrink();
 
-        // 그라데이션 오버레이
-        Positioned.fill(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // 이미지 비율에 따라 높이 계산 (최대 500)
+        final maxWidth = constraints.maxWidth;
+        double calculatedHeight = maxWidth / _imageAspectRatio;
+        
+        // 너무 길어지는 경우 대비하여 제한 (옵션)
+        if (calculatedHeight > 600) {
+          calculatedHeight = 600;
+        }
+
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(12),
           child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withValues(alpha: 0.3),
-                  Colors.black.withValues(alpha: 0.7),
-                ],
-              ),
-            ),
-          ),
-        ),
-
-        // 3x3 가이드라인 (드래그 중에만 표시)
-        if (_isDragging)
-          Positioned.fill(
-            child: CustomPaint(
-              painter: GridPainter(),
-            ),
-          ),
-
-        // 로고 (좌측 상단 고정)
-        Positioned(
-          top: 24,
-          left: 24,
-          child: SvgPicture.asset(
-            'assets/images/pllogo.svg',
-            width: 40,
-            height: 40,
-            colorFilter: ColorFilter.mode(
-              Theme.of(context).colorScheme.secondary,
-              BlendMode.srcIn,
-            ),
-          ),
-        ),
-
-        // 드래그 및 스케일 가능한 운동 정보
-        // GestureDetector를 Stack 전체를 덮도록 배치하여 터치 반응성 향상
-        Positioned.fill(
-          child: GestureDetector(
-            behavior: HitTestBehavior.translucent, // 투명 영역에서도 터치 감지
-            onScaleStart: (details) {
-              setState(() {
-                _isDragging = true;
-              });
-            },
-            onScaleUpdate: (details) {
-              setState(() {
-                // 스케일 업데이트 (0.5 ~ 2.0 범위로 제한)
-                _contentScale = (_contentScale * details.scale).clamp(0.5, 2.0);
-
-                // 위치 업데이트 (드래그) - 500은 기준 높이
-                // 화면 전체에서의 이동을 상대 좌표로 변환
-                final renderBox = context.findRenderObject() as RenderBox?;
-                final size = renderBox?.size ?? Size(300, 300); // Fallback size
-                
-                double newDx = _contentPosition.dx + (details.focalPointDelta.dx / size.width);
-                double newDy = _contentPosition.dy + (details.focalPointDelta.dy / size.height);
-
-                // 경계 제한 (0.0 ~ 1.0)
-                newDx = newDx.clamp(0.0, 1.0);
-                newDy = newDy.clamp(0.0, 1.0);
-
-                _contentPosition = Offset(newDx, newDy);
-              });
-            },
-            onScaleEnd: (_) {
-              setState(() {
-                _isDragging = false;
-              });
-            },
+            width: maxWidth,
+            height: calculatedHeight,
+            color: Colors.black,
             child: Stack(
               children: [
-                Align(
-                  alignment: FractionalOffset(_contentPosition.dx, _contentPosition.dy),
-                  child: Transform.scale(
-                    scale: _contentScale,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: _isDragging
-                            ? Colors.white.withValues(alpha: 0.1)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(8),
-                        border: _isDragging
-                            ? Border.all(color: Colors.white.withValues(alpha: 0.5), width: 1)
-                            : null,
+                // 배경 이미지 (크롭된 비율에 딱 맞게 채움)
+                Positioned.fill(
+                  child: Image.file(
+                    _selectedImage!,
+                    fit: BoxFit.cover, 
+                  ),
+                ),
+
+                // 그라데이션 오버레이
+                Positioned.fill(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.3),
+                          Colors.black.withValues(alpha: 0.7),
+                        ],
                       ),
-                      child: IgnorePointer( // 텍스트 내부 터치 무시하고 부모 GestureDetector가 처리
-                        child: _buildLayoutContent(workoutType, workout),
-                      ),
+                    ),
+                  ),
+                ),
+
+                // 3x3 가이드라인
+                if (_isDragging)
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: GridPainter(),
+                    ),
+                  ),
+
+                // 로고
+                Positioned(
+                  top: 20,
+                  left: 20,
+                  child: SvgPicture.asset(
+                    'assets/images/pllogo.svg',
+                    width: 32,
+                    height: 32,
+                    colorFilter: ColorFilter.mode(
+                      Theme.of(context).colorScheme.secondary,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                ),
+
+                // 드래그 가능한 운동 정보
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onScaleStart: (details) {
+                      setState(() {
+                        _isDragging = true;
+                        _baseScale = _contentScale;
+                        _basePosition = _contentPosition;
+                      });
+                    },
+                    onScaleUpdate: (details) {
+                      setState(() {
+                        // 1. 배율 업데이트 (시작 배율 기준으로 곱함 - 부드러운 확대/축소)
+                        _contentScale = (_baseScale * details.scale).clamp(0.5, 2.5);
+                        
+                        // 2. 위치 업데이트 (이전 프레임 대비 변화량을 현재 위치에 더함 - 1:1 반응)
+                        // focalPointDelta는 이전 업데이트 이후의 변화량을 제공하므로 현재 위치에 바로 더하면 손가락을 정확히 따라옵니다.
+                        double newDx = _contentPosition.dx + (details.focalPointDelta.dx / maxWidth);
+                        double newDy = _contentPosition.dy + (details.focalPointDelta.dy / calculatedHeight);
+
+                        _contentPosition = Offset(
+                          newDx.clamp(0.0, 1.0),
+                          newDy.clamp(0.0, 1.0),
+                        );
+                      });
+                    },
+                    onScaleEnd: (_) {
+                      setState(() => _isDragging = false);
+                    },
+                    child: Stack(
+                      children: [
+                        Align(
+                          alignment: FractionalOffset(_contentPosition.dx, _contentPosition.dy),
+                          child: Transform.scale(
+                            scale: _contentScale,
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              child: IgnorePointer(
+                                child: _buildLayoutContent(workoutType, workout),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ],
             ),
           ),
-        ),
-      ],
+        );
+      },
     );
-
-    // AspectRatio 위젯으로 감싸기 (Free 비율이 아닐 경우)
-    if (!isFreeRatio) {
-      return AspectRatio(
-        aspectRatio: _getAspectRatioValue(),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: content,
-        ),
-      );
-    } else {
-      // Free 비율일 경우 원본 이미지 비율 유지 또는 고정 높이
-      return SizedBox(
-        height: 400, // Free 모드 기본 높이
-        width: double.infinity,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: content,
-        ),
-      );
-    }
   }
 
   Widget _buildLayoutContent(String workoutType, WorkoutHealthValue workout) {
@@ -1078,11 +985,8 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
       );
 
       if (image != null) {
-        setState(() {
-          _selectedImage = File(image.path);
-          // 이미지 변경 시 비율 초기화 또는 유지? 사용자가 선택하게 둠.
-          // 여기서는 일단 이미지만 교체.
-        });
+        // 즉시 크롭 화면으로 이동 (아이폰 기본 스타일)
+        await _cropImage(File(image.path));
       }
     } catch (e) {
       if (mounted) {
@@ -1116,89 +1020,55 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
     );
   }
 
-  Future<void> _showCropOptions(File imageFile) async {
-    final selectedRatio = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('이미지 비율 선택'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildCropOption(context, '자유 비율', 'free'),
-            _buildCropOption(context, '정사각형 (1:1)', '1:1'),
-            _buildCropOption(context, '가로형 (4:3)', '4:3'),
-            _buildCropOption(context, '와이드 (16:9)', '16:9'),
-          ],
-        ),
-      ),
-    );
-
-    if (selectedRatio != null) {
-      setState(() {
-        _aspectRatio = selectedRatio;
-      });
-
-      if (selectedRatio == 'free') {
-        // 자유 비율은 크롭 없이 사용
-        setState(() {
-          _selectedImage = imageFile;
-        });
-      } else {
-        // 선택한 비율로 크롭
-        await _cropImage(imageFile, selectedRatio);
-      }
-    }
-  }
-
-  Widget _buildCropOption(BuildContext context, String title, String value) {
-    return ListTile(
-      title: Text(title),
-      onTap: () => Navigator.pop(context, value),
-    );
-  }
-
-  Future<void> _cropImage(File imageFile, String ratio) async {
+  Future<void> _cropImage(File imageFile) async {
     try {
-      CropAspectRatio? aspectRatio;
-
-      switch (ratio) {
-        case '1:1':
-          aspectRatio = const CropAspectRatio(ratioX: 1, ratioY: 1);
-          break;
-        case '4:3':
-          aspectRatio = const CropAspectRatio(ratioX: 4, ratioY: 3);
-          break;
-        case '16:9':
-          aspectRatio = const CropAspectRatio(ratioX: 16, ratioY: 9);
-          break;
-      }
-
       final croppedFile = await ImageCropper().cropImage(
         sourcePath: imageFile.path,
-        aspectRatio: aspectRatio,
         uiSettings: [
           IOSUiSettings(
-            title: '이미지 자르기',
+            title: '이미지 편집',
             cancelButtonTitle: '취소',
             doneButtonTitle: '완료',
-            aspectRatioLockEnabled: aspectRatio != null,
+            aspectRatioLockEnabled: false,
+            resetAspectRatioEnabled: true,
+            aspectRatioPickerButtonHidden: false, 
+            showCancelConfirmationDialog: true,
+            hidesNavigationBar: false, // 네비게이션 바 유지
+          ),
+          AndroidUiSettings(
+            toolbarTitle: '이미지 편집',
+            toolbarColor: Theme.of(context).colorScheme.surface,
+            toolbarWidgetColor: Theme.of(context).colorScheme.onSurface,
+            initAspectRatio: CropAspectRatioPreset.square,
+            lockAspectRatio: false,
           ),
         ],
       );
 
       if (croppedFile != null) {
-        setState(() {
-          _selectedImage = File(croppedFile.path);
-        });
+        // 실제 이미지 크기를 읽어와서 비율 계산
+        final data = await File(croppedFile.path).readAsBytes();
+        final codec = await ui.instantiateImageCodec(data);
+        final frame = await codec.getNextFrame();
+        
+        if (mounted) {
+          setState(() {
+            _selectedImage = File(croppedFile.path);
+            _imageAspectRatio = frame.image.width / frame.image.height;
+            _aspectRatio = 'free'; 
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('이미지 자르기 실패: $e')),
+          SnackBar(content: Text('이미지 편집 실패: $e')),
         );
       }
     }
   }
+
+  // _showCropOptions 및 _buildCropOption 제거 (크롭 UI에서 통합 처리)
 
   Future<void> _saveImage() async {
     setState(() {
