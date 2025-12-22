@@ -4,7 +4,7 @@
   "category": "Strength",
   "subCategory": "Full Body",
   "description": "전신 복합 운동으로 효율적인 근력 발달과 칼로리 소모를 목표로 합니다.",
-  "imagePath": "assets/images/lifter-icon.svg",
+  "imagePath": "assets/images/strength/lifter-icon.svg",
   "isCustom": false,
   "phases": [
     {

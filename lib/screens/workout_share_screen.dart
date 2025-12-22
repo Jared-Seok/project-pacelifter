@@ -21,6 +21,8 @@ class WorkoutShareScreen extends StatefulWidget {
   final List<HealthDataPoint> paceData;
   final double avgPace;
   final Duration? movingTime;
+  final String? templateName;
+  final String? environmentType;
 
   const WorkoutShareScreen({
     super.key,
@@ -30,6 +32,8 @@ class WorkoutShareScreen extends StatefulWidget {
     required this.paceData,
     required this.avgPace,
     this.movingTime,
+    this.templateName,
+    this.environmentType,
   });
 
   @override
@@ -175,14 +179,14 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
           'value': 'running',
           'title': '러닝',
           'type': 'svg', // SVG 타입
-          'path': 'assets/images/runner-icon.svg',
+          'path': _getWorkoutIconPath(workoutType, environmentType: widget.environmentType),
         },
       if (isStrength)
         {
           'value': 'strength',
           'title': '근력',
           'type': 'svg', // SVG로 변경 (통일성 위해)
-          'path': 'assets/images/lifter-icon.svg',
+          'path': _getWorkoutIconPath(workoutType, environmentType: widget.environmentType),
         },
     ];
 
@@ -453,6 +457,7 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
   Widget _buildMinimalLayout(String workoutType, WorkoutHealthValue workout) {
     final totalDistance = workout.totalDistance;
     final duration = widget.workoutData.dateTo.difference(widget.workoutData.dateFrom);
+    final displayTitle = widget.templateName ?? _formatWorkoutType(workoutType);
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -462,7 +467,7 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
         children: [
           // 운동 타입
           Text(
-            _formatWorkoutType(workoutType),
+            displayTitle,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 32,
@@ -511,6 +516,7 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
     final totalDistance = workout.totalDistance;
     final totalEnergy = workout.totalEnergyBurned;
     final duration = widget.workoutData.dateTo.difference(widget.workoutData.dateFrom);
+    final displayTitle = widget.templateName ?? _formatWorkoutType(workoutType);
 
     return Padding(
       padding: const EdgeInsets.all(12.0),
@@ -520,7 +526,7 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
         children: [
           // 운동 타입
           Text(
-            _formatWorkoutType(workoutType),
+            displayTitle,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 20,
@@ -583,6 +589,7 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
   Widget _buildRunningLayout(String workoutType, WorkoutHealthValue workout) {
     final totalDistance = workout.totalDistance;
     final duration = widget.workoutData.dateTo.difference(widget.workoutData.dateFrom);
+    final displayTitle = widget.templateName ?? 'RUNNING';
 
     return Padding(
       padding: const EdgeInsets.all(12.0),
@@ -592,7 +599,7 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
         children: [
           // 러닝 아이콘
           SvgPicture.asset(
-            'assets/images/runner-icon.svg',
+            _getWorkoutIconPath(workoutType, environmentType: widget.environmentType),
             width: 32,
             height: 32,
             colorFilter: ColorFilter.mode(
@@ -602,9 +609,9 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
           ),
           const SizedBox(height: 8),
 
-          const Text(
-            'RUNNING',
-            style: TextStyle(
+          Text(
+            displayTitle,
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -733,6 +740,7 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
   Widget _buildStrengthLayout(String workoutType, WorkoutHealthValue workout) {
     final totalEnergy = workout.totalEnergyBurned;
     final duration = widget.workoutData.dateTo.difference(widget.workoutData.dateFrom);
+    final displayTitle = widget.templateName ?? _formatWorkoutType(workoutType);
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -742,7 +750,7 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
         children: [
           // 근력 아이콘
           SvgPicture.asset(
-            _getWorkoutIconPath(workoutType),
+            _getWorkoutIconPath(workoutType, environmentType: widget.environmentType),
             width: 48,
             height: 48,
             colorFilter: ColorFilter.mode(
@@ -753,7 +761,7 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
           const SizedBox(height: 12),
 
           Text(
-            _formatWorkoutType(workoutType),
+            displayTitle,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 28,
@@ -1202,16 +1210,22 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
         upperType.contains('TRADITIONAL_STRENGTH_TRAINING');
   }
 
-  String _getWorkoutIconPath(String type) {
+  String _getWorkoutIconPath(String type, {String? environmentType}) {
     final upperType = type.toUpperCase();
+    
+    // 트레일 환경 체크
+    if (environmentType == 'Trail') {
+      return 'assets/images/endurance/trail-icon.svg';
+    }
+
     if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
-      return 'assets/images/core-icon.svg';
+      return 'assets/images/strength/core-icon.svg';
     } else if (upperType.contains('STRENGTH') ||
         upperType.contains('WEIGHT') ||
         upperType.contains('TRADITIONAL_STRENGTH_TRAINING')) {
-      return 'assets/images/lifter-icon.svg';
+      return 'assets/images/strength/lifter-icon.svg';
     } else {
-      return 'assets/images/runner-icon.svg';
+      return 'assets/images/endurance/runner-icon.svg';
     }
   }
 

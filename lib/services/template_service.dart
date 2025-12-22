@@ -64,9 +64,9 @@ class TemplateService {
       'outdoor_lsd.json',
       'outdoor_interval.json',
       'outdoor_tempo.json',
-      'track_lsd.json',
-      'track_interval.json',
-      'track_tempo.json',
+      'trail_lsd.json',
+      'trail_interval.json',
+      'trail_tempo.json',
     ];
 
     await _loadTemplatesFromDirectory(
@@ -121,6 +121,15 @@ class TemplateService {
     String category,
   ) async {
     final box = Hive.box<WorkoutTemplate>(_templatesBoxName);
+    
+    // Obsolete templates cleanup (Track -> Trail migration)
+    final obsoleteIds = [
+      'endurance_track_lsd',
+      'endurance_track_interval',
+      'endurance_track_tempo'
+    ];
+    await box.deleteAll(obsoleteIds);
+
     int loadedCount = 0;
 
     for (var filename in files) {

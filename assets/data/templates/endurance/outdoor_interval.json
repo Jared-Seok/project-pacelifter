@@ -5,7 +5,7 @@
   "environmentType": "Outdoor",
   "subCategory": "Interval",
   "description": "야외에서 진행하는 인터벌 트레이닝입니다. 언덕이나 평지를 활용할 수 있습니다.",
-  "imagePath": "assets/images/runner-icon.svg",
+  "imagePath": "assets/images/endurance/runner-icon.svg",
   "isCustom": false,
   "phases": [
     {

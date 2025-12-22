@@ -4,7 +4,7 @@
   "category": "Strength",
   "subCategory": "Hypertrophy",
   "description": "근비대를 목표로 하는 고볼륨 훈련 프로그램입니다. 중간 무게로 많은 반복수를 수행합니다.",
-  "imagePath": "assets/images/lifter-icon.svg",
+  "imagePath": "assets/images/strength/lifter-icon.svg",
   "isCustom": false,
   "phases": [
     {

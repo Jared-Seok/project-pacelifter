@@ -4,7 +4,7 @@
   "category": "Strength",
   "subCategory": "Lower Squat",
   "description": "스쿼트 패턴을 중심으로 하체 앞면(쿼드, 내전근)을 집중 훈련합니다.",
-  "imagePath": "assets/images/lifter-icon.svg",
+  "imagePath": "assets/images/strength/lifter-icon.svg",
   "isCustom": false,
   "phases": [
     {

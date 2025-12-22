@@ -343,14 +343,14 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     switch (category) {
       case 'Endurance':
         return SvgPicture.asset(
-          'assets/images/runner-icon.svg',
+          'assets/images/endurance/runner-icon.svg',
           width: size,
           height: size,
           colorFilter: ColorFilter.mode(effectiveColor, BlendMode.srcIn),
         );
       case 'Strength':
         return SvgPicture.asset(
-          'assets/images/lifter-icon.svg',
+          'assets/images/strength/lifter-icon.svg',
           width: size,
           height: size,
           colorFilter: ColorFilter.mode(effectiveColor, BlendMode.srcIn),
@@ -412,7 +412,7 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     final effectiveColor = color ?? Theme.of(context).colorScheme.secondary;
     if (type == 'strength') {
       return SvgPicture.asset(
-        'assets/images/lifter-icon.svg',
+        'assets/images/strength/lifter-icon.svg',
         width: size,
         height: size,
         colorFilter: ColorFilter.mode(effectiveColor, BlendMode.srcIn),
@@ -420,7 +420,7 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     }
     if (type == 'endurance') {
       return SvgPicture.asset(
-        'assets/images/runner-icon.svg',
+        'assets/images/endurance/runner-icon.svg',
         width: size,
         height: size,
         colorFilter: ColorFilter.mode(effectiveColor, BlendMode.srcIn),

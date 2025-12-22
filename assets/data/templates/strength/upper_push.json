@@ -4,7 +4,7 @@
   "category": "Strength",
   "subCategory": "Upper Push",
   "description": "가슴, 어깨, 삼두근을 집중적으로 단련하는 상체 밀기 운동 프로그램입니다.",
-  "imagePath": "assets/images/lifter-icon.svg",
+  "imagePath": "assets/images/strength/lifter-icon.svg",
   "isCustom": false,
   "phases": [
     {

@@ -5,7 +5,7 @@
   "environmentType": "Outdoor",
   "subCategory": "LSD",
   "description": "야외에서 진행하는 장거리 유산소 훈련입니다. 자연 속에서 여유롭게 달립니다.",
-  "imagePath": "assets/images/runner-icon.svg",
+  "imagePath": "assets/images/endurance/runner-icon.svg",
   "isCustom": false,
   "phases": [
     {

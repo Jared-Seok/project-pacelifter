@@ -4,7 +4,7 @@
   "category": "Strength",
   "subCategory": "Lower Hinge",
   "description": "힌지 패턴을 중심으로 하체 후면(햄스트링, 둔근, 척추기립근)을 집중 훈련합니다.",
-  "imagePath": "assets/images/lifter-icon.svg",
+  "imagePath": "assets/images/strength/lifter-icon.svg",
   "isCustom": false,
   "phases": [
     {

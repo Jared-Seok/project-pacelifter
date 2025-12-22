@@ -5,7 +5,7 @@
   "environmentType": "Trail",
   "subCategory": "Tempo",
   "description": "트레일에서 일정한 강도를 유지하는 훈련입니다. 지형 변화에 맞춰 노력을 일정하게 유지하는 것이 목표입니다.",
-  "imagePath": "assets/images/trail-icon.svg",
+  "imagePath": "assets/images/endurance/trail-icon.svg",
   "isCustom": false,
   "phases": [
     {

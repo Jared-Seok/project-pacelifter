@@ -5,7 +5,7 @@
   "environmentType": "Indoor",
   "subCategory": "Interval",
   "description": "고강도와 저강도를 반복하는 인터벌 트레이닝으로 심폐 능력과 스피드를 향상시킵니다.",
-  "imagePath": "assets/images/runner-icon.svg",
+  "imagePath": "assets/images/endurance/runner-icon.svg",
   "isCustom": false,
   "phases": [
     {

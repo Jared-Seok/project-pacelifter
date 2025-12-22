@@ -5,7 +5,7 @@
   "environmentType": "Trail",
   "subCategory": "LSD",
   "description": "트레일 코스에서 진행하는 장거리 훈련입니다. 자연 지형을 즐기며 지구력을 기릅니다.",
-  "imagePath": "assets/images/trail-icon.svg",
+  "imagePath": "assets/images/endurance/trail-icon.svg",
   "isCustom": false,
   "phases": [
     {

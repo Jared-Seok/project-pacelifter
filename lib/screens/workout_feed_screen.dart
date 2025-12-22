@@ -107,7 +107,7 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
     // 트레일 러닝 환경이면 트레일 아이콘 우선 사용
     if (environmentType == 'Trail') {
       return SvgPicture.asset(
-        'assets/images/trail-icon.svg',
+        'assets/images/endurance/trail-icon.svg',
         width: iconSize,
         height: iconSize,
         colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
@@ -118,7 +118,7 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
         upperType.contains('WALKING') ||
         upperType.contains('HIKING')) {
       return SvgPicture.asset(
-        'assets/images/runner-icon.svg',
+        'assets/images/endurance/runner-icon.svg',
         width: iconSize,
         height: iconSize,
         colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
@@ -128,7 +128,7 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
     // CORE TRAINING은 core-icon.svg 사용
     if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
       return SvgPicture.asset(
-        'assets/images/core-icon.svg',
+        'assets/images/strength/core-icon.svg',
         width: iconSize,
         height: iconSize,
         colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
@@ -138,7 +138,7 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
     // 나머지 Strength 운동은 lifter-icon.svg 사용
     if (upperType.contains('STRENGTH') || upperType.contains('WEIGHT')) {
       return SvgPicture.asset(
-        'assets/images/lifter-icon.svg',
+        'assets/images/strength/lifter-icon.svg',
         width: iconSize,
         height: iconSize,
         colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
@@ -236,7 +236,7 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
                         'Endurance',
                         '$enduranceCount회',
                         null,
-                        svgPath: 'assets/images/runner-icon.svg',
+                        svgPath: 'assets/images/endurance/runner-icon.svg',
                         color: Theme.of(context).colorScheme.secondary,
                       ),
                     ),
@@ -246,7 +246,7 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
                         'Strength',
                         '$strengthCount회',
                         null,
-                        svgPath: 'assets/images/lifter-icon.svg',
+                        svgPath: 'assets/images/strength/lifter-icon.svg',
                         color: Theme.of(context).colorScheme.primary,
                       ),
                     ),

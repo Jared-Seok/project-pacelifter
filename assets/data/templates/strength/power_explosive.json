@@ -4,7 +4,7 @@
   "category": "Strength",
   "subCategory": "Power",
   "description": "순발력과 폭발적인 힘을 개발하는 플라이오메트릭 및 파워 훈련 프로그램입니다.",
-  "imagePath": "assets/images/lifter-icon.svg",
+  "imagePath": "assets/images/strength/lifter-icon.svg",
   "isCustom": false,
   "phases": [
     {

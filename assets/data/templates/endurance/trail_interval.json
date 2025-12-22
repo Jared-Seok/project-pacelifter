@@ -5,7 +5,7 @@
   "environmentType": "Trail",
   "subCategory": "Interval",
   "description": "트레일 환경에서 진행하는 인터벌 트레이닝입니다. 자연 지형을 활용한 강도 높은 훈련으로 체력을 향상시킵니다.",
-  "imagePath": "assets/images/trail-icon.svg",
+  "imagePath": "assets/images/endurance/trail-icon.svg",
   "isCustom": false,
   "phases": [
     {

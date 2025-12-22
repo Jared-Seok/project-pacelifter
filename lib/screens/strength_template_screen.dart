@@ -47,9 +47,9 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> {
   String _getIconForTemplate(WorkoutTemplate template) {
     if (template.subCategory != null &&
         template.subCategory!.toLowerCase().contains('core')) {
-      return 'assets/images/core-icon.svg';
+      return 'assets/images/strength/core-icon.svg';
     }
-    return 'assets/images/lifter-icon.svg';
+    return 'assets/images/strength/lifter-icon.svg';
   }
 
   @override
@@ -76,7 +76,7 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> {
                     Row(
                       children: [
                         SvgPicture.asset(
-                          'assets/images/lifter-icon.svg',
+                          'assets/images/strength/lifter-icon.svg',
                           width: 32,
                           height: 32,
                           colorFilter: ColorFilter.mode(

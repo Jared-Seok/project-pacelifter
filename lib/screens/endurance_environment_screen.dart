@@ -46,7 +46,7 @@ class EnduranceEnvironmentScreen extends StatelessWidget {
                 context: context,
                 title: '로드',
                 subtitle: '도로 및 야외 러닝',
-                iconPath: 'assets/images/runner-icon.svg',
+                iconPath: 'assets/images/endurance/runner-icon.svg',
                 color: Theme.of(context).colorScheme.secondary,
                 onTap: () {
                   Navigator.push(
@@ -60,19 +60,19 @@ class EnduranceEnvironmentScreen extends StatelessWidget {
                 },
               ),
               const SizedBox(height: 16),
-              // 트레일 (Trail) -> Track (Mapped for data consistency)
+              // 트레일 (Trail) -> Trail
               _buildEnvironmentCard(
                 context: context,
                 title: '트레일',
                 subtitle: '산악 및 오프로드',
-                iconPath: 'assets/images/trail-icon.svg',
+                iconPath: 'assets/images/endurance/trail-icon.svg',
                 color: Colors.green,
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const EnduranceTemplateScreen(
-                        environmentType: 'Track',
+                        environmentType: 'Trail',
                       ),
                     ),
                   );
@@ -84,7 +84,7 @@ class EnduranceEnvironmentScreen extends StatelessWidget {
                 context: context,
                 title: '실내',
                 subtitle: '러닝머신 (Treadmill)',
-                iconPath: 'assets/images/runner-icon.svg',
+                iconPath: 'assets/images/endurance/runner-icon.svg',
                 color: Colors.orange,
                 onTap: () {
                   Navigator.push(

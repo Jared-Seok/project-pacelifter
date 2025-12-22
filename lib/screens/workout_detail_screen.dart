@@ -1232,6 +1232,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           paceData: _paceData,
           avgPace: _avgPace,
           movingTime: _movingTime,
+          templateName: _session?.templateName, // 템플릿 이름 전달
+          environmentType: _session?.environmentType, // 환경 타입 전달
         ),
       ),
     );
@@ -1362,13 +1364,13 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   String _getWorkoutIconPath(String type) {
     final upperType = type.toUpperCase();
     if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
-      return 'assets/images/core-icon.svg';
+      return 'assets/images/strength/core-icon.svg';
     } else if (upperType.contains('STRENGTH') ||
         upperType.contains('WEIGHT') ||
         upperType.contains('TRADITIONAL_STRENGTH_TRAINING')) {
-      return 'assets/images/lifter-icon.svg';
+      return 'assets/images/strength/lifter-icon.svg';
     } else {
-      return 'assets/images/runner-icon.svg';
+      return 'assets/images/endurance/runner-icon.svg';
     }
   }
 

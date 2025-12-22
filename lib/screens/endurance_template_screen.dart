@@ -76,7 +76,7 @@ class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
                     Row(
                       children: [
                         SvgPicture.asset(
-                          'assets/images/runner-icon.svg',
+                          'assets/images/endurance/runner-icon.svg',
                           width: 32,
                           height: 32,
                           colorFilter: ColorFilter.mode(
@@ -198,7 +198,7 @@ class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: SvgPicture.asset(
-                'assets/images/runner-icon.svg',
+                'assets/images/endurance/runner-icon.svg',
                 width: 24,
                 height: 24,
                 colorFilter: ColorFilter.mode(

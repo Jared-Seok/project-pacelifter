@@ -109,7 +109,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
               headerSliverBuilder: (context, innerBoxIsScrolled) {
                 return [
                   SliverAppBar(
-                    expandedHeight: 200,
+                    expandedHeight: 280, // 200 -> 280 to prevent overflow
                     floating: false,
                     pinned: true,
                     backgroundColor: Theme.of(context).colorScheme.surface,
@@ -248,7 +248,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
         children: [
           _buildEditableSection(
             title: '러닝 기록',
-            svgIcon: 'assets/images/runner-icon.svg',
+            svgIcon: 'assets/images/endurance/runner-icon.svg',
             items: [
               _buildEditableItem(
                 label: 'Full Marathon',
@@ -275,7 +275,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           const SizedBox(height: 16),
           _buildEditableSection(
             title: '맨몸 운동',
-            svgIcon: 'assets/images/pullup-icon.svg',
+            svgIcon: 'assets/images/strength/pullup-icon.svg',
             items: [
               _buildEditableItem(
                 label: '턱걸이 (최대)',
@@ -292,7 +292,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           const SizedBox(height: 16),
           _buildEditableSection(
             title: '3RM (3회 최대 중량)',
-            svgIcon: 'assets/images/lifter-icon.svg',
+            svgIcon: 'assets/images/strength/lifter-icon.svg',
             items: [
               _buildEditableItem(
                 label: '스쿼트',

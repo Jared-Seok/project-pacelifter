@@ -4,7 +4,7 @@
   "category": "Strength",
   "subCategory": "Core",
   "description": "복부, 허리, 골반 안정성을 강화하는 코어 훈련 프로그램입니다.",
-  "imagePath": "assets/images/core-icon.svg",
+  "imagePath": "assets/images/strength/core-icon.svg",
   "isCustom": false,
   "phases": [
     {

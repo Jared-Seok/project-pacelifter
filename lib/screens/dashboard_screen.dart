@@ -15,6 +15,8 @@ import 'package:pacelifter/screens/workout_detail_screen.dart';
 import 'package:pacelifter/screens/workout_feed_screen.dart';
 import 'package:pacelifter/services/workout_history_service.dart';
 import 'package:pacelifter/models/sessions/workout_session.dart';
+import 'package:pacelifter/services/scoring_engine.dart';
+import 'package:pacelifter/models/scoring/performance_scores.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -47,6 +49,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final Map<String, GlobalKey> _monthKeyMap = {};
   
   Map<String, WorkoutSession> _sessionMap = {};
+  PerformanceScores? _scores;
 
   @override
   void initState() {
@@ -55,21 +58,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _racePageController = PageController();
     _scrollController.addListener(_onScroll);
     _initialize();
-  }
-
-  void _loadSessions() {
-    final sessions = WorkoutHistoryService().getAllSessions();
-    final map = <String, WorkoutSession>{};
-    for (var session in sessions) {
-      if (session.healthKitWorkoutId != null) {
-        map[session.healthKitWorkoutId!] = session;
-      }
-    }
-    if (mounted) {
-      setState(() {
-        _sessionMap = map;
-      });
-    }
   }
 
   @override
@@ -139,6 +127,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _initialize() async {
     await _checkFirstLoginAndSync();
     await _loadRaces();
+    await _loadPerformanceScores();
     setState(() {
       _isLoading = false;
     });
@@ -152,6 +141,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
       setState(() {
         _races = races;
       });
+    }
+  }
+
+  Future<void> _loadPerformanceScores() async {
+    final scores = ScoringEngine().getLatestScores();
+    if (mounted) {
+      setState(() {
+        _scores = scores;
+      });
+    }
+    
+    try {
+      final updatedScores = await ScoringEngine().calculateAndSaveScores();
+      if (mounted) {
+        setState(() {
+          _scores = updatedScores;
+        });
+      }
+    } catch (e) {
+      // ignore
     }
   }
 
@@ -246,6 +255,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _calculateStatistics();
         _prepareMonthKeys();
         _isLoading = false;
+      });
+      _loadSessions();
+    }
+  }
+  
+  void _loadSessions() {
+    final sessions = WorkoutHistoryService().getAllSessions();
+    final map = <String, WorkoutSession>{};
+    for (var session in sessions) {
+      if (session.healthKitWorkoutId != null) {
+        map[session.healthKitWorkoutId!] = session;
+      }
+    }
+    if (mounted) {
+      setState(() {
+        _sessionMap = map;
       });
     }
   }
@@ -625,6 +650,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 onRefresh: () async {
                   await _loadHealthData();
                   await _loadRaces();
+                  await _loadPerformanceScores();
                 },
                 child: CustomScrollView(
                   controller: _scrollController,
@@ -636,6 +662,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         children: [
                           _buildHeader(),
                           const SizedBox(height: 16),
+                          _buildPerformanceSection(),
+                          const SizedBox(height: 24),
                           _buildSwipableCardsSection(),
                           const SizedBox(height: 24),
                         ],
@@ -697,6 +725,100 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPerformanceSection() {
+    if (_scores == null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('종합 퍼포먼스', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(
+                    '최근 업데이트: ${DateFormat('HH:mm').format(_scores!.lastUpdated)}',
+                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  SizedBox(
+                    width: 120,
+                    height: 120,
+                    child: RadarChart(
+                      RadarChartData(
+                        dataSets: [
+                          RadarDataSet(
+                            fillColor: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.3),
+                            borderColor: Theme.of(context).colorScheme.secondary,
+                            entryRadius: 2,
+                            dataEntries: [
+                              RadarEntry(value: _scores!.enduranceScore),
+                              RadarEntry(value: _scores!.strengthScore),
+                              RadarEntry(value: _scores!.conditioningScore),
+                            ],
+                          ),
+                        ],
+                        radarShape: RadarShape.polygon,
+                        getTitle: (index, angle) {
+                          switch (index) {
+                            case 0: return const RadarChartTitle(text: '지구력');
+                            case 1: return const RadarChartTitle(text: '근력');
+                            case 2: return const RadarChartTitle(text: '컨디셔닝');
+                            default: return const RadarChartTitle(text: '');
+                          }
+                        },
+                        tickCount: 1,
+                        ticksTextStyle: const TextStyle(color: Colors.transparent),
+                        gridBorderData: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 24),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        _buildScoreTile('Endurance', _scores!.enduranceScore, Theme.of(context).colorScheme.secondary),
+                        const Divider(height: 12),
+                        _buildScoreTile('Strength', _scores!.strengthScore, Theme.of(context).colorScheme.primary),
+                        const Divider(height: 12),
+                        _buildScoreTile('Conditioning', _scores!.conditioningScore, Colors.orange),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScoreTile(String label, double score, Color color) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+        Row(
+          children: [
+            Text(
+              score.toInt().toString(),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color),
+            ),
+            const Text(' 점', style: TextStyle(fontSize: 11, color: Colors.grey)),
+          ],
+        ),
+      ],
     );
   }
 
@@ -952,7 +1074,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 // Endurance
                 SvgPicture.asset(
-                  'assets/images/runner-icon.svg',
+                  'assets/images/endurance/runner-icon.svg',
                   width: 36,
                   height: 36,
                   colorFilter: ColorFilter.mode(
@@ -988,7 +1110,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 const SizedBox(width: 8),
                 SvgPicture.asset(
-                  'assets/images/lifter-icon.svg',
+                  'assets/images/strength/lifter-icon.svg',
                   width: 36,
                   height: 36,
                   colorFilter: ColorFilter.mode(
@@ -1024,7 +1146,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _showAddRaceDialog() {
-    // ... (rest of the file is unchanged)
     final formKey = GlobalKey<FormState>();
     String raceName = '';
     DateTime? raceDate;
@@ -1140,7 +1261,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child:
                 Column(children: [
           SvgPicture.asset(
-            'assets/images/runner-icon.svg',
+            'assets/images/endurance/runner-icon.svg',
             width: 42,
             height: 42,
             colorFilter: ColorFilter.mode(
@@ -1165,7 +1286,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child:
                 Column(children: [
           SvgPicture.asset(
-            'assets/images/lifter-icon.svg',
+            'assets/images/strength/lifter-icon.svg',
             width: 46,
             height: 46,
             colorFilter: ColorFilter.mode(
@@ -1343,6 +1464,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final type = workout.workoutActivityType.name;
     final workoutCategory = _getWorkoutCategory(type);
     final color = _getCategoryColor(workoutCategory);
+    
+    // Define upperType here for wider scope
+    final upperType = type.toUpperCase();
 
     // 저장된 세션이 있는지 확인하고 표시 이름 결정
     String displayName;
@@ -1351,7 +1475,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (session != null) {
       displayName = session.templateName; // 저장된 템플릿 이름 사용
     } else {
-      final upperType = type.toUpperCase();
       if (type == 'TRADITIONAL_STRENGTH_TRAINING') {
         displayName = 'STRENGTH TRAINING';
       } else if (type == 'CORE_TRAINING') {
@@ -1367,7 +1490,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final Color iconColor;
 
     // CORE TRAINING: secondary color 아이콘, primary color 배경 (Strength와 동일)
-    final upperType = type.toUpperCase();
     if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
       backgroundColor = Theme.of(context).colorScheme.primary.withValues(alpha: 0.2);
       iconColor = Theme.of(context).colorScheme.secondary;
@@ -1505,7 +1627,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // 트레일 러닝 환경이면 트레일 아이콘 우선 사용
     if (environmentType == 'Trail') {
       return SvgPicture.asset(
-        'assets/images/trail-icon.svg',
+        'assets/images/endurance/trail-icon.svg',
         width: iconSize,
         height: iconSize,
         colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
@@ -1513,14 +1635,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
-      iconPath = 'assets/images/core-icon.svg';
+      iconPath = 'assets/images/strength/core-icon.svg';
       iconSize = 24;
     } else if (upperType.contains('STRENGTH') ||
         upperType.contains('WEIGHT') ||
         upperType.contains('TRADITIONAL_STRENGTH_TRAINING')) {
-      iconPath = 'assets/images/lifter-icon.svg';
+      iconPath = 'assets/images/strength/lifter-icon.svg';
     } else {
-      iconPath = 'assets/images/runner-icon.svg';
+      iconPath = 'assets/images/endurance/runner-icon.svg';
     }
 
     return SvgPicture.asset(

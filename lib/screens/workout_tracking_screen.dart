@@ -120,7 +120,7 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> with Sing
           children: [
             // Runner 아이콘
             SvgPicture.asset(
-              'assets/images/runner-icon.svg',
+              'assets/images/endurance/runner-icon.svg',
               width: 100,
               height: 100,
               colorFilter: ColorFilter.mode(
@@ -805,7 +805,7 @@ class WorkoutSummaryScreen extends StatelessWidget {
                 children: [
                   // Runner 아이콘
                   SvgPicture.asset(
-                    'assets/images/runner-icon.svg',
+                    'assets/images/endurance/runner-icon.svg',
                     width: 80,
                     height: 80,
                     colorFilter: ColorFilter.mode(

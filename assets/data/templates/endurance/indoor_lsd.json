@@ -5,7 +5,7 @@
   "environmentType": "Indoor",
   "subCategory": "LSD",
   "description": "Long Slow Distance - 낮은 강도로 장시간 유산소 능력을 향상시키는 훈련입니다. 트레드밀이나 실내 트랙에서 진행합니다.",
-  "imagePath": "assets/images/runner-icon.svg",
+  "imagePath": "assets/images/endurance/runner-icon.svg",
   "isCustom": false,
   "phases": [
     {

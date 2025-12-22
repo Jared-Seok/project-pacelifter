@@ -4,7 +4,7 @@
   "category": "Strength",
   "subCategory": "Upper Pull",
   "description": "등, 이두근, 후면 어깨를 집중적으로 단련하는 상체 당기기 운동 프로그램입니다.",
-  "imagePath": "assets/images/lifter-icon.svg",
+  "imagePath": "assets/images/strength/lifter-icon.svg",
   "isCustom": false,
   "phases": [
     {

@@ -113,8 +113,8 @@ class _AddWorkoutScreenState extends State<AddWorkoutScreen> {
 
     // SVG 아이콘 경로 결정
     final String svgPath = category == 'Endurance'
-        ? 'assets/images/runner-icon.svg'
-        : 'assets/images/lifter-icon.svg';
+        ? 'assets/images/endurance/runner-icon.svg'
+        : 'assets/images/strength/lifter-icon.svg';
 
     return GestureDetector(
       onTap: () {

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart'; // kIsWeb 사용을 위해 추가
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -15,13 +16,18 @@ import 'models/templates/template_block.dart';
 import 'models/exercises/exercise.dart';
 import 'models/sessions/workout_session.dart';
 import 'models/sessions/exercise_record.dart';
+import 'models/scoring/performance_scores.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Hive 초기화
-  final appDocumentDir = await getApplicationDocumentsDirectory();
-  await Hive.initFlutter(appDocumentDir.path);
+  // Hive 초기화 (웹 vs 네이티브 분기 처리)
+  if (kIsWeb) {
+    await Hive.initFlutter();
+  } else {
+    final appDocumentDir = await getApplicationDocumentsDirectory();
+    await Hive.initFlutter(appDocumentDir.path);
+  }
 
   // TypeAdapter 등록
   Hive.registerAdapter(WorkoutTemplateAdapter());
@@ -31,13 +37,14 @@ void main() async {
   Hive.registerAdapter(WorkoutSessionAdapter());
   Hive.registerAdapter(ExerciseRecordAdapter());
   Hive.registerAdapter(SetRecordAdapter());
+  Hive.registerAdapter(PerformanceScoresAdapter());
 
   // Hive Box 열기
   await Hive.openBox<WorkoutTemplate>('workout_templates');
   await Hive.openBox<Exercise>('exercises');
   await Hive.openBox<WorkoutSession>('user_workout_history');
   await Hive.openBox<ExerciseRecord>('user_exercise_records');
-  await Hive.openBox('user_scores'); // 점수는 Map 형태로 저장
+  await Hive.openBox<PerformanceScores>('user_scores'); // 점수 저장
 
   // 템플릿 및 운동 데이터 로드
   await TemplateService.loadAllTemplatesAndExercises();

@@ -33,6 +33,13 @@ class WorkoutHistoryService {
     return box.values.toList();
   }
 
+  /// 최근 N일간의 세션 가져오기
+  List<WorkoutSession> getRecentSessions({int days = 90}) {
+    final box = Hive.box<WorkoutSession>(_sessionBoxName);
+    final cutoff = DateTime.now().subtract(Duration(days: days));
+    return box.values.where((s) => s.startTime.isAfter(cutoff)).toList();
+  }
+
   /// 운동 세션에 템플릿 연결 (또는 세션 생성)
   Future<void> linkTemplateToWorkout({
     required String healthKitId,

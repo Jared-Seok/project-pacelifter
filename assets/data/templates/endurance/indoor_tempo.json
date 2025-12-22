@@ -5,7 +5,7 @@
   "environmentType": "Indoor",
   "subCategory": "Tempo",
   "description": "중간 강도로 일정한 페이스를 유지하는 템포 런입니다. 젖산 역치를 향상시킵니다.",
-  "imagePath": "assets/images/runner-icon.svg",
+  "imagePath": "assets/images/endurance/runner-icon.svg",
   "isCustom": false,
   "phases": [
     {
