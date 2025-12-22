@@ -57,6 +57,16 @@ class TemplateService {
 
   /// Endurance 템플릿 로드 (9개)
   static Future<void> _loadEnduranceTemplates() async {
+    final box = Hive.box<WorkoutTemplate>(_templatesBoxName);
+    
+    // 강제 초기화: 기존의 모든 기본 템플릿(isCustom: false) 삭제
+    // 이렇게 하면 JSON 구조가 바뀐 템플릿들이 중복되거나 옛날 데이터를 유지하는 문제를 방지합니다.
+    final keysToDelete = box.keys.where((key) {
+      final t = box.get(key);
+      return t != null && !t.isCustom;
+    }).toList();
+    await box.deleteAll(keysToDelete);
+
     final templateFiles = [
       'indoor_lsd.json',
       'indoor_interval.json',
@@ -121,15 +131,6 @@ class TemplateService {
     String category,
   ) async {
     final box = Hive.box<WorkoutTemplate>(_templatesBoxName);
-    
-    // Obsolete templates cleanup (Track -> Trail migration)
-    final obsoleteIds = [
-      'endurance_track_lsd',
-      'endurance_track_interval',
-      'endurance_track_tempo'
-    ];
-    await box.deleteAll(obsoleteIds);
-
     int loadedCount = 0;
 
     for (var filename in files) {

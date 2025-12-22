@@ -4,14 +4,14 @@
   "category": "Endurance",
   "environmentType": "Indoor",
   "subCategory": "Interval",
-  "description": "고강도와 저강도를 반복하는 인터벌 트레이닝으로 심폐 능력과 스피드를 향상시킵니다.",
+  "description": "고강도와 저강도를 반복하는 인터벌 트레이닝입니다.",
   "imagePath": "assets/images/endurance/runner-icon.svg",
   "isCustom": false,
   "phases": [
     {
       "id": "phase_warmup",
       "name": "Warm-up",
-      "description": "충분한 워밍업으로 부상을 예방합니다",
+      "description": "충분한 워밍업",
       "order": 0,
       "blocks": [
         {
@@ -22,37 +22,25 @@
           "targetDuration": 600,
           "intensityZone": "Z1",
           "targetHeartRate": 120,
-          "order": 0,
-          "notes": "천천히 시작하여 몸을 풀어줍니다"
-        },
-        {
-          "id": "block_warmup_2",
-          "name": "Dynamic Stretching",
-          "type": "endurance",
-          "description": "동적 스트레칭",
-          "targetDuration": 300,
-          "intensityZone": "Z1",
-          "order": 1,
-          "notes": "다리 스윙, 하이니 등 동적 움직임"
+          "order": 0
         }
       ]
     },
     {
       "id": "phase_main",
       "name": "Main Set",
-      "description": "4분 고강도 - 2분 저강도 반복",
+      "description": "인터벌 세트",
       "order": 1,
       "blocks": [
         {
           "id": "block_main_1",
           "name": "Interval 1: Fast",
           "type": "endurance",
-          "description": "빠른 페이스로 달리기",
+          "description": "빠른 페이스",
           "targetDuration": 240,
           "intensityZone": "Z4",
           "targetHeartRate": 170,
-          "order": 0,
-          "notes": "5km 레이스 페이스 수준"
+          "order": 0
         },
         {
           "id": "block_main_2",
@@ -62,75 +50,14 @@
           "targetDuration": 120,
           "intensityZone": "Z2",
           "targetHeartRate": 130,
-          "order": 1,
-          "notes": "천천히 조깅하며 회복"
-        },
-        {
-          "id": "block_main_3",
-          "name": "Interval 2: Fast",
-          "type": "endurance",
-          "description": "빠른 페이스로 달리기",
-          "targetDuration": 240,
-          "intensityZone": "Z4",
-          "targetHeartRate": 170,
-          "order": 2
-        },
-        {
-          "id": "block_main_4",
-          "name": "Recovery 2",
-          "type": "endurance",
-          "description": "회복 조깅",
-          "targetDuration": 120,
-          "intensityZone": "Z2",
-          "targetHeartRate": 130,
-          "order": 3
-        },
-        {
-          "id": "block_main_5",
-          "name": "Interval 3: Fast",
-          "type": "endurance",
-          "description": "빠른 페이스로 달리기",
-          "targetDuration": 240,
-          "intensityZone": "Z4",
-          "targetHeartRate": 170,
-          "order": 4
-        },
-        {
-          "id": "block_main_6",
-          "name": "Recovery 3",
-          "type": "endurance",
-          "description": "회복 조깅",
-          "targetDuration": 120,
-          "intensityZone": "Z2",
-          "targetHeartRate": 130,
-          "order": 5
-        },
-        {
-          "id": "block_main_7",
-          "name": "Interval 4: Fast",
-          "type": "endurance",
-          "description": "빠른 페이스로 달리기",
-          "targetDuration": 240,
-          "intensityZone": "Z4",
-          "targetHeartRate": 170,
-          "order": 6
-        },
-        {
-          "id": "block_main_8",
-          "name": "Recovery 4",
-          "type": "endurance",
-          "description": "회복 조깅",
-          "targetDuration": 120,
-          "intensityZone": "Z2",
-          "targetHeartRate": 130,
-          "order": 7
+          "order": 1
         }
       ]
     },
     {
       "id": "phase_cooldown",
       "name": "Cool-down",
-      "description": "충분한 쿨다운으로 회복을 도웁니다",
+      "description": "충분한 쿨다운",
       "order": 2,
       "blocks": [
         {
@@ -141,8 +68,7 @@
           "targetDuration": 600,
           "intensityZone": "Z1",
           "targetHeartRate": 110,
-          "order": 0,
-          "notes": "심박수를 정상으로 낮춥니다"
+          "order": 0
         }
       ]
     }

@@ -52,8 +52,25 @@ class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
     }
   }
 
+  String _getCleanName(String name) {
+    return name
+        .replaceAll('Outdoor ', '')
+        .replaceAll('Indoor ', '')
+        .replaceAll('Trail ', '')
+        .replaceAll('Track ', '');
+  }
+
   @override
   Widget build(BuildContext context) {
+    // 환경에 따른 아이콘 및 색상 설정
+    final String iconPath = widget.environmentType == 'Trail' 
+        ? 'assets/images/endurance/trail-icon.svg' 
+        : 'assets/images/endurance/runner-icon.svg';
+    
+    final Color themeColor = widget.environmentType == 'Trail'
+        ? Colors.green
+        : (widget.environmentType == 'Indoor' ? Colors.orange : Theme.of(context).colorScheme.secondary);
+
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
@@ -64,7 +81,7 @@ class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
       body: _isLoading
           ? Center(
               child: CircularProgressIndicator(
-                color: Theme.of(context).colorScheme.secondary,
+                color: themeColor,
               ),
             )
           : SafeArea(
@@ -76,11 +93,11 @@ class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
                     Row(
                       children: [
                         SvgPicture.asset(
-                          'assets/images/endurance/runner-icon.svg',
+                          iconPath,
                           width: 32,
                           height: 32,
                           colorFilter: ColorFilter.mode(
-                            Theme.of(context).colorScheme.secondary,
+                            themeColor,
                             BlendMode.srcIn,
                           ),
                         ),
@@ -145,6 +162,8 @@ class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
                                   child: _buildTemplateCard(
                                     context: context,
                                     template: template,
+                                    iconPath: iconPath,
+                                    themeColor: themeColor,
                                   ),
                                 );
                               },
@@ -160,6 +179,8 @@ class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
   Widget _buildTemplateCard({
     required BuildContext context,
     required WorkoutTemplate template,
+    required String iconPath,
+    required Color themeColor,
   }) {
     return InkWell(
       onTap: () {
@@ -179,10 +200,7 @@ class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
           color: Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: Theme.of(context)
-                .colorScheme
-                .secondary
-                .withValues(alpha: 0.3),
+            color: themeColor.withValues(alpha: 0.3),
             width: 1,
           ),
         ),
@@ -191,18 +209,15 @@ class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Theme.of(context)
-                    .colorScheme
-                    .secondary
-                    .withValues(alpha: 0.2),
+                color: themeColor.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: SvgPicture.asset(
-                'assets/images/endurance/runner-icon.svg',
+                iconPath,
                 width: 24,
                 height: 24,
                 colorFilter: ColorFilter.mode(
-                  Theme.of(context).colorScheme.secondary,
+                  themeColor,
                   BlendMode.srcIn,
                 ),
               ),
@@ -213,7 +228,7 @@ class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    template.name,
+                    _getCleanName(template.name),
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -226,7 +241,7 @@ class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        color: Theme.of(context).colorScheme.secondary,
+                        color: themeColor,
                       ),
                     ),
                   const SizedBox(height: 4),
@@ -248,7 +263,7 @@ class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
             const SizedBox(width: 12),
             Icon(
               Icons.arrow_forward_ios,
-              color: Theme.of(context).colorScheme.secondary,
+              color: themeColor,
               size: 16,
             ),
           ],

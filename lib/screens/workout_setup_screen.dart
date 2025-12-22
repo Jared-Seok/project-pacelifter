@@ -5,11 +5,28 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 import '../services/workout_tracking_service.dart';
+import '../services/template_service.dart';
 import '../models/templates/workout_template.dart';
 import '../models/templates/template_block.dart';
 import 'workout_tracking_screen.dart';
 import '../widgets/block_edit_dialog.dart';
+import '../widgets/interval_set_edit_dialog.dart';
+
+class _DisplayItem {
+  final bool isGroup;
+  final List<TemplateBlock> blocks;
+  final int startIndex;
+  final int count;
+
+  _DisplayItem({
+    required this.isGroup,
+    required this.blocks,
+    required this.startIndex,
+    this.count = 1,
+  });
+}
 
 /// 운동 시작 전 세팅 및 커스터마이징 화면
 class WorkoutSetupScreen extends StatefulWidget {
@@ -39,12 +56,7 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
   @override
   void initState() {
     super.initState();
-    
-    // 템플릿 딥 카피 생성 (toJson -> fromJson)
-    // 이렇게 하면 원본 Hive 객체를 건드리지 않고 이 화면에서만 수정 가능
     _editableTemplate = WorkoutTemplate.fromJson(widget.template.toJson());
-
-    // 맵이 필요한 환경인지 확인 (Outdoor, Track)
     if (_shouldShowMap()) {
       _getCurrentLocation();
     } else {
@@ -56,7 +68,6 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _workoutService = Provider.of<WorkoutTrackingService>(context, listen: false);
-    // 화면에 들어올 때마다 서비스의 목표 초기화 (템플릿 기반으로 자동 설정 가능하나 일단 초기화)
     _workoutService.setGoals(distance: null, time: null, pace: null);
   }
 
@@ -69,6 +80,20 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
   bool _shouldShowMap() {
     final env = widget.template.environmentType;
     return env == 'Outdoor' || env == 'Track';
+  }
+
+  String _getCleanName(String name) {
+    return name
+        .replaceAll('Outdoor ', '')
+        .replaceAll('Indoor ', '')
+        .replaceAll('Trail ', '')
+        .replaceAll('Track ', '');
+  }
+
+  String _getCleanPhaseName(String name) {
+    if (name == 'Warm-up') return '웜업 조깅';
+    if (name == 'Cool-down') return '쿨다운 조깅';
+    return name;
   }
 
   Future<void> _getCurrentLocation() async {
@@ -122,13 +147,9 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     }
   }
 
-  // 플레이 버튼 클릭 시 운동 시작
   void _startWorkout() async {
-    // 서비스에서 운동 시작
     await _workoutService.startWorkout();
-
     if (mounted) {
-      // 러닝 추적 화면으로 이동
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -138,24 +159,76 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     }
   }
 
+  Future<void> _saveAsCustomTemplate() async {
+    final nameController = TextEditingController(text: '${_getCleanName(_editableTemplate.name)} (Custom)');
+    
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('커스텀 템플릿 저장'),
+        content: TextField(
+          controller: nameController,
+          decoration: const InputDecoration(
+            labelText: '템플릿 이름',
+            hintText: '나만의 템플릿 이름을 입력하세요',
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (nameController.text.trim().isEmpty) return;
+              
+              final newTemplate = _editableTemplate.copyWith(
+                id: const Uuid().v4(),
+                name: nameController.text.trim(),
+                isCustom: true,
+                createdAt: DateTime.now(),
+                modifiedAt: DateTime.now(),
+              );
+
+              await TemplateService.saveCustomTemplate(newTemplate);
+              
+              if (mounted) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('커스텀 템플릿이 저장되었습니다.')),
+                );
+              }
+            },
+            child: const Text('저장'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        title: Text(widget.template.name),
+        title: Text(_getCleanName(widget.template.name)),
         backgroundColor: Theme.of(context).colorScheme.surface,
         foregroundColor: Theme.of(context).colorScheme.onSurface,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.save_alt),
+            onPressed: _saveAsCustomTemplate,
+            tooltip: '커스텀 템플릿으로 저장',
+          ),
+        ],
       ),
       body: Column(
         children: [
-          // 1. 상단 섹션 (맵 또는 템플릿 정보) - 크기 축소 (flex 2)
           Expanded(
             flex: 2,
             child: _shouldShowMap() ? _buildMapSection() : _buildTemplateInfoSection(),
           ),
-          
-          // 2. 하단 섹션 (커스터마이징 및 목표 설정) - 공간 확대 (flex 5)
           Expanded(
             flex: 5,
             child: Container(
@@ -231,7 +304,6 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     );
   }
 
-  // 맵 위젯
   Widget _buildMapSection() {
     if (_isLoadingLocation) {
       return Container(
@@ -246,7 +318,7 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
           child: Padding(
             padding: const EdgeInsets.all(20.0),
             child: Text(
-              _locationError!, 
+              _locationError!,
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.white70),
             ),
@@ -269,7 +341,6 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     );
   }
 
-  // 맵이 없을 때 보여줄 템플릿 정보 섹션
   Widget _buildTemplateInfoSection() {
     return Container(
       width: double.infinity,
@@ -288,7 +359,7 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
         children: [
           _buildCategoryIcon(
             _editableTemplate.category,
-            size: 48, // 크기 살짝 축소
+            size: 48,
             color: Theme.of(context).colorScheme.primary,
           ),
           const SizedBox(height: 12),
@@ -301,15 +372,14 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          // 칩 형태로 태그 표시
           Wrap(
             spacing: 8,
             children: [
-              _buildSmallChip(_editableTemplate.category),
+              _buildSmallChip(_getCleanName(_editableTemplate.category)),
               if (_editableTemplate.subCategory != null)
-                _buildSmallChip(_editableTemplate.subCategory!),
+                _buildSmallChip(_getCleanName(_editableTemplate.subCategory!)),
               if (_editableTemplate.environmentType != null)
-                _buildSmallChip(_editableTemplate.environmentType!),
+                _buildSmallChip(_getCleanName(_editableTemplate.environmentType!)),
             ],
           ),
         ],
@@ -362,30 +432,232 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     }
   }
 
-  // 탭 1: 세부 조정 (Phases & Blocks)
+  // --- Grouping Logic ---
+
   Widget _buildCustomizationTab() {
     return ListView.builder(
-      padding: const EdgeInsets.all(16), // Padding 축소 (하단 가림 없음)
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 140),
       itemCount: _editableTemplate.phases.length,
       itemBuilder: (context, phaseIndex) {
         final phase = _editableTemplate.phases[phaseIndex];
+        final phaseDisplayName = _getCleanPhaseName(phase.name);
+        final displayItems = _groupBlocks(phase.blocks, phaseDisplayName);
+
+        // 웜업/쿨다운은 "세트" 텍스트 대신 "항목" 또는 숨김
+        String subtitleText = '';
+        if (phase.name == 'Main Set') {
+          int totalSets = 0;
+          for (var item in displayItems) {
+            totalSets += item.count;
+          }
+          subtitleText = '$totalSets 세트';
+        } else {
+          subtitleText = '${phase.blocks.length}개 항목';
+        }
+
         return Card(
           margin: const EdgeInsets.only(bottom: 16),
           child: ExpansionTile(
+            leading: SvgPicture.asset(
+              'assets/images/endurance/runner-icon.svg',
+              width: 24,
+              height: 24,
+              colorFilter: ColorFilter.mode(
+                Theme.of(context).colorScheme.primary,
+                BlendMode.srcIn,
+              ),
+            ),
             title: Text(
-              phase.name,
+              phaseDisplayName,
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-            subtitle: Text('${phase.blocks.length} blocks'),
+            subtitle: Text(subtitleText),
             initiallyExpanded: true,
-            children: phase.blocks.asMap().entries.map((entry) {
-              final blockIndex = entry.key;
-              final block = entry.value;
-              return _buildBlockItem(block, phaseIndex, blockIndex);
+            children: displayItems.map((item) {
+              if (item.isGroup) {
+                return _buildGroupItem(item, phaseIndex);
+              } else {
+                return _buildBlockItem(item.blocks.first, phaseIndex, item.startIndex);
+              }
             }).toList(),
           ),
         );
       },
+    );
+  }
+
+  List<_DisplayItem> _groupBlocks(List<TemplateBlock> blocks, String phaseDisplayName) {
+    // 웜업 및 쿨다운은 그룹화하지 않음 (사용자 요청: Set 텍스트 필요 없음)
+    if (phaseDisplayName.contains('웜업') || phaseDisplayName.contains('쿨다운')) {
+      return blocks.asMap().entries.map((e) => _DisplayItem(
+        isGroup: false,
+        blocks: [e.value],
+        startIndex: e.key,
+      )).toList();
+    }
+
+    List<_DisplayItem> items = [];
+    int i = 0;
+    while (i < blocks.length) {
+      // 1. Try Work + Rest Pattern
+      if (i + 1 < blocks.length) {
+        final b1 = blocks[i];
+        final b2 = blocks[i + 1];
+        
+        // Pair detection (Work followed by Rest/Recovery)
+        bool isWorkRestPair = (b1.type == 'endurance' || b1.type == 'strength') && 
+                              (b2.type == 'rest' || (b2.type == 'endurance' && (b2.name.toLowerCase().contains('recovery') || b2.intensityZone != b1.intensityZone)));
+
+        if (isWorkRestPair) {
+          int count = 1;
+          int j = i + 2;
+          while (j + 1 < blocks.length) {
+            if (_isSameBlock(blocks[j], b1) && _isSameBlock(blocks[j + 1], b2)) {
+              count++;
+              j += 2;
+            } else {
+              break;
+            }
+          }
+
+          // Even for 1 set, if it's a pair, we group it for unified editing
+          if (count >= 1) {
+            items.add(_DisplayItem(
+              isGroup: true,
+              blocks: [b1, b2],
+              startIndex: i,
+              count: count,
+            ));
+            i += count * 2;
+            continue;
+          }
+        }
+      }
+
+      // 2. Try Single Repeating Block
+      final b1 = blocks[i];
+      int count = 1;
+      int j = i + 1;
+      while (j < blocks.length) {
+        if (_isSameBlock(blocks[j], b1)) {
+          count++;
+          j++;
+        } else {
+          break;
+        }
+      }
+
+      if (count >= 1 && (b1.type == 'endurance' || b1.type == 'strength')) {
+        items.add(_DisplayItem(
+          isGroup: true,
+          blocks: [b1],
+          startIndex: i,
+          count: count,
+        ));
+        i += count;
+        continue;
+      }
+
+      items.add(_DisplayItem(
+        isGroup: false,
+        blocks: [b1],
+        startIndex: i,
+      ));
+      i++;
+    }
+    return items;
+  }
+
+  bool _isSameBlock(TemplateBlock a, TemplateBlock b) {
+    return a.type == b.type &&
+           a.targetDistance == b.targetDistance &&
+           a.targetDuration == b.targetDuration &&
+           a.targetPace == b.targetPace &&
+           a.intensityZone == b.intensityZone &&
+           a.sets == b.sets &&
+           a.reps == b.reps &&
+           a.weight == b.weight;
+  }
+
+  Widget _buildGroupItem(_DisplayItem item, int phaseIndex) {
+    final workBlock = item.blocks[0];
+    final restBlock = item.blocks.length > 1 ? item.blocks[1] : null;
+
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        leading: CircleAvatar(
+          backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+          child: Icon(Icons.repeat, color: Theme.of(context).colorScheme.primary, size: 20),
+        ),
+        title: Text('${item.count} 세트: ${_getCleanName(workBlock.name).replaceAll(RegExp(r' \d+$'), '')}'),
+        subtitle: Text(
+          '${_getBlockSummary(workBlock)}' + 
+          (restBlock != null ? ' + ${_getBlockSummary(restBlock)}' : '')
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.edit, size: 20),
+              onPressed: () => _showEditGroupDialog(item, phaseIndex),
+              tooltip: '전체 세트 수정',
+            ),
+            const Icon(Icons.keyboard_arrow_down),
+          ],
+        ),
+        children: List.generate(item.count * item.blocks.length, (i) {
+          final actualIndex = item.startIndex + i;
+          final block = _editableTemplate.phases[phaseIndex].blocks[actualIndex];
+          return Padding(
+            padding: const EdgeInsets.only(left: 16.0),
+            child: _buildBlockItem(block, phaseIndex, actualIndex),
+          );
+        }),
+      ),
+    );
+  }
+
+  void _showEditGroupDialog(_DisplayItem item, int phaseIndex) {
+    showDialog(
+      context: context,
+      builder: (context) => IntervalSetEditDialog(
+        workBlock: item.blocks[0],
+        restBlock: item.blocks.length > 1 ? item.blocks[1] : null,
+        currentSets: item.count,
+        onSave: (newBlocks) async {
+          setState(() {
+            final currentBlocks = List<TemplateBlock>.from(_editableTemplate.phases[phaseIndex].blocks);
+            int unitLength = item.blocks.length;
+            int removeCount = item.count * unitLength;
+            currentBlocks.removeRange(item.startIndex, item.startIndex + removeCount);
+            currentBlocks.insertAll(item.startIndex, newBlocks);
+            final updatedPhase = _editableTemplate.phases[phaseIndex].copyWith(blocks: currentBlocks);
+            _editableTemplate.phases[phaseIndex] = updatedPhase;
+          });
+
+          await showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('템플릿 저장'),
+              content: const Text('변경사항을 나만의 템플릿으로 저장하시겠습니까?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('아니오'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _saveAsCustomTemplate();
+                  },
+                  child: const Text('예, 저장합니다'),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -399,7 +671,7 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
           color: Theme.of(context).colorScheme.secondary,
         ),
       ),
-      title: Text(block.name),
+      title: Text(_getCleanName(block.name)),
       subtitle: Text(_getBlockSummary(block)),
       trailing: IconButton(
         icon: const Icon(Icons.edit, size: 20),
@@ -434,9 +706,17 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     if (block.type == 'strength') {
       return '${block.sets} sets x ${block.reps} reps @ ${block.weight ?? 0}kg';
     } else if (block.type == 'endurance') {
-      if (block.targetDistance != null) return '${block.targetDistance}m';
-      if (block.targetDuration != null) return '${block.targetDuration}s';
-      return 'Free Run';
+      List<String> parts = [];
+      if (block.targetDistance != null) parts.add('${block.targetDistance!.toInt()}m');
+      if (block.targetPace != null) {
+        int totalSeconds = block.targetPace!.toInt();
+        int minutes = totalSeconds ~/ 60;
+        int seconds = totalSeconds % 60;
+        parts.add("$minutes'${seconds.toString().padLeft(2, '0')}");
+      }
+      if (block.targetDuration != null) parts.add('${block.targetDuration}s');
+      if (parts.isEmpty) return 'Free Run';
+      return parts.join(' | ');
     } else {
       return '${block.targetDuration ?? 0}s Rest';
     }
@@ -449,12 +729,8 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
         block: block,
         onSave: (updatedBlock) {
           setState(() {
-            // 해당 블록만 업데이트
-            // 리스트는 레퍼런스 타입이므로 새 리스트로 교체하여 불변성 유지 권장
             final updatedBlocks = List<TemplateBlock>.from(_editableTemplate.phases[phaseIndex].blocks);
             updatedBlocks[blockIndex] = updatedBlock;
-            
-            // 페이즈 업데이트
             final updatedPhase = _editableTemplate.phases[phaseIndex].copyWith(blocks: updatedBlocks);
             _editableTemplate.phases[phaseIndex] = updatedPhase;
           });
@@ -463,7 +739,6 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     );
   }
 
-  // 탭 2: 전체 목표 (기존 로직 유지)
   Widget _buildGlobalGoalTab() {
     return Consumer<WorkoutTrackingService>(
       builder: (context, workoutService, child) {
@@ -514,7 +789,6 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     );
   }
 
-  // 기존 목표 설정 관련 메서드들 (동일하게 유지)
   void _showDistancePicker() {
     int km = _workoutService.goalDistance != null ? (_workoutService.goalDistance! / 1000).floor() : 0;
     int m = _workoutService.goalDistance != null ? ((_workoutService.goalDistance! % 1000) / 10).round() : 0;
@@ -570,480 +844,233 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     );
   }
 
-    void _showPacePicker() {
+  void _showPacePicker() {
+    int min = _workoutService.goalPace?.minutes ?? 4;
+    int sec = _workoutService.goalPace?.seconds ?? 15;
+    bool useKeyboard = false;
+    final minController = TextEditingController(text: min.toString());
+    final secController = TextEditingController(text: sec.toString().padLeft(2, '0'));
 
-      int min = _workoutService.goalPace?.minutes ?? 4;
-
-      int sec = _workoutService.goalPace?.seconds ?? 15;
-
-      bool useKeyboard = false;
-
-      final minController = TextEditingController(text: min.toString());
-
-      final secController = TextEditingController(text: sec.toString().padLeft(2, '0'));
-
-  
-
-      showCupertinoModalPopup(
-
-        context: context,
-
-        builder: (context) => StatefulBuilder(
-
-          builder: (context, setModalState) {
-
-            final screenHeight = MediaQuery.of(context).size.height;
-
-            return Container(
-
-              height: screenHeight * 0.5,
-
-              color: CupertinoColors.systemBackground.resolveFrom(context),
-
-              child: Column(
-
-                children: [
-
-                  Container(
-
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-
-                    child: Row(
-
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-
-                      children: [
-
-                        CupertinoButton(child: const Text('취소'), onPressed: () => Navigator.pop(context)),
-
-                        CupertinoButton(
-
-                          child: Icon(useKeyboard ? Icons.dialpad : Icons.keyboard),
-
-                          onPressed: () => setModalState(() => useKeyboard = !useKeyboard),
-
-                        ),
-
-                        CupertinoButton(
-
-                          child: const Text('설정', style: TextStyle(fontWeight: FontWeight.bold)),
-
-                          onPressed: () {
-
-                            if (useKeyboard) {
-
-                              min = int.tryParse(minController.text) ?? 0;
-
-                              sec = int.tryParse(secController.text) ?? 0;
-
-                            }
-
-                            _workoutService.setGoals(pace: Pace(minutes: min, seconds: sec));
-
-                            Navigator.pop(context);
-
-                          },
-
-                        ),
-
-                      ],
-
-                    ),
-
+    showCupertinoModalPopup(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final screenHeight = MediaQuery.of(context).size.height;
+          return Container(
+            height: screenHeight * 0.5,
+            color: CupertinoColors.systemBackground.resolveFrom(context),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      CupertinoButton(child: const Text('취소'), onPressed: () => Navigator.pop(context)),
+                      CupertinoButton(
+                        child: Icon(useKeyboard ? Icons.dialpad : Icons.keyboard),
+                        onPressed: () => setModalState(() => useKeyboard = !useKeyboard),
+                      ),
+                      CupertinoButton(
+                        child: const Text('설정', style: TextStyle(fontWeight: FontWeight.bold)),
+                        onPressed: () {
+                          if (useKeyboard) {
+                            min = int.tryParse(minController.text) ?? 0;
+                            sec = int.tryParse(secController.text) ?? 0;
+                          }
+                          _workoutService.setGoals(pace: Pace(minutes: min, seconds: sec));
+                          Navigator.pop(context);
+                        },
+                      ),
+                    ],
                   ),
+                ),
+                Expanded(
+                  child: useKeyboard
+                      ? SingleChildScrollView(child: _buildKeyboardInput(minController, secController, 'pace'))
+                      : _buildPickerInput(min, sec, 'pace', (index) => min = index, (index) => sec = index),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
 
-                  Expanded(
+  void _showTimePicker() {
+    int h = _workoutService.goalTime?.inHours ?? 0;
+    int m = _workoutService.goalTime?.inMinutes.remainder(60) ?? 0;
+    bool useKeyboard = false;
+    final hController = TextEditingController(text: h.toString());
+    final mController = TextEditingController(text: m.toString().padLeft(2, '0'));
 
-                    child: useKeyboard
-
-                        ? SingleChildScrollView(child: _buildKeyboardInput(minController, secController, 'pace'))
-
-                        : _buildPickerInput(min, sec, 'pace', (index) => min = index, (index) => sec = index),
-
+    showCupertinoModalPopup(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final screenHeight = MediaQuery.of(context).size.height;
+          return Container(
+            height: screenHeight * 0.5,
+            color: CupertinoColors.systemBackground.resolveFrom(context),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      CupertinoButton(child: const Text('취소'), onPressed: () => Navigator.pop(context)),
+                      CupertinoButton(
+                        child: Icon(useKeyboard ? Icons.dialpad : Icons.keyboard),
+                        onPressed: () => setModalState(() => useKeyboard = !useKeyboard),
+                      ),
+                      CupertinoButton(
+                        child: const Text('설정', style: TextStyle(fontWeight: FontWeight.bold)),
+                        onPressed: () {
+                          if (useKeyboard) {
+                            h = int.tryParse(hController.text) ?? 0;
+                            m = int.tryParse(mController.text) ?? 0;
+                          }
+                          final duration = Duration(hours: h, minutes: m);
+                          _workoutService.setGoals(time: duration);
+                          Navigator.pop(context);
+                        },
+                      ),
+                    ],
                   ),
-
-                ],
-
-              ),
-
-            );
-
-          },
-
-        ),
-
-      );
-
-    }
-
-  
-
-    void _showTimePicker() {
-
-      int h = _workoutService.goalTime?.inHours ?? 0;
-
-      int m = _workoutService.goalTime?.inMinutes.remainder(60) ?? 0;
-
-      bool useKeyboard = false;
-
-      final hController = TextEditingController(text: h.toString());
-
-      final mController = TextEditingController(text: m.toString().padLeft(2, '0'));
-
-  
-
-      showCupertinoModalPopup(
-
-        context: context,
-
-        builder: (context) => StatefulBuilder(
-
-          builder: (context, setModalState) {
-
-            final screenHeight = MediaQuery.of(context).size.height;
-
-            return Container(
-
-              height: screenHeight * 0.5,
-
-              color: CupertinoColors.systemBackground.resolveFrom(context),
-
-              child: Column(
-
-                children: [
-
-                  Container(
-
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-
-                    child: Row(
-
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-
-                      children: [
-
-                        CupertinoButton(child: const Text('취소'), onPressed: () => Navigator.pop(context)),
-
-                        CupertinoButton(
-
-                          child: Icon(useKeyboard ? Icons.dialpad : Icons.keyboard),
-
-                          onPressed: () => setModalState(() => useKeyboard = !useKeyboard),
-
-                        ),
-
-                        CupertinoButton(
-
-                          child: const Text('설정', style: TextStyle(fontWeight: FontWeight.bold)),
-
-                          onPressed: () {
-
-                            if (useKeyboard) {
-
-                              h = int.tryParse(hController.text) ?? 0;
-
-                              m = int.tryParse(mController.text) ?? 0;
-
-                            }
-
-                            final duration = Duration(hours: h, minutes: m);
-
-                            _workoutService.setGoals(time: duration);
-
-                            Navigator.pop(context);
-
-                          },
-
-                        ),
-
-                      ],
-
-                    ),
-
-                  ),
-
-                  Expanded(
-
-                    child: useKeyboard
-
-                        ? SingleChildScrollView(child: _buildKeyboardInput(hController, mController, 'time'))
-
-                        : _buildPickerInputTime(h, m, (index) => h = index, (index) => m = index),
-
-                  ),
-
-                ],
-
-              ),
-
-            );
-
-          },
-
-        ),
-
-      );
-
-    }
-
-  
-
-    Widget _buildPickerInputTime(int hours, int minutes, Function(int) onChangedH, Function(int) onChangedM) {
-
-      final secondaryColor = Theme.of(context).colorScheme.secondary;
-
-      return Row(
-
-        mainAxisAlignment: MainAxisAlignment.center,
-
-        children: [
-
-          Expanded(child: CupertinoPicker(itemExtent: 40, onSelectedItemChanged: onChangedH, scrollController: FixedExtentScrollController(initialItem: hours), children: List.generate(24, (index) => Center(child: Text('$index', style: const TextStyle(fontSize: 20)))))),
-
-          Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: Text('시간', style: TextStyle(fontSize: 20, color: secondaryColor, fontWeight: FontWeight.bold))),
-
-          Expanded(child: CupertinoPicker(itemExtent: 40, onSelectedItemChanged: onChangedM, scrollController: FixedExtentScrollController(initialItem: minutes), children: List.generate(60, (index) => Center(child: Text(index.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 20)))))),
-
-          Padding(padding: const EdgeInsets.only(right: 20.0), child: Text('분', style: TextStyle(fontSize: 20, color: secondaryColor, fontWeight: FontWeight.bold))),
-
-        ],
-
-      );
-
-    }
-
-  
-
-    Widget _buildPickerInput(int value1, int value2, String unit, Function(int) onChanged1, Function(int) onChanged2) {
-
-      final secondaryColor = Theme.of(context).colorScheme.secondary;
-
-      return Row(
-
-        mainAxisAlignment: MainAxisAlignment.center,
-
-        children: [
-
-          Expanded(child: CupertinoPicker(itemExtent: 40, onSelectedItemChanged: onChanged1, scrollController: FixedExtentScrollController(initialItem: value1), children: List.generate(100, (index) => Center(child: Text('$index', style: const TextStyle(fontSize: 20)))))),
-
-          Text(unit == 'km' ? '.' : "'", style: TextStyle(fontSize: 20, color: secondaryColor, fontWeight: FontWeight.bold)),
-
-          Expanded(child: CupertinoPicker(itemExtent: 40, onSelectedItemChanged: onChanged2, scrollController: FixedExtentScrollController(initialItem: value2), children: List.generate(unit == 'km' ? 100 : 60, (index) => Center(child: Text(index.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 20)))))),
-
-          Padding(padding: const EdgeInsets.only(right: 20.0), child: Text(unit == 'km' ? 'km' : '"', style: TextStyle(fontSize: 20, color: secondaryColor, fontWeight: FontWeight.bold))),
-
-        ],
-
-      );
-
-    }
-
-  
-
-    Widget _buildKeyboardInput(TextEditingController c1, TextEditingController c2, String unit) {
-
-      final secondaryColor = Theme.of(context).colorScheme.secondary;
-
-      String separator = unit == 'km' ? '.' : (unit == 'pace' ? "'" : '');
-
-      String suffix1 = unit == 'time' ? '시간' : '';
-
-      String suffix2 = unit == 'km' ? 'km' : (unit == 'pace' ? '"' : '분');
-
-      
-
-      return Padding(
-
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
-
-        child: Row(
-
-          children: [
-
-            Expanded(child: CupertinoTextField(controller: c1, textAlign: TextAlign.center, keyboardType: TextInputType.number, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold))),
-
-            if (separator.isNotEmpty) Text(separator, style: TextStyle(fontSize: 32, color: secondaryColor, fontWeight: FontWeight.bold)),
-
-            if (suffix1.isNotEmpty) Text(suffix1, style: TextStyle(fontSize: 20, color: secondaryColor, fontWeight: FontWeight.bold)),
-
-            const SizedBox(width: 8), 
-
-            Expanded(child: CupertinoTextField(controller: c2, textAlign: TextAlign.center, keyboardType: TextInputType.number, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold))),
-
-            Text(suffix2, style: TextStyle(fontSize: 20, color: secondaryColor, fontWeight: FontWeight.bold)),
-
-          ],
-
-        ),
-
-      );
-
-    }
-
-  
-
-    Map<String, dynamic> _calculateMissingGoal(WorkoutTrackingService service) {
-
-      final hasDistance = service.goalDistance != null;
-
-      final hasPace = service.goalPace != null;
-
-      final hasTime = service.goalTime != null;
-
-      String? distanceValue, paceValue, timeValue;
-
-      bool distanceCalculated = false, paceCalculated = false, timeCalculated = false;
-
-  
-
-      if (hasDistance && hasPace && !hasTime) {
-
-        final distanceKm = service.goalDistance! / 1000;
-
-        final paceMin = service.goalPace!.minutes + service.goalPace!.seconds / 60;
-
-        final timeMin = (distanceKm * paceMin).round();
-
-        timeValue = _formatDuration(Duration(minutes: timeMin));
-
-        timeCalculated = true;
-
-        distanceValue = '${distanceKm.toStringAsFixed(2)} km';
-
-        paceValue = service.goalPace.toString();
-
-      } else if (hasDistance && hasTime && !hasPace) {
-
-        final distanceKm = service.goalDistance! / 1000;
-
-        final totalMinutes = service.goalTime!.inMinutes;
-
-        final paceMinutes = (totalMinutes / distanceKm);
-
-        final paceMin = paceMinutes.floor();
-
-        final paceSec = ((paceMinutes - paceMin) * 60).round();
-
-        paceValue = '$paceMin:${paceSec.toString().padLeft(2, '0')}';
-
-        paceCalculated = true;
-
-        distanceValue = '${distanceKm.toStringAsFixed(2)} km';
-
-        timeValue = _formatDuration(service.goalTime!);
-
-      } else if (hasPace && hasTime && !hasDistance) {
-
-        final paceMinutes = service.goalPace!.minutes + (service.goalPace!.seconds / 60);
-
-        final totalMinutes = service.goalTime!.inMinutes;
-
-        final calculatedDistanceKm = totalMinutes / paceMinutes;
-
-        distanceValue = '${calculatedDistanceKm.toStringAsFixed(2)} km';
-
-        distanceCalculated = true;
-
-        paceValue = service.goalPace.toString();
-
-        timeValue = _formatDuration(service.goalTime!);
-
-      } else {
-
-        distanceValue = hasDistance ? '${(service.goalDistance! / 1000).toStringAsFixed(2)} km' : '선택';
-
-        paceValue = hasPace ? service.goalPace.toString() : '선택';
-
-        timeValue = hasTime ? _formatDuration(service.goalTime!) : '선택';
-
-      }
-
-      return {
-
-        'distance': distanceValue, 'pace': paceValue, 'time': timeValue,
-
-        'distanceCalculated': distanceCalculated, 'paceCalculated': paceCalculated, 'timeCalculated': timeCalculated
-
-      };
-
-    }
-
-  
-
-    Widget _buildGoalButton({required String label, required String value, required IconData icon, required VoidCallback onTap, bool isCalculated = false}) {
-
-      final hasValue = value != '선택';
-
-      return InkWell(
-
-        onTap: onTap,
-
-        borderRadius: BorderRadius.circular(8),
-
-        child: Container(
-
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-
-          decoration: BoxDecoration(
-
-            color: hasValue ? Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.1),
-
-            borderRadius: BorderRadius.circular(8),
-
-            border: Border.all(color: hasValue ? Theme.of(context).colorScheme.secondary : Colors.grey, width: hasValue ? 2 : 1),
-
-          ),
-
-          child: Column(
-
-            children: [
-
-              Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, size: 16, color: hasValue ? Theme.of(context).colorScheme.secondary : Colors.grey), const SizedBox(width: 4), Text(label, style: TextStyle(fontSize: 12, color: hasValue ? Theme.of(context).colorScheme.secondary : Colors.grey)), if (isCalculated) Icon(Icons.auto_awesome, size: 12, color: Theme.of(context).colorScheme.primary)]),
-
-              const SizedBox(height: 8),
-
-              Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: hasValue ? Theme.of(context).colorScheme.onSurface : Colors.grey, fontStyle: isCalculated ? FontStyle.italic : FontStyle.normal), textAlign: TextAlign.center),
-
-            ],
-
-          ),
-
-        ),
-
-      );
-
-    }
-
-  
-
-        String _formatDuration(Duration duration) {
-
-  
-
-          String twoDigits(int n) => n.toString().padLeft(2, "0");
-
-  
-
-          String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
-
-  
-
-          String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
-
-  
-
-          return "${twoDigits(duration.inHours)}:$twoDigitMinutes:$twoDigitSeconds";
-
-  
-
-        }
-
-  
-
-    }
-
-  
-
+                ),
+                Expanded(
+                  child: useKeyboard
+                      ? SingleChildScrollView(child: _buildKeyboardInput(hController, mController, 'time'))
+                      : _buildPickerInputTime(h, m, (index) => h = index, (index) => m = index),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildPickerInputTime(int hours, int minutes, Function(int) onChangedH, Function(int) onChangedM) {
+    final secondaryColor = Theme.of(context).colorScheme.secondary;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Expanded(child: CupertinoPicker(itemExtent: 40, onSelectedItemChanged: onChangedH, scrollController: FixedExtentScrollController(initialItem: hours), children: List.generate(24, (index) => Center(child: Text('$index', style: const TextStyle(fontSize: 20)))))),
+        Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: Text('시간', style: TextStyle(fontSize: 20, color: secondaryColor, fontWeight: FontWeight.bold))),
+        Expanded(child: CupertinoPicker(itemExtent: 40, onSelectedItemChanged: onChangedM, scrollController: FixedExtentScrollController(initialItem: minutes), children: List.generate(60, (index) => Center(child: Text(index.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 20)))))),
+        Padding(padding: const EdgeInsets.only(right: 20.0), child: Text('분', style: TextStyle(fontSize: 20, color: secondaryColor, fontWeight: FontWeight.bold))),
+      ],
+    );
+  }
+
+  Widget _buildPickerInput(int value1, int value2, String unit, Function(int) onChanged1, Function(int) onChanged2) {
+    final secondaryColor = Theme.of(context).colorScheme.secondary;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Expanded(child: CupertinoPicker(itemExtent: 40, onSelectedItemChanged: onChanged1, scrollController: FixedExtentScrollController(initialItem: value1), children: List.generate(100, (index) => Center(child: Text('$index', style: const TextStyle(fontSize: 20)))))),
+        Text(unit == 'km' ? '.' : "'", style: TextStyle(fontSize: 20, color: secondaryColor, fontWeight: FontWeight.bold)),
+        Expanded(child: CupertinoPicker(itemExtent: 40, onSelectedItemChanged: onChanged2, scrollController: FixedExtentScrollController(initialItem: value2), children: List.generate(unit == 'km' ? 100 : 60, (index) => Center(child: Text(index.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 20)))))),
+        Padding(padding: const EdgeInsets.only(right: 20.0), child: Text(unit == 'km' ? 'km' : '"', style: TextStyle(fontSize: 20, color: secondaryColor, fontWeight: FontWeight.bold))),
+      ],
+    );
+  }
+
+  Widget _buildKeyboardInput(TextEditingController c1, TextEditingController c2, String unit) {
+    final secondaryColor = Theme.of(context).colorScheme.secondary;
+    String separator = unit == 'km' ? '.' : (unit == 'pace' ? "'" : '');
+    String suffix1 = unit == 'time' ? '시간' : '';
+    String suffix2 = unit == 'km' ? 'km' : (unit == 'pace' ? '"' : '분');
     
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+      child: Row(
+        children: [
+          Expanded(child: CupertinoTextField(controller: c1, textAlign: TextAlign.center, keyboardType: TextInputType.number, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold))),
+          if (separator.isNotEmpty) Text(separator, style: TextStyle(fontSize: 32, color: secondaryColor, fontWeight: FontWeight.bold)),
+          if (suffix1.isNotEmpty) Text(suffix1, style: TextStyle(fontSize: 20, color: secondaryColor, fontWeight: FontWeight.bold)),
+          const SizedBox(width: 8), 
+          Expanded(child: CupertinoTextField(controller: c2, textAlign: TextAlign.center, keyboardType: TextInputType.number, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold))),
+          Text(suffix2, style: TextStyle(fontSize: 20, color: secondaryColor, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
 
-  
+  Map<String, dynamic> _calculateMissingGoal(WorkoutTrackingService service) {
+    final hasDistance = service.goalDistance != null;
+    final hasPace = service.goalPace != null;
+    final hasTime = service.goalTime != null;
+    String? distanceValue, paceValue, timeValue;
+    bool distanceCalculated = false, paceCalculated = false, timeCalculated = false;
+
+    if (hasDistance && hasPace && !hasTime) {
+      final distanceKm = service.goalDistance! / 1000;
+      final paceMin = service.goalPace!.minutes + service.goalPace!.seconds / 60;
+      final timeMin = (distanceKm * paceMin).round();
+      timeValue = _formatDuration(Duration(minutes: timeMin));
+      timeCalculated = true;
+      distanceValue = '${distanceKm.toStringAsFixed(2)} km';
+      paceValue = service.goalPace.toString();
+    } else if (hasDistance && hasTime && !hasPace) {
+      final distanceKm = service.goalDistance! / 1000;
+      final totalMinutes = service.goalTime!.inMinutes;
+      final paceMinutes = (totalMinutes / distanceKm);
+      final paceMin = paceMinutes.floor();
+      final paceSec = ((paceMinutes - paceMin) * 60).round();
+      paceValue = '$paceMin:${paceSec.toString().padLeft(2, '0')}';
+      paceCalculated = true;
+      distanceValue = '${distanceKm.toStringAsFixed(2)} km';
+      timeValue = _formatDuration(service.goalTime!);
+    } else if (hasPace && hasTime && !hasDistance) {
+      final paceMinutes = service.goalPace!.minutes + (service.goalPace!.seconds / 60);
+      final totalMinutes = service.goalTime!.inMinutes;
+      final calculatedDistanceKm = totalMinutes / paceMinutes;
+      distanceValue = '${calculatedDistanceKm.toStringAsFixed(2)} km';
+      distanceCalculated = true;
+      paceValue = service.goalPace.toString();
+      timeValue = _formatDuration(service.goalTime!);
+    } else {
+      distanceValue = hasDistance ? '${(service.goalDistance! / 1000).toStringAsFixed(2)} km' : '선택';
+      paceValue = hasPace ? service.goalPace.toString() : '선택';
+      timeValue = hasTime ? _formatDuration(service.goalTime!) : '선택';
+    }
+    return {
+      'distance': distanceValue, 'pace': paceValue, 'time': timeValue,
+      'distanceCalculated': distanceCalculated, 'paceCalculated': paceCalculated, 'timeCalculated': timeCalculated
+    };
+  }
+
+  Widget _buildGoalButton({required String label, required String value, required IconData icon, required VoidCallback onTap, bool isCalculated = false}) {
+    final hasValue = value != '선택';
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          color: hasValue ? Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: hasValue ? Theme.of(context).colorScheme.secondary : Colors.grey, width: hasValue ? 2 : 1),
+        ),
+        child: Column(
+          children: [
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, size: 16, color: hasValue ? Theme.of(context).colorScheme.secondary : Colors.grey), const SizedBox(width: 4), Text(label, style: TextStyle(fontSize: 12, color: hasValue ? Theme.of(context).colorScheme.secondary : Colors.grey)), if (isCalculated) Icon(Icons.auto_awesome, size: 12, color: Theme.of(context).colorScheme.primary)]),
+            const SizedBox(height: 8),
+            Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: hasValue ? Theme.of(context).colorScheme.onSurface : Colors.grey, fontStyle: isCalculated ? FontStyle.italic : FontStyle.normal), textAlign: TextAlign.center),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, "0");
+    String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
+    String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
+    return "${twoDigits(duration.inHours)}:$twoDigitMinutes:$twoDigitSeconds";
+  }
+}

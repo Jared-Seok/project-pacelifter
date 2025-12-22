@@ -4,14 +4,14 @@
   "category": "Endurance",
   "environmentType": "Trail",
   "subCategory": "Interval",
-  "description": "트레일 환경에서 진행하는 인터벌 트레이닝입니다. 자연 지형을 활용한 강도 높은 훈련으로 체력을 향상시킵니다.",
+  "description": "트레일 환경에서 진행하는 인터벌 트레이닝입니다.",
   "imagePath": "assets/images/endurance/trail-icon.svg",
   "isCustom": false,
   "phases": [
     {
       "id": "phase_warmup",
       "name": "Warm-up",
-      "description": "평지 또는 완만한 경사에서 준비운동",
+      "description": "준비운동",
       "order": 0,
       "blocks": [
         {
@@ -23,25 +23,14 @@
           "targetDuration": 600,
           "intensityZone": "Z1",
           "targetHeartRate": 120,
-          "order": 0,
-          "notes": "지형 적응 및 예열"
-        },
-        {
-          "id": "block_warmup_2",
-          "name": "Dynamic Drills",
-          "type": "endurance",
-          "description": "동적 스트레칭",
-          "targetDuration": 300,
-          "intensityZone": "Z2",
-          "order": 1,
-          "notes": "발목 및 관절 가동성 확보"
+          "order": 0
         }
       ]
     },
     {
       "id": "phase_main",
       "name": "Main Set",
-      "description": "언덕 인터벌 8회 (내리막 회복)",
+      "description": "언덕 인터벌 세트",
       "order": 1,
       "blocks": [
         {
@@ -53,8 +42,7 @@
           "targetDuration": 60,
           "intensityZone": "Z5",
           "targetHeartRate": 175,
-          "order": 0,
-          "notes": "경사도 5-10% 구간 활용"
+          "order": 0
         },
         {
           "id": "block_main_2",
@@ -65,150 +53,13 @@
           "targetDuration": 90,
           "intensityZone": "Z1",
           "order": 1
-        },
-        {
-          "id": "block_main_3",
-          "name": "Hill Rep 2",
-          "type": "endurance",
-          "description": "오르막 강하게",
-          "targetDistance": 200,
-          "targetDuration": 60,
-          "intensityZone": "Z5",
-          "targetHeartRate": 175,
-          "order": 2
-        },
-        {
-          "id": "block_main_4",
-          "name": "Recovery Downhill 2",
-          "type": "endurance",
-          "description": "내리막 조깅",
-          "targetDistance": 200,
-          "targetDuration": 90,
-          "intensityZone": "Z1",
-          "order": 3
-        },
-        {
-          "id": "block_main_5",
-          "name": "Hill Rep 3",
-          "type": "endurance",
-          "description": "오르막 강하게",
-          "targetDistance": 200,
-          "targetDuration": 60,
-          "intensityZone": "Z5",
-          "targetHeartRate": 175,
-          "order": 4
-        },
-        {
-          "id": "block_main_6",
-          "name": "Recovery Downhill 3",
-          "type": "endurance",
-          "description": "내리막 조깅",
-          "targetDistance": 200,
-          "targetDuration": 90,
-          "intensityZone": "Z1",
-          "order": 5
-        },
-        {
-          "id": "block_main_7",
-          "name": "Hill Rep 4",
-          "type": "endurance",
-          "description": "오르막 강하게",
-          "targetDistance": 200,
-          "targetDuration": 60,
-          "intensityZone": "Z5",
-          "targetHeartRate": 175,
-          "order": 6
-        },
-        {
-          "id": "block_main_8",
-          "name": "Recovery Downhill 4",
-          "type": "endurance",
-          "description": "내리막 조깅",
-          "targetDistance": 200,
-          "targetDuration": 90,
-          "intensityZone": "Z1",
-          "order": 7
-        },
-        {
-          "id": "block_main_9",
-          "name": "Hill Rep 5",
-          "type": "endurance",
-          "description": "오르막 강하게",
-          "targetDistance": 200,
-          "targetDuration": 60,
-          "intensityZone": "Z5",
-          "targetHeartRate": 175,
-          "order": 8
-        },
-        {
-          "id": "block_main_10",
-          "name": "Recovery Downhill 5",
-          "type": "endurance",
-          "description": "내리막 조깅",
-          "targetDistance": 200,
-          "targetDuration": 90,
-          "intensityZone": "Z1",
-          "order": 9
-        },
-        {
-          "id": "block_main_11",
-          "name": "Hill Rep 6",
-          "type": "endurance",
-          "description": "오르막 강하게",
-          "targetDistance": 200,
-          "targetDuration": 60,
-          "intensityZone": "Z5",
-          "targetHeartRate": 175,
-          "order": 10
-        },
-        {
-          "id": "block_main_12",
-          "name": "Recovery Downhill 6",
-          "type": "endurance",
-          "description": "내리막 조깅",
-          "targetDistance": 200,
-          "targetDuration": 90,
-          "intensityZone": "Z1",
-          "order": 11
-        },
-        {
-          "id": "block_main_13",
-          "name": "Hill Rep 7",
-          "type": "endurance",
-          "description": "오르막 강하게",
-          "targetDistance": 200,
-          "targetDuration": 60,
-          "intensityZone": "Z5",
-          "targetHeartRate": 175,
-          "order": 12
-        },
-        {
-          "id": "block_main_14",
-          "name": "Recovery Downhill 7",
-          "type": "endurance",
-          "description": "내리막 조깅",
-          "targetDistance": 200,
-          "targetDuration": 90,
-          "intensityZone": "Z1",
-          "order": 13
-        },
-        {
-          "id": "block_main_15",
-          "name": "Hill Rep 8",
-          "type": "endurance",
-          "description": "오르막 강하게",
-          "targetDistance": 200,
-          "targetDuration": 60,
-          "intensityZone": "Z5",
-          "targetHeartRate": 175,
-          "order": 14
         }
       ]
     },
     {
       "id": "phase_cooldown",
       "name": "Cool-down",
-      "description": "평지 쿨다운",
+      "description": "쿨다운",
       "order": 2,
       "blocks": [
         {
@@ -216,12 +67,10 @@
           "name": "Easy Trail Walk/Jog",
           "type": "endurance",
           "description": "천천히 걷거나 조깅",
-          "targetDistance": 1000,
           "targetDuration": 600,
           "intensityZone": "Z1",
           "targetHeartRate": 110,
-          "order": 0,
-          "notes": "심박수 안정화"
+          "order": 0
         }
       ]
     }

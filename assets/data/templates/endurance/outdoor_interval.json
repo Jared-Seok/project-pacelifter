@@ -30,7 +30,7 @@
     {
       "id": "phase_main",
       "name": "Main Set",
-      "description": "5분 빠르게 - 2분 회복 반복",
+      "description": "고강도 - 회복 반복 세트",
       "order": 1,
       "blocks": [
         {
@@ -53,76 +53,6 @@
           "intensityZone": "Z2",
           "targetHeartRate": 130,
           "order": 1
-        },
-        {
-          "id": "block_main_3",
-          "name": "Interval 2: Fast",
-          "type": "endurance",
-          "description": "빠른 페이스",
-          "targetDuration": 300,
-          "intensityZone": "Z4",
-          "targetHeartRate": 170,
-          "order": 2
-        },
-        {
-          "id": "block_main_4",
-          "name": "Recovery 2",
-          "type": "endurance",
-          "description": "회복 조깅",
-          "targetDuration": 120,
-          "intensityZone": "Z2",
-          "targetHeartRate": 130,
-          "order": 3
-        },
-        {
-          "id": "block_main_5",
-          "name": "Interval 3: Fast",
-          "type": "endurance",
-          "description": "빠른 페이스",
-          "targetDuration": 300,
-          "intensityZone": "Z4",
-          "targetHeartRate": 170,
-          "order": 4
-        },
-        {
-          "id": "block_main_6",
-          "name": "Recovery 3",
-          "type": "endurance",
-          "description": "회복 조깅",
-          "targetDuration": 120,
-          "intensityZone": "Z2",
-          "targetHeartRate": 130,
-          "order": 5
-        },
-        {
-          "id": "block_main_7",
-          "name": "Interval 4: Fast",
-          "type": "endurance",
-          "description": "빠른 페이스",
-          "targetDuration": 300,
-          "intensityZone": "Z4",
-          "targetHeartRate": 170,
-          "order": 6
-        },
-        {
-          "id": "block_main_8",
-          "name": "Recovery 4",
-          "type": "endurance",
-          "description": "회복 조깅",
-          "targetDuration": 120,
-          "intensityZone": "Z2",
-          "targetHeartRate": 130,
-          "order": 7
-        },
-        {
-          "id": "block_main_9",
-          "name": "Interval 5: Fast",
-          "type": "endurance",
-          "description": "빠른 페이스",
-          "targetDuration": 300,
-          "intensityZone": "Z4",
-          "targetHeartRate": 170,
-          "order": 8
         }
       ]
     },
