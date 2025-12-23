@@ -1,0 +1,70 @@
+{
+  "id": "strength_full_body_a",
+  "name": "Full Body A",
+  "category": "Strength",
+  "environmentType": "Gym",
+  "subCategory": "Full Body",
+  "description": "전신 주요 근육을 한 번에 훈련하는 효율적인 루틴입니다.",
+  "imagePath": "assets/images/strength/lifter-icon.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_warmup",
+      "name": "Warm-up",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "warmup_cardio",
+          "name": "Rowing / Bike",
+          "type": "endurance",
+          "targetDuration": 300,
+          "intensityZone": "Z1",
+          "order": 0
+        }
+      ]
+    },
+    {
+      "id": "phase_main",
+      "name": "Main Workout",
+      "order": 1,
+      "blocks": [
+        {
+          "id": "main_squat",
+          "name": "Barbell Squat",
+          "type": "strength",
+          "sets": 3,
+          "reps": 5,
+          "restSeconds": 120,
+          "order": 0
+        },
+        {
+          "id": "main_bench_press",
+          "name": "Barbell Bench Press",
+          "type": "strength",
+          "sets": 3,
+          "reps": 5,
+          "restSeconds": 120,
+          "order": 1
+        },
+        {
+          "id": "main_barbell_row",
+          "name": "Barbell Row",
+          "type": "strength",
+          "sets": 3,
+          "reps": 8,
+          "restSeconds": 90,
+          "order": 2
+        },
+        {
+          "id": "main_overhead_press",
+          "name": "Overhead Press",
+          "type": "strength",
+          "sets": 3,
+          "reps": 8,
+          "restSeconds": 90,
+          "order": 3
+        }
+      ]
+    }
+  ]
+}

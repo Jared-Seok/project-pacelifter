@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart'; // kIsWeb 사용을 위해 추가
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -8,6 +8,7 @@ import 'services/template_service.dart';
 import 'screens/health_import_screen.dart';
 import 'screens/splash_screen.dart';
 import 'screens/add_workout_screen.dart';
+import 'providers/strength_routine_provider.dart';
 
 // Hive 모델 임포트
 import 'models/templates/workout_template.dart';
@@ -50,8 +51,11 @@ void main() async {
   await TemplateService.loadAllTemplatesAndExercises();
 
   runApp(
-    ChangeNotifierProvider(
-      create: (context) => WorkoutTrackingService(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => WorkoutTrackingService()),
+        ChangeNotifierProvider(create: (context) => StrengthRoutineProvider()),
+      ],
       child: const MyApp(),
     ),
   );

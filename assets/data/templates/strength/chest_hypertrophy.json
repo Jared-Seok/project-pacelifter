@@ -1,0 +1,63 @@
+{
+  "id": "strength_chest_hypertrophy",
+  "name": "Chest Hypertrophy",
+  "category": "Strength",
+  "environmentType": "Gym",
+  "subCategory": "Body Part",
+  "description": "가슴 근육의 크기와 볼륨감을 키우기 위한 보디빌딩식 루틴입니다.",
+  "imagePath": "assets/images/strength/lifter-icon.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_main",
+      "name": "Main Workout",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "hyper_bench",
+          "name": "Dumbbell Bench Press",
+          "type": "strength",
+          "exerciseId": "dumbbell_bench_press",
+          "sets": 4,
+          "reps": 10,
+          "restSeconds": 90,
+          "order": 0,
+          "notes": "가동 범위를 최대한 길게 가져가세요."
+        },
+        {
+          "id": "hyper_incline",
+          "name": "Incline Machine Press",
+          "type": "strength",
+          "exerciseId": "machine_chest_press",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 60,
+          "order": 1,
+          "notes": "윗가슴 수축에 집중하세요."
+        },
+        {
+          "id": "hyper_fly",
+          "name": "Pec Deck Fly",
+          "type": "strength",
+          "exerciseId": "pec_deck_fly",
+          "sets": 3,
+          "reps": 15,
+          "restSeconds": 60,
+          "order": 2,
+          "notes": "팔꿈치를 살짝 굽히고 가슴 안쪽까지 모아줍니다."
+        },
+        {
+          "id": "hyper_dips",
+          "name": "Bodyweight Dips",
+          "type": "strength",
+          "exerciseId": "weighted_dips",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 60,
+          "order": 3,
+          "notes": "상체를 앞으로 숙여 가슴 하부를 타겟팅합니다."
+        }
+      ]
+    }
+  ]
+}

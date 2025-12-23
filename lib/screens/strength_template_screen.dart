@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import '../services/template_service.dart';
+import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
+import '../providers/strength_routine_provider.dart';
+import 'exercise_list_screen.dart';
 import '../models/templates/workout_template.dart';
-import 'workout_setup_screen.dart';
+import '../models/templates/template_phase.dart';
+import 'strength_tracking_screen.dart';
 
-/// Strength 훈련 템플릿 선택 화면
 class StrengthTemplateScreen extends StatefulWidget {
   const StrengthTemplateScreen({super.key});
 
@@ -13,43 +16,60 @@ class StrengthTemplateScreen extends StatefulWidget {
 }
 
 class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> {
-  List<WorkoutTemplate> _templates = [];
-  bool _isLoading = true;
+  final TextEditingController _searchController = TextEditingController();
+
+  final List<Map<String, dynamic>> _muscleGroups = [
+    {'id': 'chest', 'name': '가슴', 'icon': 'assets/images/strength/lifter-icon.svg'},
+    {'id': 'back', 'name': '등', 'icon': 'assets/images/strength/lifter-icon.svg'},
+    {'id': 'shoulders', 'name': '어깨', 'icon': 'assets/images/strength/lifter-icon.svg'},
+    {'id': 'legs', 'name': '하체', 'icon': 'assets/images/strength/lifter-icon.svg'},
+    {'id': 'arms', 'name': '팔', 'icon': 'assets/images/strength/pullup-icon.svg'},
+    {'id': 'core', 'name': '코어', 'icon': 'assets/images/strength/core-icon.svg'},
+  ];
 
   @override
-  void initState() {
-    super.initState();
-    _loadTemplates();
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
-  Future<void> _loadTemplates() async {
-    try {
-      final templates = TemplateService.getTemplatesByCategory('Strength');
-
-      if (mounted) {
-        setState(() {
-          _templates = templates;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('템플릿 로드 실패: $e')),
-        );
-      }
-    }
+  void _onMuscleGroupTap(String id, String name) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ExerciseListScreen(muscleGroupId: id, title: name),
+      ),
+    );
   }
 
-  String _getIconForTemplate(WorkoutTemplate template) {
-    if (template.subCategory != null &&
-        template.subCategory!.toLowerCase().contains('core')) {
-      return 'assets/images/strength/core-icon.svg';
-    }
-    return 'assets/images/strength/lifter-icon.svg';
+  void _startCustomRoutine() {
+    final blocks = Provider.of<StrengthRoutineProvider>(context, listen: false).blocks;
+    if (blocks.isEmpty) return;
+
+    // 임시 템플릿 생성
+    final template = WorkoutTemplate(
+      id: const Uuid().v4(),
+      name: '나만의 루틴',
+      description: '직접 구성한 커스텀 루틴',
+      category: 'Strength',
+      subCategory: 'Custom',
+      isCustom: true,
+      phases: [
+        TemplatePhase(
+          id: const Uuid().v4(),
+          name: 'Main Workout',
+          order: 0,
+          blocks: blocks,
+        ),
+      ],
+    );
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => StrengthTrackingScreen(template: template),
+      ),
+    );
   }
 
   @override
@@ -57,205 +77,171 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        title: const Text('Strength'),
+        title: const Text('Strength Training'),
         backgroundColor: Theme.of(context).colorScheme.surface,
         foregroundColor: Theme.of(context).colorScheme.onSurface,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              Provider.of<StrengthRoutineProvider>(context, listen: false).clear();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('루틴이 초기화되었습니다')),
+              );
+            },
+          ),
+        ],
       ),
-      body: _isLoading
-          ? Center(
-              child: CircularProgressIndicator(
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            )
-          : SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        SvgPicture.asset(
-                          'assets/images/strength/lifter-icon.svg',
-                          width: 32,
-                          height: 32,
-                          colorFilter: ColorFilter.mode(
-                            Theme.of(context).colorScheme.primary,
-                            BlendMode.srcIn,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        const Expanded(
-                          child: Text(
-                            '훈련 템플릿 선택',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '목표에 맞는 근력 훈련을 선택하세요',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: 0.6),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Expanded(
-                      child: _templates.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.inbox_outlined,
-                                    size: 64,
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurface
-                                        .withValues(alpha: 0.3),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    '사용 가능한 템플릿이 없습니다',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurface
-                                          .withValues(alpha: 0.6),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : ListView.builder(
-                              itemCount: _templates.length,
-                              itemBuilder: (context, index) {
-                                final template = _templates[index];
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
-                                  child: _buildTemplateCard(
-                                    context: context,
-                                    template: template,
-                                  ),
-                                );
-                              },
-                            ),
-                    ),
-                  ],
+      body: Column(
+        children: [
+          // 1. 검색바
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: '운동 검색 (예: 벤치프레스)',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
                 ),
+                filled: true,
+                fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
+              onSubmitted: (value) {
+                // TODO: 검색 결과 화면으로 이동
+              },
             ),
+          ),
+
+          // 2. 부위별 그리드
+          Expanded(
+            child: GridView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 1.1, // 카드 비율
+              ),
+              itemCount: _muscleGroups.length,
+              itemBuilder: (context, index) {
+                final group = _muscleGroups[index];
+                return _buildMuscleCard(group);
+              },
+            ),
+          ),
+          
+          // 3. 하단 루틴 장바구니 (Bar)
+          _buildBottomRoutineBar(),
+        ],
+      ),
     );
   }
 
-  Widget _buildTemplateCard({
-    required BuildContext context,
-    required WorkoutTemplate template,
-  }) {
-    final iconPath = _getIconForTemplate(template);
-
+  Widget _buildMuscleCard(Map<String, dynamic> group) {
     return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => WorkoutSetupScreen(
-              template: template,
-            ),
-          ),
-        );
-      },
-      borderRadius: BorderRadius.circular(12),
+      onTap: () => _onMuscleGroupTap(group['id'], group['name']),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(12),
+          color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: Theme.of(context)
-                .colorScheme
-                .primary
-                .withValues(alpha: 0.3),
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
             width: 1,
           ),
         ),
-        child: Row(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Theme.of(context)
-                    .colorScheme
-                    .primary
-                    .withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(8),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
               ),
               child: SvgPicture.asset(
-                iconPath,
-                width: 24,
-                height: 24,
+                group['icon'],
+                width: 32,
+                height: 32,
                 colorFilter: ColorFilter.mode(
                   Theme.of(context).colorScheme.primary,
                   BlendMode.srcIn,
                 ),
               ),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    template.name,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  if (template.subCategory != null)
-                    Text(
-                      template.subCategory!,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                  const SizedBox(height: 4),
-                  Text(
-                    template.description,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withValues(alpha: 0.6),
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+            const SizedBox(height: 12),
+            Text(
+              group['name'],
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
               ),
-            ),
-            const SizedBox(width: 12),
-            Icon(
-              Icons.arrow_forward_ios,
-              color: Theme.of(context).colorScheme.primary,
-              size: 16,
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildBottomRoutineBar() {
+    return Consumer<StrengthRoutineProvider>(
+      builder: (context, provider, child) {
+        final count = provider.blocks.length;
+        return SafeArea(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              border: Border(
+                top: BorderSide(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        '현재 루틴',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '$count개 운동 선택됨',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: count > 0 ? _startCustomRoutine : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  ),
+                  child: const Text('루틴 시작'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

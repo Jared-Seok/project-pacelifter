@@ -1,0 +1,89 @@
+{
+  "id": "strength_ppl_legs",
+  "name": "Leg Day",
+  "category": "Strength",
+  "environmentType": "Gym",
+  "subCategory": "PPL",
+  "description": "하체 전체를 강도 높게 훈련하는 루틴입니다.",
+  "imagePath": "assets/images/strength/lifter-icon.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_warmup",
+      "name": "Warm-up",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "warmup_squat",
+          "name": "Bodyweight Squat",
+          "type": "strength",
+          "sets": 2,
+          "reps": 20,
+          "restSeconds": 45,
+          "order": 0
+        },
+        {
+          "id": "warmup_lunge",
+          "name": "Walking Lunge",
+          "type": "strength",
+          "sets": 2,
+          "reps": 10,
+          "restSeconds": 45,
+          "order": 1
+        }
+      ]
+    },
+    {
+      "id": "phase_main",
+      "name": "Main Workout",
+      "order": 1,
+      "blocks": [
+        {
+          "id": "main_squat",
+          "name": "Barbell Squat",
+          "type": "strength",
+          "sets": 4,
+          "reps": 6,
+          "restSeconds": 150,
+          "order": 0
+        },
+        {
+          "id": "main_rdl",
+          "name": "Romanian Deadlift",
+          "type": "strength",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 90,
+          "order": 1
+        },
+        {
+          "id": "main_leg_press",
+          "name": "Leg Press",
+          "type": "strength",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 90,
+          "order": 2
+        },
+        {
+          "id": "main_leg_curl",
+          "name": "Leg Curl",
+          "type": "strength",
+          "sets": 3,
+          "reps": 15,
+          "restSeconds": 60,
+          "order": 3
+        },
+        {
+          "id": "main_calf_raise",
+          "name": "Calf Raise",
+          "type": "strength",
+          "sets": 4,
+          "reps": 15,
+          "restSeconds": 45,
+          "order": 4
+        }
+      ]
+    }
+  ]
+}

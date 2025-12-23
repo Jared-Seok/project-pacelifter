@@ -33,13 +33,15 @@ class ExerciseAdapter extends TypeAdapter<Exercise> {
       isCompound: fields[13] as bool,
       isUnilateral: fields[14] as bool,
       tags: (fields[15] as List?)?.cast<String>(),
+      variations: (fields[16] as List).cast<String>(),
+      group: fields[17] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Exercise obj) {
     writer
-      ..writeByte(16)
+      ..writeByte(18)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -71,7 +73,11 @@ class ExerciseAdapter extends TypeAdapter<Exercise> {
       ..writeByte(14)
       ..write(obj.isUnilateral)
       ..writeByte(15)
-      ..write(obj.tags);
+      ..write(obj.tags)
+      ..writeByte(16)
+      ..write(obj.variations)
+      ..writeByte(17)
+      ..write(obj.group);
   }
 
   @override

@@ -1,0 +1,55 @@
+{
+  "id": "strength_part_chest_back",
+  "name": "Chest & Back (Arnold)",
+  "category": "Strength",
+  "environmentType": "Gym",
+  "subCategory": "Body Part",
+  "description": "아놀드 슈워제네거 스타일의 가슴과 등 슈퍼세트 루틴입니다.",
+  "imagePath": "assets/images/strength/lifter-icon.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_main",
+      "name": "Main Workout",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "cb_bench",
+          "name": "Barbell Bench Press",
+          "type": "strength",
+          "sets": 4,
+          "reps": 10,
+          "restSeconds": 90,
+          "order": 0
+        },
+        {
+          "id": "cb_row",
+          "name": "Barbell Row",
+          "type": "strength",
+          "sets": 4,
+          "reps": 10,
+          "restSeconds": 90,
+          "order": 1
+        },
+        {
+          "id": "cb_incline",
+          "name": "Incline DB Press",
+          "type": "strength",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 60,
+          "order": 2
+        },
+        {
+          "id": "cb_pullup",
+          "name": "Pull-ups",
+          "type": "strength",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 60,
+          "order": 3
+        }
+      ]
+    }
+  ]
+}

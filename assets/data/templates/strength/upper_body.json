@@ -1,0 +1,55 @@
+{
+  "id": "strength_split_upper",
+  "name": "Upper Body Focus",
+  "category": "Strength",
+  "environmentType": "Gym",
+  "subCategory": "Upper/Lower",
+  "description": "상체 전반의 근력과 근비대를 위한 효율적인 루틴입니다.",
+  "imagePath": "assets/images/strength/lifter-icon.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_main",
+      "name": "Main Workout",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "upper_bench",
+          "name": "Barbell Bench Press",
+          "type": "strength",
+          "sets": 3,
+          "reps": 8,
+          "restSeconds": 120,
+          "order": 0
+        },
+        {
+          "id": "upper_row",
+          "name": "Pendlay Row",
+          "type": "strength",
+          "sets": 3,
+          "reps": 8,
+          "restSeconds": 120,
+          "order": 1
+        },
+        {
+          "id": "upper_ohp",
+          "name": "Dumbbell Shoulder Press",
+          "type": "strength",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 90,
+          "order": 2
+        },
+        {
+          "id": "upper_lat",
+          "name": "Lat Pulldown",
+          "type": "strength",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 90,
+          "order": 3
+        }
+      ]
+    }
+  ]
+}

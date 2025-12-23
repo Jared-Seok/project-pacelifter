@@ -1,0 +1,52 @@
+{
+  "id": "strength_chest_strength",
+  "name": "Chest Strength",
+  "category": "Strength",
+  "environmentType": "Gym",
+  "subCategory": "Body Part",
+  "description": "가슴과 상체 미는 힘을 극대화하기 위한 고중량 루틴입니다.",
+  "imagePath": "assets/images/strength/lifter-icon.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_main",
+      "name": "Main Workout",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "str_bench",
+          "name": "Barbell Bench Press",
+          "type": "strength",
+          "exerciseId": "barbell_bench_press",
+          "sets": 5,
+          "reps": 5,
+          "restSeconds": 180,
+          "order": 0,
+          "notes": "5x5 스트렝스 훈련. 충분한 휴식을 취하세요."
+        },
+        {
+          "id": "str_incline",
+          "name": "Incline Dumbbell Press",
+          "type": "strength",
+          "exerciseId": "incline_dumbbell_press",
+          "sets": 3,
+          "reps": 8,
+          "restSeconds": 120,
+          "order": 1,
+          "notes": "보조 근육 강화"
+        },
+        {
+          "id": "str_dips",
+          "name": "Weighted Dips",
+          "type": "strength",
+          "exerciseId": "weighted_dips",
+          "sets": 3,
+          "reps": 6,
+          "restSeconds": 120,
+          "order": 2,
+          "notes": "중량을 추가하여 수행합니다."
+        }
+      ]
+    }
+  ]
+}

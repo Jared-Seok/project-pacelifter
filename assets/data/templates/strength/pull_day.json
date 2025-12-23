@@ -1,0 +1,80 @@
+{
+  "id": "strength_ppl_pull",
+  "name": "Pull Day",
+  "category": "Strength",
+  "environmentType": "Gym",
+  "subCategory": "PPL",
+  "description": "등, 이두, 후면 어깨를 타겟으로 하는 당기는 운동 루틴입니다.",
+  "imagePath": "assets/images/strength/lifter-icon.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_warmup",
+      "name": "Warm-up",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "warmup_pullups",
+          "name": "Assisted Pull-ups",
+          "type": "strength",
+          "sets": 2,
+          "reps": 10,
+          "restSeconds": 60,
+          "order": 0
+        }
+      ]
+    },
+    {
+      "id": "phase_main",
+      "name": "Main Workout",
+      "order": 1,
+      "blocks": [
+        {
+          "id": "main_deadlift",
+          "name": "Deadlift",
+          "type": "strength",
+          "sets": 3,
+          "reps": 5,
+          "restSeconds": 180,
+          "order": 0
+        },
+        {
+          "id": "main_pullup",
+          "name": "Pull-ups",
+          "type": "strength",
+          "sets": 3,
+          "reps": 8,
+          "restSeconds": 90,
+          "order": 1
+        },
+        {
+          "id": "main_barbell_row",
+          "name": "Barbell Row",
+          "type": "strength",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 90,
+          "order": 2
+        },
+        {
+          "id": "main_face_pull",
+          "name": "Face Pull",
+          "type": "strength",
+          "sets": 3,
+          "reps": 15,
+          "restSeconds": 60,
+          "order": 3
+        },
+        {
+          "id": "main_bicep_curl",
+          "name": "Barbell Curl",
+          "type": "strength",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 60,
+          "order": 4
+        }
+      ]
+    }
+  ]
+}

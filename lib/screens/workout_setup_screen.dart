@@ -11,6 +11,7 @@ import '../services/template_service.dart';
 import '../models/templates/workout_template.dart';
 import '../models/templates/template_block.dart';
 import 'workout_tracking_screen.dart';
+import 'strength_tracking_screen.dart'; // Correctly placed import
 import '../widgets/block_edit_dialog.dart';
 import '../widgets/interval_set_edit_dialog.dart';
 
@@ -56,7 +57,11 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
   @override
   void initState() {
     super.initState();
+    
+    // 템플릿 딥 카피 생성 (toJson -> fromJson)
     _editableTemplate = WorkoutTemplate.fromJson(widget.template.toJson());
+
+    // 맵이 필요한 환경인지 확인 (Outdoor, Track)
     if (_shouldShowMap()) {
       _getCurrentLocation();
     } else {
@@ -148,14 +153,23 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
   }
 
   void _startWorkout() async {
-    await _workoutService.startWorkout();
-    if (mounted) {
+    if (widget.template.category == 'Strength') {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => const WorkoutTrackingScreen(),
+          builder: (context) => StrengthTrackingScreen(template: widget.template),
         ),
       );
+    } else {
+      await _workoutService.startWorkout();
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const WorkoutTrackingScreen(),
+          ),
+        );
+      }
     }
   }
 
@@ -318,7 +332,7 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
           child: Padding(
             padding: const EdgeInsets.all(20.0),
             child: Text(
-              _locationError!,
+              _locationError!, 
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.white70),
             ),
@@ -640,7 +654,7 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
             context: context,
             builder: (context) => AlertDialog(
               title: const Text('템플릿 저장'),
-              content: const Text('변경사항을 나만의 템플릿으로 저장하시겠습니까?'),
+              content: const Text('변경된 설정을 나만의 템플릿으로 저장하시겠습니까?\n저장하면 다음에도 이 설정을 불러올 수 있습니다.'),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
@@ -708,13 +722,16 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     } else if (block.type == 'endurance') {
       List<String> parts = [];
       if (block.targetDistance != null) parts.add('${block.targetDistance!.toInt()}m');
+      
       if (block.targetPace != null) {
         int totalSeconds = block.targetPace!.toInt();
         int minutes = totalSeconds ~/ 60;
         int seconds = totalSeconds % 60;
         parts.add("$minutes'${seconds.toString().padLeft(2, '0')}");
       }
+      
       if (block.targetDuration != null) parts.add('${block.targetDuration}s');
+      
       if (parts.isEmpty) return 'Free Run';
       return parts.join(' | ');
     } else {

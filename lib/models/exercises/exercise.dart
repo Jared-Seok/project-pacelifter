@@ -54,6 +54,12 @@ class Exercise extends HiveObject {
   @HiveField(15)
   final List<String>? tags; // 검색용 태그
 
+  @HiveField(16)
+  final List<String> variations; // 세부 설정 옵션들
+
+  @HiveField(17)
+  final String? group; // 운동 그룹 (e.g., Bench Press, Flyes)
+
   Exercise({
     required this.id,
     required this.name,
@@ -71,6 +77,8 @@ class Exercise extends HiveObject {
     required this.isCompound,
     required this.isUnilateral,
     this.tags,
+    this.variations = const [],
+    this.group,
   });
 
   /// JSON에서 운동 생성
@@ -89,9 +97,11 @@ class Exercise extends HiveObject {
       videoUrl: json['videoUrl'] as String?,
       imagePath: json['imagePath'] as String?,
       cues: json['cues'] != null ? List<String>.from(json['cues'] as List) : null,
-      isCompound: json['isCompound'] as bool,
-      isUnilateral: json['isUnilateral'] as bool,
+      isCompound: (json['isCompound'] as bool?) ?? false,
+      isUnilateral: (json['isUnilateral'] as bool?) ?? false,
       tags: json['tags'] != null ? List<String>.from(json['tags'] as List) : null,
+      variations: json['variations'] != null ? List<String>.from(json['variations'] as List) : [],
+      group: json['group'] as String?,
     );
   }
 
@@ -114,6 +124,8 @@ class Exercise extends HiveObject {
       'isCompound': isCompound,
       'isUnilateral': isUnilateral,
       'tags': tags,
+      'variations': variations,
+      'group': group,
     };
   }
 
@@ -135,6 +147,8 @@ class Exercise extends HiveObject {
     bool? isCompound,
     bool? isUnilateral,
     List<String>? tags,
+    List<String>? variations,
+    String? group,
   }) {
     return Exercise(
       id: id ?? this.id,
@@ -153,6 +167,8 @@ class Exercise extends HiveObject {
       isCompound: isCompound ?? this.isCompound,
       isUnilateral: isUnilateral ?? this.isUnilateral,
       tags: tags ?? this.tags,
+      variations: variations ?? this.variations,
+      group: group ?? this.group,
     );
   }
 }

@@ -31,24 +31,25 @@ class TemplateService {
   static Future<void> _loadExercisesLibrary() async {
     final box = Hive.box<Exercise>(_exercisesBoxName);
 
-    // 이미 로드되어 있으면 스킵
-    if (box.isNotEmpty) {
-      print('📦 Exercises already loaded (${box.length} exercises)');
-      return;
-    }
+    // 기본 운동 데이터 파일 목록
+    final libraryFiles = [
+      'assets/data/exercises/exercises_library.json',
+      'assets/data/exercises/chest_exercises.json',
+    ];
 
     try {
-      final String jsonString = await rootBundle
-          .loadString('assets/data/exercises/exercises_library.json');
-      final Map<String, dynamic> jsonData = json.decode(jsonString);
-      final List<dynamic> exercisesList = jsonData['exercises'] as List;
+      for (var filePath in libraryFiles) {
+        final String jsonString = await rootBundle.loadString(filePath);
+        final Map<String, dynamic> jsonData = json.decode(jsonString);
+        final List<dynamic> exercisesList = jsonData['exercises'] as List;
 
-      for (var exerciseJson in exercisesList) {
-        final exercise = Exercise.fromJson(exerciseJson as Map<String, dynamic>);
-        await box.put(exercise.id, exercise);
+        for (var exerciseJson in exercisesList) {
+          final exercise = Exercise.fromJson(exerciseJson as Map<String, dynamic>);
+          await box.put(exercise.id, exercise);
+        }
       }
 
-      print('✅ Loaded ${box.length} exercises');
+      print('✅ Loaded ${box.length} exercises from all libraries');
     } catch (e) {
       print('❌ Error loading exercises library: $e');
       rethrow;
@@ -89,14 +90,16 @@ class TemplateService {
   /// Strength 템플릿 로드 (8개)
   static Future<void> _loadStrengthTemplates() async {
     final templateFiles = [
-      'upper_push.json',
-      'upper_pull.json',
-      'lower_squat.json',
-      'lower_hinge.json',
-      'full_body_compound.json',
+      'push_day.json',
+      'pull_day.json',
+      'leg_day.json',
+      'upper_body.json',
+      'lower_body.json',
+      'full_body_a.json',
+      'chest_back.json',
       'core_stability.json',
-      'power_explosive.json',
-      'hypertrophy_volume.json',
+      'chest_hypertrophy.json',
+      'chest_strength.json',
     ];
 
     await _loadTemplatesFromDirectory(
