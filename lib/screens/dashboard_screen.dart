@@ -15,9 +15,11 @@ import 'package:pacelifter/screens/workout_detail_screen.dart';
 import 'package:pacelifter/screens/workout_feed_screen.dart';
 import 'package:pacelifter/services/workout_history_service.dart';
 import 'package:pacelifter/models/sessions/workout_session.dart';
+import 'package:pacelifter/services/template_service.dart';
 import 'package:pacelifter/services/scoring_engine.dart';
 import 'package:pacelifter/models/scoring/performance_scores.dart';
 import 'package:pacelifter/models/workout_data_wrapper.dart';
+import 'package:pacelifter/utils/workout_ui_utils.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -622,7 +624,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (data.value is WorkoutHealthValue) {
         final workout = data.value as WorkoutHealthValue;
         final type = workout.workoutActivityType.name;
-        if (_isStrengthWorkout(type)) {
+        if (WorkoutUIUtils.getWorkoutCategory(type) == 'Strength') {
           strengthCount++;
         } else {
           enduranceCount++;
@@ -1031,7 +1033,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     for (final data in trainingWorkouts) {
       final workout = data.value as WorkoutHealthValue;
       final type = workout.workoutActivityType.name;
-      if (_isStrengthWorkout(type)) {
+      if (WorkoutUIUtils.getWorkoutCategory(type) == 'Strength') {
         strengthCount++;
       } else {
         enduranceCount++;
@@ -1464,7 +1466,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final workout = data.value as WorkoutHealthValue;
     final distance = workout.totalDistance ?? 0.0;
     final type = workout.workoutActivityType.name;
-    final workoutCategory = _getWorkoutCategory(type);
+    final workoutCategory = WorkoutUIUtils.getWorkoutCategory(type);
     final color = _getCategoryColor(workoutCategory);
     
     // Define upperType here for wider scope
@@ -1498,6 +1500,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } else {
       backgroundColor = color.withValues(alpha: 0.2);
       iconColor = color;
+    }
+
+    // 세부 운동 아이콘이 있는지 확인 (배경 제거 로직용)
+    bool hasSpecificIcon = false;
+    if (session != null && session.templateId != null) {
+      final template = TemplateService.getTemplateById(session.templateId!);
+      if (template != null && template.phases.isNotEmpty) {
+        final firstBlock = template.phases.first.blocks.isNotEmpty ? template.phases.first.blocks.first : null;
+        if (firstBlock != null && firstBlock.exerciseId != null) {
+          final exercise = TemplateService.getExerciseById(firstBlock.exerciseId!);
+          if (exercise?.imagePath != null) hasSpecificIcon = true;
+        }
+      }
     }
 
     return Column(
@@ -1534,12 +1549,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
               _loadSessions();
             },
             leading: Container(
-              padding: const EdgeInsets.all(8),
+              padding: hasSpecificIcon ? EdgeInsets.zero : const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: backgroundColor,
+                color: hasSpecificIcon ? Colors.transparent : backgroundColor,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: _getWorkoutIconWidget(type, iconColor, environmentType: session?.environmentType),
+              child: WorkoutUIUtils.getWorkoutIconWidget(
+                context: context,
+                type: type,
+                color: iconColor,
+                environmentType: session?.environmentType,
+                session: session,
+              ),
             ),
             title: Text(displayName,
                 style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -1590,28 +1611,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  bool _isStrengthWorkout(String type) {
-    final upperType = type.toUpperCase();
-    return upperType.contains('STRENGTH') ||
-        upperType.contains('WEIGHT') ||
-        upperType.contains('FUNCTIONAL') ||
-        upperType.contains('CORE') ||
-        upperType.contains('TRADITIONAL_STRENGTH_TRAINING');
-  }
-
-  String _getWorkoutCategory(String type) {
-    final upperType = type.toUpperCase();
-    if (upperType.contains('CORE') ||
-        upperType.contains('FUNCTIONAL') ||
-        upperType.contains('STRENGTH') ||
-        upperType.contains('WEIGHT') ||
-        upperType.contains('TRADITIONAL_STRENGTH_TRAINING')) {
-      return 'Strength';
-    } else {
-      return 'Endurance';
-    }
-  }
-
   Color _getCategoryColor(String category) {
     switch (category) {
       case 'Strength':
@@ -1621,43 +1620,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       default:
         return Theme.of(context).colorScheme.secondary;
     }
-  }
-
-  Widget _getWorkoutIconWidget(String type, Color color, {String? environmentType}) {
-    final upperType = type.toUpperCase();
-    String iconPath;
-    double iconSize = 24;
-
-    // 트레일 러닝 환경이면 트레일 아이콘 우선 사용
-    if (environmentType == 'Trail') {
-      return SvgPicture.asset(
-        'assets/images/endurance/trail-icon.svg',
-        width: iconSize,
-        height: iconSize,
-        colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-      );
-    }
-
-    if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
-      iconPath = 'assets/images/strength/core-icon.svg';
-      iconSize = 24;
-    } else if (upperType.contains('STRENGTH') ||
-        upperType.contains('WEIGHT') ||
-        upperType.contains('TRADITIONAL_STRENGTH_TRAINING')) {
-      iconPath = 'assets/images/strength/lifter-icon.svg';
-    } else {
-      iconPath = 'assets/images/endurance/runner-icon.svg';
-    }
-
-    return SvgPicture.asset(
-      iconPath,
-      width: iconSize,
-      height: iconSize,
-      colorFilter: ColorFilter.mode(
-        color,
-        BlendMode.srcIn,
-      ),
-    );
   }
 }
 

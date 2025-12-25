@@ -94,7 +94,7 @@ class _WorkoutStartScreenState extends State<WorkoutStartScreen> {
                 title: 'Hybrid',
                 subtitle: 'Endurance + Strength 복합 훈련',
                 iconPath: 'assets/images/pllogo.svg',
-                color: Theme.of(context).colorScheme.tertiary,
+                color: Color.lerp(Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.secondary, 0.5)!,
                 backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                 iconSize: 56,
                 isHorizontal: true, // 가로형 레이아웃

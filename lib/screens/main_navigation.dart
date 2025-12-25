@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:pacelifter/screens/dashboard_screen.dart';
 import 'package:pacelifter/screens/workout_start_screen.dart';
-import 'package:pacelifter/screens/profile_screen.dart';
+import 'package:pacelifter/screens/athlete_screen.dart';
+import 'package:pacelifter/screens/settings_screen.dart';
 import 'package:pacelifter/screens/calendar_screen.dart';
 
 /// 메인 네비게이션 화면
 ///
-/// 하단 내비게이션 바를 통해 대시보드, 캘린더, 운동 시작, 프로필 화면을 전환합니다.
+/// 하단 내비게이션 바를 통해 대시보드, 캘린더, 운동 시작, 애슬릿, 설정 화면을 전환합니다.
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
 
@@ -21,7 +22,8 @@ class _MainNavigationState extends State<MainNavigation> {
     const DashboardScreen(),
     const CalendarScreen(),
     const WorkoutStartScreen(),
-    const ProfileScreen(),
+    const AthleteScreen(),
+    const SettingsScreen(),
   ];
 
   @override
@@ -56,8 +58,12 @@ class _MainNavigationState extends State<MainNavigation> {
             label: '운동 시작',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: '프로필',
+            icon: Icon(Icons.person_outline),
+            label: '애슬릿',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings_outlined),
+            label: '설정',
           ),
         ],
       ),

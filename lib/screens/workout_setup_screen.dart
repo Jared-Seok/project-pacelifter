@@ -12,7 +12,7 @@ import '../models/templates/workout_template.dart';
 import '../models/templates/template_block.dart';
 import '../models/templates/custom_phase_preset.dart';
 import 'workout_tracking_screen.dart';
-import 'strength_tracking_screen.dart'; // Correctly placed import
+import 'strength_tracking_screen.dart'; 
 import '../widgets/block_edit_dialog.dart';
 import '../widgets/interval_set_edit_dialog.dart';
 
@@ -213,8 +213,8 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
               final preset = CustomPhasePreset(
                 id: const Uuid().v4(),
                 name: nameController.text.trim(),
-                category: _editableTemplate.category, // Endurance, Strength etc.
-                blocks: List<TemplateBlock>.from(phase.blocks), // Deep copy needed? generic copy
+                category: _editableTemplate.category, 
+                blocks: List<TemplateBlock>.from(phase.blocks),
                 createdAt: DateTime.now(),
               );
 
@@ -274,8 +274,8 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
                       icon: const Icon(Icons.delete_outline, color: Colors.grey),
                       onPressed: () async {
                         await TemplateService.deleteCustomPhasePreset(preset.id);
-                        Navigator.pop(context); // Close to refresh (simple way)
-                        _showLoadPresetDialog(phaseIndex); // Re-open
+                        Navigator.pop(context); 
+                        _showLoadPresetDialog(phaseIndex); 
                       },
                     ),
                     onTap: () {
@@ -294,7 +294,6 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
 
   void _loadPreset(int phaseIndex, CustomPhasePreset preset) {
     setState(() {
-      // Create new block instances with new IDs to avoid conflicts
       final newBlocks = preset.blocks.map((b) => b.copyWith(id: const Uuid().v4())).toList();
       
       final updatedPhase = _editableTemplate.phases[phaseIndex].copyWith(blocks: newBlocks);
@@ -356,8 +355,7 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
                       },
                     ),
                     onTap: () {
-                      Navigator.pop(context); // Close sheet
-                      // Replace current screen with selected template
+                      Navigator.pop(context); 
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
@@ -541,17 +539,11 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
         child: Column(
           children: [
             const TabBar(
-              tabs: [
-                Tab(text: '세부 조정'),
-                Tab(text: '전체 목표'),
-              ],
+              tabs: [ Tab(text: '세부 조정'), Tab(text: '전체 목표'), ],
             ),
             Expanded(
               child: TabBarView(
-                children: [
-                  _buildCustomizationTab(),
-                  _buildGlobalGoalTab(),
-                ],
+                children: [ _buildCustomizationTab(), _buildGlobalGoalTab(), ],
               ),
             ),
           ],
@@ -729,7 +721,7 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
           child: Padding(
             padding: const EdgeInsets.all(20.0),
             child: Text(
-              _locationError!, 
+              _locationError!,
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.white70),
             ),
@@ -854,7 +846,6 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
         final phaseDisplayName = _getCleanPhaseName(phase.name);
         final displayItems = _groupBlocks(phase.blocks, phaseDisplayName);
 
-        // 웜업/쿨다운은 "세트" 텍스트 대신 "항목" 또는 숨김
         String subtitleText = '';
         if (phase.name == 'Main Set') {
           int totalSets = 0;
@@ -937,7 +928,6 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
   }
 
   List<_DisplayItem> _groupBlocks(List<TemplateBlock> blocks, String phaseDisplayName) {
-    // 웜업 및 쿨다운은 그룹화하지 않음 (사용자 요청: Set 텍스트 필요 없음)
     if (phaseDisplayName.contains('웜업') || phaseDisplayName.contains('쿨다운')) {
       return blocks.asMap().entries.map((e) => _DisplayItem(
         isGroup: false,
@@ -949,12 +939,10 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     List<_DisplayItem> items = [];
     int i = 0;
     while (i < blocks.length) {
-      // 1. Try Work + Rest Pattern
       if (i + 1 < blocks.length) {
         final b1 = blocks[i];
         final b2 = blocks[i + 1];
         
-        // Pair detection (Work followed by Rest/Recovery)
         bool isWorkRestPair = (b1.type == 'endurance' || b1.type == 'strength') && 
                               (b2.type == 'rest' || (b2.type == 'endurance' && (b2.name.toLowerCase().contains('recovery') || b2.intensityZone != b1.intensityZone)));
 
@@ -970,7 +958,6 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
             }
           }
 
-          // Even for 1 set, if it's a pair, we group it for unified editing
           if (count >= 1) {
             items.add(_DisplayItem(
               isGroup: true,
@@ -984,7 +971,6 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
         }
       }
 
-      // 2. Try Single Repeating Block
       final b1 = blocks[i];
       int count = 1;
       int j = i + 1;
@@ -1030,37 +1016,60 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
   }
 
   Widget _buildGroupItem(_DisplayItem item, int phaseIndex) {
+    final bool isStrength = _editableTemplate.category == 'Strength';
+    
+    // 스타일 설정 분리: Endurance/Hybrid는 고밀도 모드
+    final double iconSize = isStrength ? 40.0 : 20.0; 
+    final double avatarRadius = isStrength ? 40.0 : 20.0;
+    final double sectionWidth = isStrength ? 100.0 : 48.0;
+    final double titleFontSize = isStrength ? 18.0 : 14.0;
+    final double summaryFontSize = isStrength ? 14.0 : 12.0;
+    final double actionIconSize = isStrength ? 28.0 : 18.0;
+
     final workBlock = item.blocks[0];
     final restBlock = item.blocks.length > 1 ? item.blocks[1] : null;
 
     return Theme(
       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
-        leading: CircleAvatar(
-          backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
-          child: Icon(Icons.repeat, color: Theme.of(context).colorScheme.primary, size: 20),
+        tilePadding: EdgeInsets.symmetric(horizontal: 16, vertical: isStrength ? 12 : 4),
+        leading: SizedBox(
+          width: sectionWidth,
+          child: Center(
+            child: CircleAvatar(
+              radius: avatarRadius,
+              backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+              child: Icon(Icons.repeat, color: Theme.of(context).colorScheme.primary, size: iconSize),
+            ),
+          ),
         ),
-        title: Text('${item.count} 세트: ${_getCleanName(workBlock.name).replaceAll(RegExp(r' \d+$'), '')}'),
+        title: Text(
+          '${item.count} 세트: ${_getCleanName(workBlock.name).replaceAll(RegExp(r' \d+$'), '')}',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: titleFontSize),
+        ),
         subtitle: Text(
           '${_getBlockSummary(workBlock)}' + 
-          (restBlock != null ? ' + ${_getBlockSummary(restBlock)}' : '')
+          (restBlock != null ? ' + ${_getBlockSummary(restBlock)}' : ''),
+          style: TextStyle(fontSize: summaryFontSize),
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
-              icon: const Icon(Icons.edit, size: 20),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              icon: Icon(Icons.edit, size: actionIconSize, color: Colors.grey),
               onPressed: () => _showEditGroupDialog(item, phaseIndex),
               tooltip: '전체 세트 수정',
             ),
-            const Icon(Icons.keyboard_arrow_down),
+            const Icon(Icons.keyboard_arrow_down, size: 20),
           ],
         ),
         children: List.generate(item.count * item.blocks.length, (i) {
           final actualIndex = item.startIndex + i;
           final block = _editableTemplate.phases[phaseIndex].blocks[actualIndex];
           return Padding(
-            padding: const EdgeInsets.only(left: 16.0),
+            padding: const EdgeInsets.only(left: 8.0),
             child: _buildBlockItem(block, phaseIndex, actualIndex),
           );
         }),
@@ -1112,29 +1121,94 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
   }
 
   Widget _buildBlockItem(TemplateBlock block, int phaseIndex, int blockIndex) {
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2),
-        child: _buildBlockIcon(
-          block.type,
-          size: 16,
-          color: Theme.of(context).colorScheme.secondary,
-        ),
-      ),
-      title: Text(_getCleanName(block.name)),
-      subtitle: Text(_getBlockSummary(block)),
-      trailing: IconButton(
-        icon: const Icon(Icons.edit, size: 20),
-        onPressed: () => _showEditBlockDialog(block, phaseIndex, blockIndex),
+    final bool isStrength = _editableTemplate.category == 'Strength';
+    
+    // 스타일 설정 분리: Endurance/Hybrid는 고밀도(Compact) 모드 적용
+    final double iconSize = isStrength ? 92.0 : 32.0;
+    final double iconSectionWidth = isStrength ? 100.0 : 48.0;
+    final double titleFontSize = isStrength ? 18.0 : 14.0;
+    final double summaryFontSize = isStrength ? 14.0 : 12.0;
+    final double verticalPadding = isStrength ? 18.0 : 6.0;
+    final double actionIconSize = isStrength ? 28.0 : 18.0;
+
+    String? specificIconPath;
+    if (block.type == 'strength' && block.exerciseId != null) {
+      final exercise = TemplateService.getExerciseById(block.exerciseId!);
+      specificIconPath = exercise?.imagePath;
+    }
+
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: verticalPadding, horizontal: 16.0),
+      child: Row(
+        children: [
+          // Icon Section
+          SizedBox(
+            width: iconSectionWidth,
+            child: Center(
+              child: specificIconPath != null
+                ? SvgPicture.asset(
+                    specificIconPath,
+                    width: iconSize,
+                    height: iconSize,
+                    colorFilter: ColorFilter.mode(
+                      Theme.of(context).colorScheme.primary,
+                      BlendMode.srcIn,
+                    ),
+                  )
+                : CircleAvatar(
+                    radius: iconSectionWidth / 2.5, 
+                    backgroundColor: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2),
+                    child: _buildBlockIcon(
+                      block,
+                      size: iconSize * 0.6,
+                      color: Theme.of(context).colorScheme.secondary,
+                    ),
+                  ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Info Section
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _getCleanName(block.name),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: titleFontSize),
+                ),
+                Text(
+                  _getBlockSummary(block),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), fontSize: summaryFontSize),
+                ),
+              ],
+            ),
+          ),
+          // Action Section
+          IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            icon: Icon(Icons.edit, size: actionIconSize, color: Colors.grey),
+            onPressed: () => _showEditBlockDialog(block, phaseIndex, blockIndex),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildBlockIcon(String type, {double size = 24, Color? color}) {
+  Widget _buildBlockIcon(TemplateBlock block, {double size = 24, Color? color}) {
+    final type = block.type;
     final effectiveColor = color ?? Theme.of(context).colorScheme.secondary;
+    
     if (type == 'strength') {
+      String iconPath = 'assets/images/strength/lifter-icon.svg';
+      if (block.exerciseId != null) {
+        final exercise = TemplateService.getExerciseById(block.exerciseId!);
+        if (exercise?.imagePath != null) {
+          iconPath = exercise!.imagePath!;
+        }
+      }
       return SvgPicture.asset(
-        'assets/images/strength/lifter-icon.svg',
+        iconPath,
         width: size,
         height: size,
         colorFilter: ColorFilter.mode(effectiveColor, BlendMode.srcIn),

@@ -27,8 +27,13 @@ class StrengthRoutineProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void removeBlock(int index) {
-    _blocks.removeAt(index);
+  void addBlock(TemplateBlock block) {
+    _blocks.add(block);
+    notifyListeners();
+  }
+
+  void removeBlock(String id) {
+    _blocks.removeWhere((b) => b.id == id);
     notifyListeners();
   }
   

@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pacelifter/models/sessions/workout_session.dart';
 import 'package:pacelifter/services/workout_history_service.dart';
+import 'package:pacelifter/services/template_service.dart';
 import 'package:pacelifter/screens/workout_detail_screen.dart';
 import 'package:pacelifter/models/workout_data_wrapper.dart';
 import 'package:pacelifter/services/health_service.dart';
 import 'package:health/health.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:pacelifter/utils/workout_ui_utils.dart';
 
 class _MonthStats {
   final int enduranceDays;
@@ -171,7 +172,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         category = wrapper.session!.category;
       } else if (wrapper.healthData != null) {
         final workout = wrapper.healthData!.value as WorkoutHealthValue;
-        category = _getWorkoutCategory(workout.workoutActivityType.name);
+        category = WorkoutUIUtils.getWorkoutCategory(workout.workoutActivityType.name);
       }
 
       if (category == 'Strength') hasStrength = true;
@@ -187,19 +188,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       return 2;
     }
     return 0;
-  }
-
-  String _getWorkoutCategory(String type) {
-    final upperType = type.toUpperCase();
-    if (upperType.contains('CORE') ||
-        upperType.contains('FUNCTIONAL') ||
-        upperType.contains('STRENGTH') ||
-        upperType.contains('WEIGHT') ||
-        upperType.contains('TRADITIONAL_STRENGTH_TRAINING')) {
-      return 'Strength';
-    } else {
-      return 'Endurance';
-    }
   }
 
   Color _getDayColor(int type, ColorScheme colorScheme) {
@@ -527,7 +515,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     } else if (wrapper.healthData != null) {
       final workout = wrapper.healthData!.value as WorkoutHealthValue;
       type = workout.workoutActivityType.name;
-      category = _getWorkoutCategory(type);
+      category = WorkoutUIUtils.getWorkoutCategory(type);
       title = _formatWorkoutType(type);
       
       final distance = workout.totalDistance ?? 0;
@@ -554,14 +542,34 @@ class _CalendarScreenState extends State<CalendarScreen> {
       iconColor = categoryColor;
     }
 
+    // 세부 운동 아이콘이 있는지 확인 (배경 제거 로직용)
+    bool hasSpecificIcon = false;
+    final session = wrapper.session;
+    if (session != null && session.templateId != null) {
+      final template = TemplateService.getTemplateById(session.templateId!);
+      if (template != null && template.phases.isNotEmpty) {
+        final firstBlock = template.phases.first.blocks.isNotEmpty ? template.phases.first.blocks.first : null;
+        if (firstBlock != null && firstBlock.exerciseId != null) {
+          final exercise = TemplateService.getExerciseById(firstBlock.exerciseId!);
+          if (exercise?.imagePath != null) hasSpecificIcon = true;
+        }
+      }
+    }
+
     return ListTile(
       leading: Container(
-        padding: const EdgeInsets.all(8),
+        padding: hasSpecificIcon ? EdgeInsets.zero : const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: backgroundColor,
+          color: hasSpecificIcon ? Colors.transparent : backgroundColor,
           borderRadius: BorderRadius.circular(8),
         ),
-        child: _getWorkoutIconWidget(type, iconColor, environmentType: environmentType),
+        child: WorkoutUIUtils.getWorkoutIconWidget(
+          context: context,
+          type: type,
+          color: iconColor,
+          environmentType: environmentType,
+          session: wrapper.session,
+        ),
       ),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
       subtitle: Text(subtitle),
@@ -569,38 +577,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
         _navigateToDetail(wrapper);
       },
       trailing: const Icon(Icons.chevron_right),
-    );
-  }
-
-  Widget _getWorkoutIconWidget(String type, Color color, {String? environmentType}) {
-    final upperType = type.toUpperCase();
-    String iconPath;
-    double iconSize = 24;
-
-    if (environmentType == 'Trail') {
-      return SvgPicture.asset(
-        'assets/images/endurance/trail-icon.svg',
-        width: iconSize,
-        height: iconSize,
-        colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-      );
-    }
-
-    if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
-      iconPath = 'assets/images/strength/core-icon.svg';
-    } else if (upperType.contains('STRENGTH') ||
-        upperType.contains('WEIGHT') ||
-        upperType.contains('TRADITIONAL_STRENGTH_TRAINING')) {
-      iconPath = 'assets/images/strength/lifter-icon.svg';
-    } else {
-      iconPath = 'assets/images/endurance/runner-icon.svg';
-    }
-
-    return SvgPicture.asset(
-      iconPath,
-      width: iconSize,
-      height: iconSize,
-      colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
     );
   }
 

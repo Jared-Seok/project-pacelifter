@@ -14,7 +14,8 @@
       "variations": ["Flat", "Incline", "Decline", "Close Grip", "Wide Grip", "Pause", "Spoto", "Tempo", "Floor Press", "Reverse Grip"],
       "isCompound": true,
       "isUnilateral": false,
-      "group": "Bench Press"
+      "group": "Bench Press",
+      "imagePath": "assets/images/strength/chest/barbell-bench.svg"
     },
     {
       "id": "dumbbell_bench_press",
@@ -30,7 +31,8 @@
       "variations": ["Flat", "Incline", "Decline", "Neutral Grip", "Squeeze Press", "Single Arm", "Floor Press"],
       "isCompound": true,
       "isUnilateral": true,
-      "group": "Bench Press"
+      "group": "Bench Press",
+      "imagePath": "assets/images/strength/chest/dumbell-bench.svg"
     },
     {
       "id": "machine_chest_press",
@@ -62,7 +64,8 @@
       "variations": ["Flat", "Incline", "Decline"],
       "isCompound": true,
       "isUnilateral": false,
-      "group": "Bench Press"
+      "group": "Bench Press",
+      "imagePath": "assets/images/strength/chest/smithmachine-bench.svg"
     },
     {
       "id": "dumbbell_fly",
