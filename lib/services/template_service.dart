@@ -2,12 +2,14 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
 import '../models/templates/workout_template.dart';
+import '../models/templates/custom_phase_preset.dart';
 import '../models/exercises/exercise.dart';
 
 /// 템플릿 및 운동 데이터를 로드하고 관리하는 서비스
 class TemplateService {
   static const String _templatesBoxName = 'workout_templates';
   static const String _exercisesBoxName = 'exercises';
+  static const String _presetsBoxName = 'custom_phase_presets';
 
   /// 모든 템플릿과 운동 데이터를 Assets에서 로드하여 Hive에 저장
   static Future<void> loadAllTemplatesAndExercises() async {
@@ -19,6 +21,11 @@ class TemplateService {
       await _loadEnduranceTemplates();
       await _loadStrengthTemplates();
       await _loadHybridTemplates();
+      
+      // 프리셋 박스 확인 (데이터 로드는 필요 없음, Hive가 관리)
+      if (!Hive.isBoxOpen(_presetsBoxName)) {
+        await Hive.openBox<CustomPhasePreset>(_presetsBoxName);
+      }
 
       print('✅ All templates and exercises loaded successfully');
     } catch (e) {
@@ -72,12 +79,15 @@ class TemplateService {
       'indoor_lsd.json',
       'indoor_interval.json',
       'indoor_tempo.json',
+      'indoor_basic_run.json',
       'outdoor_lsd.json',
       'outdoor_interval.json',
       'outdoor_tempo.json',
+      'outdoor_basic_run.json',
       'trail_lsd.json',
       'trail_interval.json',
       'trail_tempo.json',
+      'trail_basic_run.json',
     ];
 
     await _loadTemplatesFromDirectory(
@@ -244,5 +254,33 @@ class TemplateService {
       'hybrid': templates.where((t) => t.category == 'Hybrid').length,
       'custom': templates.where((t) => t.isCustom).length,
     };
+  }
+
+  // ==========================================
+  // Custom Phase Presets (세부 운동 템플릿)
+  // ==========================================
+
+  /// 커스텀 프리셋 저장
+  static Future<void> saveCustomPhasePreset(CustomPhasePreset preset) async {
+    final box = await Hive.openBox<CustomPhasePreset>(_presetsBoxName);
+    await box.put(preset.id, preset);
+  }
+
+  /// 커스텀 프리셋 조회 (전체)
+  static Future<List<CustomPhasePreset>> getCustomPhasePresets() async {
+    final box = await Hive.openBox<CustomPhasePreset>(_presetsBoxName);
+    return box.values.toList();
+  }
+
+  /// 카테고리별 프리셋 조회
+  static Future<List<CustomPhasePreset>> getCustomPhasePresetsByCategory(String category) async {
+    final box = await Hive.openBox<CustomPhasePreset>(_presetsBoxName);
+    return box.values.where((p) => p.category == category).toList();
+  }
+
+  /// 프리셋 삭제
+  static Future<void> deleteCustomPhasePreset(String id) async {
+    final box = await Hive.openBox<CustomPhasePreset>(_presetsBoxName);
+    await box.delete(id);
   }
 }

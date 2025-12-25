@@ -509,11 +509,19 @@ class WorkoutTrackingService extends ChangeNotifier {
   Duration? get goalTime => _goalTime;
   Pace? get goalPace => _goalPace;
 
-  // 목표 설정 메서드
+  // 목표 설정 메서드 (부분 업데이트)
   void setGoals({double? distance, Duration? time, Pace? pace}) {
-    _goalDistance = distance;
-    _goalTime = time;
-    _goalPace = pace;
+    if (distance != null) _goalDistance = distance;
+    if (time != null) _goalTime = time;
+    if (pace != null) _goalPace = pace;
+    notifyListeners();
+  }
+
+  // 목표 초기화
+  void resetGoals() {
+    _goalDistance = null;
+    _goalTime = null;
+    _goalPace = null;
     notifyListeners();
   }
 }

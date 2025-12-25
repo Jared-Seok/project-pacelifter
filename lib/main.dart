@@ -14,6 +14,7 @@ import 'providers/strength_routine_provider.dart';
 import 'models/templates/workout_template.dart';
 import 'models/templates/template_phase.dart';
 import 'models/templates/template_block.dart';
+import 'models/templates/custom_phase_preset.dart';
 import 'models/exercises/exercise.dart';
 import 'models/sessions/workout_session.dart';
 import 'models/sessions/exercise_record.dart';
@@ -34,6 +35,7 @@ void main() async {
   Hive.registerAdapter(WorkoutTemplateAdapter());
   Hive.registerAdapter(TemplatePhaseAdapter());
   Hive.registerAdapter(TemplateBlockAdapter());
+  Hive.registerAdapter(CustomPhasePresetAdapter());
   Hive.registerAdapter(ExerciseAdapter());
   Hive.registerAdapter(WorkoutSessionAdapter());
   Hive.registerAdapter(ExerciseRecordAdapter());
@@ -42,6 +44,7 @@ void main() async {
 
   // Hive Box 열기
   await Hive.openBox<WorkoutTemplate>('workout_templates');
+  await Hive.openBox<CustomPhasePreset>('custom_phase_presets');
   await Hive.openBox<Exercise>('exercises');
   await Hive.openBox<WorkoutSession>('user_workout_history');
   await Hive.openBox<ExerciseRecord>('user_exercise_records');

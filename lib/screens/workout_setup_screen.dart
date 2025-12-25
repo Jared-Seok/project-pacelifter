@@ -10,6 +10,7 @@ import '../services/workout_tracking_service.dart';
 import '../services/template_service.dart';
 import '../models/templates/workout_template.dart';
 import '../models/templates/template_block.dart';
+import '../models/templates/custom_phase_preset.dart';
 import 'workout_tracking_screen.dart';
 import 'strength_tracking_screen.dart'; // Correctly placed import
 import '../widgets/block_edit_dialog.dart';
@@ -73,7 +74,10 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _workoutService = Provider.of<WorkoutTrackingService>(context, listen: false);
-    _workoutService.setGoals(distance: null, time: null, pace: null);
+    // Reset goals after the frame is built to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _workoutService.setGoals(distance: null, time: null, pace: null);
+    });
   }
 
   @override
@@ -173,6 +177,210 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     }
   }
 
+  Future<void> _showSavePresetDialog(int phaseIndex) async {
+    final phase = _editableTemplate.phases[phaseIndex];
+    final nameController = TextEditingController(text: phase.name);
+    
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('현재 구성을 프리셋으로 저장'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('현재 단계의 블록 구성을 저장하여 나중에 다시 불러올 수 있습니다.'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(
+                labelText: '프리셋 이름',
+                hintText: '예: 인터벌 400m x 10',
+                border: OutlineInputBorder(),
+              ),
+              autofocus: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (nameController.text.trim().isEmpty) return;
+              
+              final preset = CustomPhasePreset(
+                id: const Uuid().v4(),
+                name: nameController.text.trim(),
+                category: _editableTemplate.category, // Endurance, Strength etc.
+                blocks: List<TemplateBlock>.from(phase.blocks), // Deep copy needed? generic copy
+                createdAt: DateTime.now(),
+              );
+
+              await TemplateService.saveCustomPhasePreset(preset);
+              
+              if (mounted) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('프리셋이 저장되었습니다.')),
+                );
+              }
+            },
+            child: const Text('저장'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showLoadPresetDialog(int phaseIndex) async {
+    final presets = await TemplateService.getCustomPhasePresetsByCategory(_editableTemplate.category);
+    
+    if (!mounted) return;
+
+    if (presets.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('저장된 프리셋이 없습니다.')),
+      );
+      return;
+    }
+
+    await showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Text(
+                '프리셋 불러오기',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                itemCount: presets.length,
+                itemBuilder: (context, index) {
+                  final preset = presets[index];
+                  return ListTile(
+                    leading: const Icon(Icons.bookmarks_outlined),
+                    title: Text(preset.name),
+                    subtitle: Text('${preset.blocks.length}개 블록 | ${_formatDate(preset.createdAt)}'),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Colors.grey),
+                      onPressed: () async {
+                        await TemplateService.deleteCustomPhasePreset(preset.id);
+                        Navigator.pop(context); // Close to refresh (simple way)
+                        _showLoadPresetDialog(phaseIndex); // Re-open
+                      },
+                    ),
+                    onTap: () {
+                      _loadPreset(phaseIndex, preset);
+                      Navigator.pop(context);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _loadPreset(int phaseIndex, CustomPhasePreset preset) {
+    setState(() {
+      // Create new block instances with new IDs to avoid conflicts
+      final newBlocks = preset.blocks.map((b) => b.copyWith(id: const Uuid().v4())).toList();
+      
+      final updatedPhase = _editableTemplate.phases[phaseIndex].copyWith(blocks: newBlocks);
+      _editableTemplate.phases[phaseIndex] = updatedPhase;
+    });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${preset.name} 프리셋을 적용했습니다.')),
+    );
+  }
+
+  Future<void> _showLoadCustomTemplateDialog() async {
+    final allTemplates = TemplateService.getAllTemplates();
+    final customTemplates = allTemplates.where((t) => 
+      t.isCustom && 
+      t.category == widget.template.category &&
+      (t.subCategory == widget.template.subCategory || widget.template.subCategory == null)
+    ).toList();
+
+    if (!mounted) return;
+
+    if (customTemplates.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('불러올 수 있는 커스텀 템플릿이 없습니다.')),
+      );
+      return;
+    }
+
+    await showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Text(
+                '나만의 템플릿 불러오기',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                itemCount: customTemplates.length,
+                itemBuilder: (context, index) {
+                  final template = customTemplates[index];
+                  return ListTile(
+                    leading: const Icon(Icons.refresh),
+                    title: Text(template.name),
+                    subtitle: Text(_formatDate(template.createdAt ?? DateTime.now())),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Colors.grey),
+                      onPressed: () async {
+                        await TemplateService.deleteTemplate(template.id);
+                        Navigator.pop(context);
+                        _showLoadCustomTemplateDialog();
+                      },
+                    ),
+                    onTap: () {
+                      Navigator.pop(context); // Close sheet
+                      // Replace current screen with selected template
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => WorkoutSetupScreen(
+                            template: template,
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.year}.${date.month}.${date.day}';
+  }
+
   Future<void> _saveAsCustomTemplate() async {
     final nameController = TextEditingController(text: '${_getCleanName(_editableTemplate.name)} (Custom)');
     
@@ -221,6 +429,8 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     );
   }
 
+  bool get _isBasicRun => widget.template.subCategory == 'Basic Run';
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -230,10 +440,38 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
         backgroundColor: Theme.of(context).colorScheme.surface,
         foregroundColor: Theme.of(context).colorScheme.onSurface,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.save_alt),
-            onPressed: _saveAsCustomTemplate,
-            tooltip: '커스텀 템플릿으로 저장',
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            tooltip: '템플릿 옵션',
+            onSelected: (value) {
+              if (value == 'load') {
+                _showLoadCustomTemplateDialog();
+              } else if (value == 'save') {
+                _saveAsCustomTemplate();
+              }
+            },
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              const PopupMenuItem<String>(
+                value: 'load',
+                child: Row(
+                  children: [
+                    Icon(Icons.folder_open, size: 20),
+                    SizedBox(width: 8),
+                    Text('나만의 템플릿 불러오기'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'save',
+                child: Row(
+                  children: [
+                    Icon(Icons.save_alt, size: 20),
+                    SizedBox(width: 8),
+                    Text('전체 템플릿 저장'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -245,39 +483,7 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
           ),
           Expanded(
             flex: 5,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, -5),
-                  ),
-                ],
-              ),
-              child: DefaultTabController(
-                length: 2,
-                child: Column(
-                  children: [
-                    const TabBar(
-                      tabs: [
-                        Tab(text: '세부 조정'),
-                        Tab(text: '전체 목표'),
-                      ],
-                    ),
-                    Expanded(
-                      child: TabBarView(
-                        children: [
-                          _buildCustomizationTab(),
-                          _buildGlobalGoalTab(),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            child: _isBasicRun ? _buildBasicRunUI() : _buildStandardUI(),
           ),
         ],
       ),
@@ -313,6 +519,197 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
                     ),
                   ),
                 ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStandardUI() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 10,
+            offset: const Offset(0, -5),
+          ),
+        ],
+      ),
+      child: DefaultTabController(
+        length: 2,
+        child: Column(
+          children: [
+            const TabBar(
+              tabs: [
+                Tab(text: '세부 조정'),
+                Tab(text: '전체 목표'),
+              ],
+            ),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  _buildCustomizationTab(),
+                  _buildGlobalGoalTab(),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBasicRunUI() {
+    return Consumer<WorkoutTrackingService>(
+      builder: (context, workoutService, child) {
+        final calculatedValues = _calculateMissingGoal(workoutService);
+        return Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            boxShadow: [
+               BoxShadow(
+                color: Colors.black.withValues(alpha: 0.2),
+                blurRadius: 20,
+                offset: const Offset(0, -5),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '목표 설정',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '원하는 목표를 설정하고 바로 시작하세요',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
+              const SizedBox(height: 32),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildBigGoalCard(
+                      label: '목표 거리',
+                      value: calculatedValues['distance'] ?? '설정 안함',
+                      icon: Icons.straighten,
+                      onTap: _showDistancePicker,
+                      isActive: workoutService.goalDistance != null || calculatedValues['distanceCalculated'] == true,
+                      isCalculated: calculatedValues['distanceCalculated'] == true,
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildBigGoalCard(
+                            label: '목표 페이스',
+                            value: calculatedValues['pace'] ?? '설정 안함',
+                            icon: Icons.speed,
+                            onTap: _showPacePicker,
+                            isActive: workoutService.goalPace != null || calculatedValues['paceCalculated'] == true,
+                            isCalculated: calculatedValues['paceCalculated'] == true,
+                            isSmall: true,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildBigGoalCard(
+                            label: '목표 시간',
+                            value: calculatedValues['time'] ?? '설정 안함',
+                            icon: Icons.timer,
+                            onTap: _showTimePicker,
+                            isActive: workoutService.goalTime != null || calculatedValues['timeCalculated'] == true,
+                            isCalculated: calculatedValues['timeCalculated'] == true,
+                            isSmall: true,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBigGoalCard({
+    required String label,
+    required String value,
+    required IconData icon,
+    required VoidCallback onTap,
+    required bool isActive,
+    bool isCalculated = false,
+    bool isSmall = false,
+  }) {
+    final themeColor = Theme.of(context).colorScheme.secondary;
+    
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: isActive 
+              ? themeColor.withValues(alpha: 0.15) 
+              : Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isActive ? themeColor : Colors.transparent,
+            width: 2,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  icon,
+                  color: isActive ? themeColor : Colors.grey,
+                  size: isSmall ? 20 : 24,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: isSmall ? 14 : 16,
+                    color: isActive ? themeColor : Colors.grey,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (isCalculated) ...[
+                  const SizedBox(width: 4),
+                  Icon(Icons.auto_awesome, size: 12, color: Theme.of(context).colorScheme.primary),
+                ],
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: isSmall ? 24 : 32,
+                fontWeight: FontWeight.bold,
+                color: isActive ? Theme.of(context).colorScheme.onSurface : Colors.grey,
+                fontStyle: isCalculated ? FontStyle.italic : FontStyle.normal,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -481,9 +878,48 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
                 BlendMode.srcIn,
               ),
             ),
-            title: Text(
-              phaseDisplayName,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+            title: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    phaseDisplayName,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_horiz),
+                  tooltip: '프리셋 옵션',
+                  onSelected: (value) {
+                    if (value == 'load') {
+                      _showLoadPresetDialog(phaseIndex);
+                    } else if (value == 'save') {
+                      _showSavePresetDialog(phaseIndex);
+                    }
+                  },
+                  itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                    const PopupMenuItem<String>(
+                      value: 'load',
+                      child: Row(
+                        children: [
+                          Icon(Icons.file_download_outlined, size: 20),
+                          SizedBox(width: 8),
+                          Text('프리셋 불러오기'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem<String>(
+                      value: 'save',
+                      child: Row(
+                        children: [
+                          Icon(Icons.save_alt, size: 20),
+                          SizedBox(width: 8),
+                          Text('현재 구성 저장'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
             subtitle: Text(subtitleText),
             initiallyExpanded: true,

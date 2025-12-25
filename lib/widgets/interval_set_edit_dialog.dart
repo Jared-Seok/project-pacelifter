@@ -140,8 +140,8 @@ class _IntervalSetEditDialogState extends State<IntervalSetEditDialog> {
       }
     }
 
-    widget.onSave(newBlocks);
     Navigator.of(context).pop();
+    widget.onSave(newBlocks);
   }
 
   void _showPacePicker() {

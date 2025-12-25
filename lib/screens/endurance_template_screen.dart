@@ -34,9 +34,12 @@ class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
         widget.environmentType,
       );
 
+      // 표준 템플릿만 표시 (커스텀 템플릿 제외)
+      final standardTemplates = templates.where((t) => !t.isCustom).toList();
+
       if (mounted) {
         setState(() {
-          _templates = templates;
+          _templates = standardTemplates;
           _isLoading = false;
         });
       }

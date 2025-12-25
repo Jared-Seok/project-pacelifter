@@ -1,0 +1,28 @@
+{
+  "id": "endurance_indoor_basic",
+  "name": "Indoor Basic Run",
+  "category": "Endurance",
+  "environmentType": "Indoor",
+  "subCategory": "Basic Run",
+  "description": "자유롭게 거리나 시간을 설정하여 달리는 기본 모드입니다.",
+  "imagePath": "assets/images/endurance/runner-icon.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_main",
+      "name": "Main Run",
+      "description": "기본 러닝",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "block_basic_run",
+          "name": "Free Run",
+          "type": "endurance",
+          "description": "목표를 설정하고 달리세요",
+          "intensityZone": "Z2",
+          "order": 0
+        }
+      ]
+    }
+  ]
+}
