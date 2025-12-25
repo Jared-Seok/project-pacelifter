@@ -92,7 +92,7 @@ class _WorkoutStartScreenState extends State<WorkoutStartScreen> {
               child: _buildBentoCard(
                 type: WorkoutType.hybrid,
                 title: 'Hybrid',
-                subtitle: 'Endurance + Strength 복합 훈련',
+                subtitle: 'Endurance + Strength\n복합 훈련',
                 iconPath: 'assets/images/pllogo.svg',
                 color: Color.lerp(Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.secondary, 0.5)!,
                 backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -200,7 +200,7 @@ class _WorkoutStartScreenState extends State<WorkoutStartScreen> {
 
   Widget _buildIcon(String iconPath, Color color, double size) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24), // 20에서 24로 증가하여 여백 확보
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         shape: BoxShape.circle,

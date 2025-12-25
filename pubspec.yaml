@@ -121,6 +121,14 @@ flutter:
     - assets/images/endurance/
     - assets/images/strength/
     - assets/images/strength/chest/
+    - assets/images/strength/shoulders/
+    - assets/images/strength/back/
+    - assets/images/strength/biceps/
+    - assets/images/strength/triceps/
+    - assets/images/strength/forearms/
+    - assets/images/strength/legs/
+    - assets/images/strength/core/
+    - assets/images/strength/compound/
     - assets/images/app-icon/
     - assets/data/templates/endurance/
     - assets/data/templates/strength/
