@@ -5,9 +5,7 @@ import 'package:pacelifter/screens/athlete_screen.dart';
 import 'package:pacelifter/screens/settings_screen.dart';
 import 'package:pacelifter/screens/calendar_screen.dart';
 
-/// 메인 네비게이션 화면
-///
-/// 하단 내비게이션 바를 통해 대시보드, 캘린더, 운동 시작, 애슬릿, 설정 화면을 전환합니다.
+/// 메인 네비게이션 화면 (중앙 강조 리디자인 버전)
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
 
@@ -26,46 +24,134 @@ class _MainNavigationState extends State<MainNavigation> {
     const SettingsScreen(),
   ];
 
+  // Hybrid Color: #B2BC68
+  static const Color hybridColor = Color(0xFFB2BC68);
+
+  void _onTabTapped(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: IndexedStack(
         index: _currentIndex,
         children: _screens,
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        selectedItemColor: Theme.of(context).colorScheme.secondary,
-        unselectedItemColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: '대시보드',
+      bottomNavigationBar: _buildCustomBottomBar(),
+    );
+  }
+
+  Widget _buildCustomBottomBar() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(
+          top: BorderSide(
+            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1),
+            width: 0.5,
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_month),
-            label: '캘린더',
+        ),
+      ),
+      child: SafeArea(
+        child: Container(
+          height: 64,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildNavItem(0, Icons.dashboard, '대시보드'),
+              _buildNavItem(1, Icons.calendar_month, '캘린더'),
+              _buildCenterNavItem(2, Icons.play_circle_filled, '운동 시작'),
+              _buildNavItem(3, Icons.person_outline, '애슬릿'),
+              _buildNavItem(4, Icons.settings_outlined, '설정'),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.play_circle_filled),
-            label: '운동 시작',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            label: '애슬릿',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings_outlined),
-            label: '설정',
-          ),
-        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(int index, IconData icon, String label) {
+    final bool isSelected = _currentIndex == index;
+    final Color activeColor = Theme.of(context).colorScheme.secondary;
+    final Color inactiveColor = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5);
+
+    return Expanded(
+      child: InkWell(
+        onTap: () => _onTabTapped(index),
+        splashColor: Colors.transparent,
+        highlightColor: Colors.transparent,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? activeColor : inactiveColor,
+              size: 24,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                color: isSelected ? activeColor : inactiveColor,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCenterNavItem(int index, IconData icon, String label) {
+    final bool isSelected = _currentIndex == index;
+    
+    return Expanded(
+      child: InkWell(
+        onTap: () => _onTabTapped(index),
+        splashColor: Colors.transparent,
+        highlightColor: Colors.transparent,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // 제안 1: 내부 서클 배경 활용
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: hybridColor.withValues(alpha: 0.15), // 15% 투명도 배경
+                shape: BoxShape.circle,
+                // 제안 3: 선택 시 은은한 글로우 효과
+                boxShadow: isSelected ? [
+                  BoxShadow(
+                    color: hybridColor.withValues(alpha: 0.3),
+                    blurRadius: 10,
+                    spreadRadius: 1,
+                  )
+                ] : null,
+              ),
+              child: Icon(
+                icon,
+                // 제안 2: 상시 컬러 및 아이콘 스케일 차별화
+                color: hybridColor,
+                size: 28, // 다른 탭(24)보다 크게 설정
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                color: hybridColor,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
