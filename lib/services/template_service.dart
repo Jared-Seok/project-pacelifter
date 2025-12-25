@@ -42,6 +42,7 @@ class TemplateService {
     final libraryFiles = [
       'assets/data/exercises/exercises_library.json',
       'assets/data/exercises/chest_exercises.json',
+      'assets/data/exercises/back_exercises.json',
     ];
 
     try {
@@ -110,6 +111,7 @@ class TemplateService {
       'core_stability.json',
       'chest_hypertrophy.json',
       'chest_strength.json',
+      'back_workout.json',
     ];
 
     await _loadTemplatesFromDirectory(

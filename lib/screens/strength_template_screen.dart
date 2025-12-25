@@ -237,7 +237,15 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.fitness_center, size: 64, color: Colors.grey.withValues(alpha: 0.3)),
+            SvgPicture.asset(
+              'assets/images/strength/lifter-icon.svg',
+              width: 64,
+              height: 64,
+              colorFilter: ColorFilter.mode(
+                Colors.grey.withValues(alpha: 0.3),
+                BlendMode.srcIn,
+              ),
+            ),
             const SizedBox(height: 16),
             const Text('저장된 루틴이 없습니다', style: TextStyle(color: Colors.grey)),
             const SizedBox(height: 8),
@@ -256,8 +264,16 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> {
           margin: const EdgeInsets.only(bottom: 12),
           child: ListTile(
             leading: CircleAvatar(
-              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-              child: Icon(Icons.star, color: Theme.of(context).colorScheme.primary),
+              backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+              child: SvgPicture.asset(
+                'assets/images/strength/lifter-icon.svg',
+                width: 24,
+                height: 24,
+                colorFilter: ColorFilter.mode(
+                  Theme.of(context).colorScheme.primary,
+                  BlendMode.srcIn,
+                ),
+              ),
             ),
             title: Text(routine.name, style: const TextStyle(fontWeight: FontWeight.bold)),
             subtitle: Text('${routine.phases.first.blocks.length}개 운동'),

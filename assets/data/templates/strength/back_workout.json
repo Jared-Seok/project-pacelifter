@@ -1,0 +1,63 @@
+{
+  "id": "strength_back_workout",
+  "name": "Back Strength & Hypertrophy",
+  "category": "Strength",
+  "environmentType": "Gym",
+  "subCategory": "Body Part",
+  "description": "등 근육의 너비와 두께를 동시에 공략하는 중강도 루틴입니다.",
+  "imagePath": "assets/images/strength/lifter-icon.svg",
+  "isCustom": false,
+  "phases": [
+    {
+      "id": "phase_main",
+      "name": "Main Workout",
+      "order": 0,
+      "blocks": [
+        {
+          "id": "back_deadlift",
+          "name": "Deadlift",
+          "type": "strength",
+          "exerciseId": "deadlift",
+          "sets": 3,
+          "reps": 5,
+          "restSeconds": 180,
+          "order": 0,
+          "notes": "스트렝스 기반 데드리프트. 바벨을 사용합니다."
+        },
+        {
+          "id": "back_pullup",
+          "name": "Pull-ups",
+          "type": "strength",
+          "exerciseId": "pull_ups",
+          "sets": 3,
+          "reps": 8,
+          "restSeconds": 90,
+          "order": 1,
+          "notes": "맨몸 또는 중량 추가. 가동범위에 집중하세요."
+        },
+        {
+          "id": "back_lat_pulldown",
+          "name": "Lat Pulldown",
+          "type": "strength",
+          "exerciseId": "lat_pulldown",
+          "sets": 3,
+          "reps": 12,
+          "restSeconds": 60,
+          "order": 2,
+          "notes": "와이드 그립으로 광배근 너비 집중."
+        },
+        {
+          "id": "back_seated_row",
+          "name": "Seated Row",
+          "type": "strength",
+          "exerciseId": "seated_row",
+          "sets": 3,
+          "reps": 10,
+          "restSeconds": 60,
+          "order": 3,
+          "notes": "V-바를 사용하여 등의 두께감 강조."
+        }
+      ]
+    }
+  ]
+}

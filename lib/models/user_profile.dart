@@ -4,6 +4,7 @@ class UserProfile {
   final String? gender; // 'male', 'female'
   final double? height; // cm
   final double? weight; // kg
+  final DateTime? birthDate;
 
   // Step 2: Body Composition
   final double? skeletalMuscleMass; // kg
@@ -28,6 +29,7 @@ class UserProfile {
     this.gender,
     this.height,
     this.weight,
+    this.birthDate,
     this.skeletalMuscleMass,
     this.bodyFatPercentage,
     this.fullMarathonTime,
@@ -41,11 +43,24 @@ class UserProfile {
     this.deadlift3RM,
   });
 
+  /// 나이 계산 (만 나이)
+  int? get age {
+    if (birthDate == null) return null;
+    final now = DateTime.now();
+    int age = now.year - birthDate!.year;
+    if (now.month < birthDate!.month ||
+        (now.month == birthDate!.month && now.day < birthDate!.day)) {
+      age--;
+    }
+    return age;
+  }
+
   /// UserProfile을 복사하여 새로운 인스턴스를 생성하는 메서드
   UserProfile copyWith({
     String? gender,
     double? height,
     double? weight,
+    DateTime? birthDate,
     double? skeletalMuscleMass,
     double? bodyFatPercentage,
     Duration? fullMarathonTime,
@@ -62,6 +77,7 @@ class UserProfile {
       gender: gender ?? this.gender,
       height: height ?? this.height,
       weight: weight ?? this.weight,
+      birthDate: birthDate ?? this.birthDate,
       skeletalMuscleMass: skeletalMuscleMass ?? this.skeletalMuscleMass,
       bodyFatPercentage: bodyFatPercentage ?? this.bodyFatPercentage,
       fullMarathonTime: fullMarathonTime ?? this.fullMarathonTime,
@@ -82,6 +98,7 @@ class UserProfile {
       gender: json['gender'],
       height: json['height'],
       weight: json['weight'],
+      birthDate: json['birthDate'] != null ? DateTime.parse(json['birthDate']) : null,
       skeletalMuscleMass: json['skeletalMuscleMass'],
       bodyFatPercentage: json['bodyFatPercentage'],
       fullMarathonTime: json['fullMarathonTime'] != null
@@ -110,6 +127,7 @@ class UserProfile {
       'gender': gender,
       'height': height,
       'weight': weight,
+      'birthDate': birthDate?.toIso8601String(),
       'skeletalMuscleMass': skeletalMuscleMass,
       'bodyFatPercentage': bodyFatPercentage,
       'fullMarathonTime': fullMarathonTime?.inSeconds,
