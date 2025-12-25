@@ -10,13 +10,14 @@ import 'package:pacelifter/services/workout_history_service.dart';
 import 'package:pacelifter/models/sessions/workout_session.dart';
 import 'package:pacelifter/services/template_service.dart';
 import 'package:pacelifter/models/templates/workout_template.dart';
+import 'package:pacelifter/models/workout_data_wrapper.dart';
 import 'dart:math';
 
 /// 운동 세부 정보 화면
 class WorkoutDetailScreen extends StatefulWidget {
-  final HealthDataPoint workoutData;
+  final WorkoutDataWrapper dataWrapper;
 
-  const WorkoutDetailScreen({super.key, required this.workoutData});
+  const WorkoutDetailScreen({super.key, required this.dataWrapper});
 
   @override
   State<WorkoutDetailScreen> createState() => _WorkoutDetailScreenState();
@@ -47,27 +48,43 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   double? _touchedTimestamp; // 현재 터치된 지점의 x축 값 (초 단위)
 
   WorkoutSession? _session;
+  HealthDataPoint? _workoutData;
 
   @override
   void initState() {
     super.initState();
+    _workoutData = widget.dataWrapper.healthData;
+    _session = widget.dataWrapper.session;
     _initializeData();
   }
 
   Future<void> _initializeData() async {
-    // Fetch linked session
-    _fetchLinkedSession();
+    // Fetch linked session if not provided but healthData is present
+    if (_session == null && _workoutData != null) {
+      _fetchLinkedSession();
+    }
 
-    // Fetch native duration first to ensure accurate pace calculation
-    await _fetchNativeDuration();
+    if (_workoutData != null) {
+      // Fetch native duration first to ensure accurate pace calculation
+      await _fetchNativeDuration();
 
-    // Then fetch heart rate and pace data
-    _fetchHeartRateData();
-    _fetchPaceData();
+      // Then fetch heart rate and pace data
+      _fetchHeartRateData();
+      _fetchPaceData();
+    } else {
+      // Handle case where we only have session data
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isPaceLoading = false;
+        });
+      }
+    }
   }
 
   void _fetchLinkedSession() {
-    final session = WorkoutHistoryService().getSessionByHealthKitId(widget.workoutData.uuid);
+    if (_workoutData == null) return;
+    final session = WorkoutHistoryService().getSessionByHealthKitId(_workoutData!.uuid);
     if (mounted) {
       setState(() {
         _session = session;
@@ -76,14 +93,15 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   }
 
   Future<void> _fetchHeartRateData() async {
+    if (_workoutData == null) return;
     final types = [HealthDataType.HEART_RATE];
 
     final granted = await _healthService.requestAuthorization();
     if (granted) {
       try {
         final heartRateData = await _healthService.getHealthDataFromTypes(
-          widget.workoutData.dateFrom,
-          widget.workoutData.dateTo,
+          _workoutData!.dateFrom,
+          _workoutData!.dateTo,
           types,
         );
 
@@ -121,14 +139,15 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   }
 
   Future<void> _fetchPaceData() async {
-    final workout = widget.workoutData.value as WorkoutHealthValue;
+    if (_workoutData == null) return;
+    final workout = _workoutData!.value as WorkoutHealthValue;
     final totalDistance = workout.totalDistance; // 미터
 
     print('🔍 [PACE DEBUG] Starting pace fetch');
     print('🔍 [PACE DEBUG] Total distance: $totalDistance meters');
-    print('🔍 [PACE DEBUG] Workout source: ${widget.workoutData.sourceName}');
-    print('🔍 [PACE DEBUG] Workout dateFrom: ${widget.workoutData.dateFrom}');
-    print('🔍 [PACE DEBUG] Workout dateTo: ${widget.workoutData.dateTo}');
+    print('🔍 [PACE DEBUG] Workout source: ${_workoutData!.sourceName}');
+    print('🔍 [PACE DEBUG] Workout dateFrom: ${_workoutData!.dateFrom}');
+    print('🔍 [PACE DEBUG] Workout dateTo: ${_workoutData!.dateTo}');
 
     // 거리 데이터 확인
     if (totalDistance == null || totalDistance == 0) {
@@ -146,7 +165,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     // Priority 1: Native HKWorkout duration (most accurate)
     // Priority 2: Fallback to elapsed time (dateTo - dateFrom)
     final workoutDuration = _nativeActiveDuration ??
-        widget.workoutData.dateTo.difference(widget.workoutData.dateFrom);
+        _workoutData!.dateTo.difference(_workoutData!.dateFrom);
 
     print('🔍 [PACE DEBUG] Workout duration: ${workoutDuration.inSeconds} seconds');
     print('🔍 [PACE DEBUG] Using ${_nativeActiveDuration != null ? "native active duration" : "elapsed time (fallback)"}');
@@ -167,8 +186,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       if (granted) {
         // 거리 샘플 데이터로 페이스 계산
         final distanceData = await _healthService.getHealthDataFromTypes(
-          widget.workoutData.dateFrom,
-          widget.workoutData.dateTo,
+          _workoutData!.dateFrom,
+          _workoutData!.dateTo,
           [HealthDataType.DISTANCE_WALKING_RUNNING],
         );
 
@@ -229,8 +248,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
   /// Fetch native HKWorkout duration data via HealthKit Bridge
   Future<void> _fetchNativeDuration() async {
+    if (_workoutData == null) return;
     try {
-      final workoutUuid = widget.workoutData.uuid;
+      final workoutUuid = _workoutData!.uuid;
       print('🔍 [NATIVE DURATION] Fetching duration for workout UUID: $workoutUuid');
 
       final details = await _healthKitBridge.getWorkoutDetails(workoutUuid);
@@ -340,9 +360,22 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   }
 
   void _showTemplateSelectionDialog(BuildContext context) {
-    final workout = widget.workoutData.value as WorkoutHealthValue;
-    final type = workout.workoutActivityType.name;
-    final category = _getWorkoutCategory(type);
+    final String workoutType;
+    final double? totalDistance;
+    final double? totalEnergyBurned;
+
+    if (_workoutData != null) {
+      final workout = _workoutData!.value as WorkoutHealthValue;
+      workoutType = workout.workoutActivityType.name;
+      totalDistance = (workout.totalDistance ?? 0).toDouble();
+      totalEnergyBurned = (workout.totalEnergyBurned ?? 0).toDouble();
+    } else {
+      workoutType = _session?.category == 'Strength' ? 'TRADITIONAL_STRENGTH_TRAINING' : 'RUNNING';
+      totalDistance = _session?.totalDistance;
+      totalEnergyBurned = _session?.calories;
+    }
+
+    final category = _getWorkoutCategory(workoutType);
     
     // 해당 카테고리의 템플릿만 로드 (없으면 전체 로드)
     final templates = TemplateService.getTemplatesByCategory(category);
@@ -393,12 +426,12 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                         onTap: () async {
                           // 템플릿 연결
                           await WorkoutHistoryService().linkTemplateToWorkout(
-                            healthKitId: widget.workoutData.uuid,
+                            healthKitId: widget.dataWrapper.uuid,
                             template: template,
-                            startTime: widget.workoutData.dateFrom,
-                            endTime: widget.workoutData.dateTo,
-                            totalDistance: (workout.totalDistance ?? 0).toDouble(),
-                            calories: (workout.totalEnergyBurned ?? 0).toDouble(),
+                            startTime: widget.dataWrapper.dateFrom,
+                            endTime: widget.dataWrapper.dateTo,
+                            totalDistance: totalDistance ?? 0,
+                            calories: totalEnergyBurned ?? 0,
                           );
                           
                           if (mounted) {
@@ -423,8 +456,26 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final workout = widget.workoutData.value as WorkoutHealthValue;
-    final workoutType = workout.workoutActivityType.name;
+    if (_workoutData == null && _session == null) {
+      return const Scaffold(body: Center(child: Text('운동 데이터를 찾을 수 없습니다.')));
+    }
+
+    final String workoutType;
+    final double? totalDistance;
+    final double? totalEnergyBurned;
+
+    if (_workoutData != null) {
+      final workout = _workoutData!.value as WorkoutHealthValue;
+      workoutType = workout.workoutActivityType.name;
+      totalDistance = (workout.totalDistance ?? 0).toDouble();
+      totalEnergyBurned = (workout.totalEnergyBurned ?? 0).toDouble();
+    } else {
+      // session is not null if we reach here
+      workoutType = _session!.category == 'Strength' ? 'TRADITIONAL_STRENGTH_TRAINING' : 'RUNNING';
+      totalDistance = _session!.totalDistance;
+      totalEnergyBurned = _session!.calories;
+    }
+
     final workoutCategory = _getWorkoutCategory(workoutType);
     final color = _getWorkoutColor(context, workoutCategory);
     final iconPath = _getWorkoutIconPath(workoutType);
@@ -564,22 +615,22 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                     _buildInfoRow(
                       Icons.access_time,
                       '날짜 및 시간',
-                      '${DateFormat('yyyy년 MM월 dd일').format(widget.workoutData.dateFrom)}\n${DateFormat('HH:mm').format(widget.workoutData.dateFrom)} ~ ${DateFormat('HH:mm').format(widget.workoutData.dateTo)}',
+                      '${DateFormat('yyyy년 MM월 dd일').format(widget.dataWrapper.dateFrom)}\n${DateFormat('HH:mm').format(widget.dataWrapper.dateFrom)} ~ ${DateFormat('HH:mm').format(widget.dataWrapper.dateTo)}',
                     ),
-                    if (workout.totalDistance != null) ...[
+                    if (totalDistance != null) ...[
                       const Divider(height: 24),
                       _buildInfoRow(
                         Icons.straighten,
                         '총 거리',
-                        '${(workout.totalDistance! / 1000).toStringAsFixed(2)} km',
+                        '${(totalDistance / 1000).toStringAsFixed(2)} km',
                       ),
                     ],
-                    if (workout.totalEnergyBurned != null) ...[
+                    if (totalEnergyBurned != null) ...[
                       const Divider(height: 24),
                       _buildInfoRow(
                         Icons.local_fire_department,
                         '소모 칼로리',
-                        '${workout.totalEnergyBurned!.toStringAsFixed(0)} kcal',
+                        '${totalEnergyBurned.toStringAsFixed(0)} kcal',
                       ),
                     ],
                     if (_avgHeartRate > 0) ...[
@@ -604,6 +655,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             ),
             const SizedBox(height: 16),
             // 심박수 데이터
+            if (_workoutData != null || _heartRateData.isNotEmpty)
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -628,7 +680,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             ),
             const SizedBox(height: 16),
             // 페이스 데이터
-            if (isRunning) ...[
+            if (isRunning && (_workoutData != null || _paceData.isNotEmpty)) ...[
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -668,7 +720,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                     _buildInfoRow(
                       Icons.phone_iphone,
                       '기기/앱',
-                      widget.workoutData.sourceName,
+                      widget.dataWrapper.sourceName,
                     ),
                   ],
                 ),
@@ -695,7 +747,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
   Widget _buildHeartRateChart() {
     final spots = <FlSpot>[];
-    final workoutStartTime = widget.workoutData.dateFrom;
+    final workoutStartTime = widget.dataWrapper.dateFrom;
 
     // X축: 초 단위로 변경 (페이스 차트와 동기화)
     for (var data in _heartRateData) {
@@ -719,7 +771,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         .ceilToDouble();
 
     // X축 범위: 0 ~ 총 운동 시간 (초)
-    final workoutEndTime = widget.workoutData.dateTo;
+    final workoutEndTime = widget.dataWrapper.dateTo;
     final totalDurationSeconds = workoutEndTime.difference(workoutStartTime).inSeconds.toDouble();
     final maxXSeconds = totalDurationSeconds == 0 ? 1.0 : totalDurationSeconds;
 
@@ -986,9 +1038,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     }
 
     // 3. 활동 시간 계산 (X축 범위 결정)
-    final workoutStartTime = widget.workoutData.dateFrom;
+    final workoutStartTime = widget.dataWrapper.dateFrom;
     final activeDurationSeconds = _nativeActiveDuration?.inSeconds.toDouble() ??
-        widget.workoutData.dateTo.difference(workoutStartTime).inSeconds.toDouble();
+        widget.dataWrapper.dateTo.difference(workoutStartTime).inSeconds.toDouble();
     final maxXSeconds = activeDurationSeconds == 0 ? 1.0 : activeDurationSeconds;
 
     // 4. 스무딩된 데이터를 FlSpot으로 변환 (활동 시간 내의 데이터만 포함)
@@ -1160,7 +1212,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   String? _getHeartRateAtTimestamp(double timestamp) {
     if (_heartRateData.isEmpty) return null;
 
-    final workoutStartTime = widget.workoutData.dateFrom;
+    final workoutStartTime = widget.dataWrapper.dateFrom;
 
     // 타임스탬프와 가장 가까운 데이터 포인트 찾기
     HealthDataPoint? closestPoint;
@@ -1188,7 +1240,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   String? _getPaceAtTimestamp(double timestamp) {
     if (_paceData.isEmpty) return null;
 
-    final workoutStartTime = widget.workoutData.dateFrom;
+    final workoutStartTime = widget.dataWrapper.dateFrom;
 
     // 타임스탬프와 가장 가까운 데이터 포인트 찾기
     HealthDataPoint? closestPoint;
@@ -1222,21 +1274,27 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   /// 운동 공유 처리
   Future<void> _handleShareWorkout() async {
     // 운동 공유 화면으로 이동
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => WorkoutShareScreen(
-          workoutData: widget.workoutData,
-          heartRateData: _heartRateData,
-          avgHeartRate: _avgHeartRate,
-          paceData: _paceData,
-          avgPace: _avgPace,
-          movingTime: _movingTime,
-          templateName: _session?.templateName, // 템플릿 이름 전달
-          environmentType: _session?.environmentType, // 환경 타입 전달
+    if (_workoutData != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => WorkoutShareScreen(
+            workoutData: _workoutData!,
+            heartRateData: _heartRateData,
+            avgHeartRate: _avgHeartRate,
+            paceData: _paceData,
+            avgPace: _avgPace,
+            movingTime: _movingTime,
+            templateName: _session?.templateName, // 템플릿 이름 전달
+            environmentType: _session?.environmentType, // 환경 타입 전달
+          ),
         ),
-      ),
-    );
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('HealthKit 데이터가 없는 운동은 공유할 수 없습니다.')),
+      );
+    }
   }
 
   List<Widget> _buildTimeSection() {
@@ -1251,12 +1309,12 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       pausedDuration = _nativePausedDuration;
       print('ℹ️ [TIME SECTION] Using native HKWorkout duration');
     } else {
-      // Priority 2: Try PaceLifter metadata
+      // Priority 2: Try PaceLifter metadata or calculate from wrapper
       activeDuration = _movingTime ??
-          widget.workoutData.dateTo.difference(widget.workoutData.dateFrom);
+          widget.dataWrapper.dateTo.difference(widget.dataWrapper.dateFrom);
 
       try {
-        final metadata = widget.workoutData.metadata;
+        final metadata = _workoutData?.metadata;
         if (metadata != null && metadata.containsKey('PaceLifter_PausedDuration')) {
           final pausedSeconds = metadata['PaceLifter_PausedDuration'];
           if (pausedSeconds is int) {

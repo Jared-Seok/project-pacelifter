@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:health/health.dart';
 import 'package:intl/intl.dart';
-import 'package:pacelifter/screens/workout_detail_screen.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:pacelifter/screens/workout_detail_screen.dart';
 import 'package:pacelifter/models/time_period.dart';
 import 'package:pacelifter/services/workout_history_service.dart';
+import 'package:pacelifter/models/workout_data_wrapper.dart';
 import 'package:pacelifter/models/sessions/workout_session.dart';
-import 'package:pacelifter/models/templates/workout_template.dart';
 import 'package:pacelifter/services/template_service.dart';
 
 class WorkoutFeedScreen extends StatefulWidget {
@@ -453,12 +453,15 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => WorkoutDetailScreen(workoutData: data),
-            ),
-          );
+        onTap: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => WorkoutDetailScreen(
+                    dataWrapper: WorkoutDataWrapper(healthData: data),
+                  ),
+                ),
+              );
+
         },
         onLongPress: () {
           _showTemplateSelectionDialog(context, data);

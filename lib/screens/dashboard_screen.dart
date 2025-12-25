@@ -17,6 +17,7 @@ import 'package:pacelifter/services/workout_history_service.dart';
 import 'package:pacelifter/models/sessions/workout_session.dart';
 import 'package:pacelifter/services/scoring_engine.dart';
 import 'package:pacelifter/models/scoring/performance_scores.dart';
+import 'package:pacelifter/models/workout_data_wrapper.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -1357,6 +1358,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return PieChart(PieChartData(
         sectionsSpace: 2,
         centerSpaceRadius: 35,
+        startDegreeOffset: 270,
         sections: [
           PieChartSectionData(
               value: _strengthPercentage,
@@ -1523,7 +1525,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             onTap: () async {
               await Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => WorkoutDetailScreen(workoutData: data),
+                  builder: (context) => WorkoutDetailScreen(
+                    dataWrapper: WorkoutDataWrapper(healthData: data, session: session),
+                  ),
                 ),
               );
               // 돌아왔을 때 세션 정보 새로고침

@@ -108,4 +108,19 @@ class HealthService {
       return [];
     }
   }
+
+  /// 수동으로 HealthDataPoint 생성 (캘린더 등에서 사용)
+  /// Note: HealthPlatform enum visibility issues prevent direct instantiation.
+  /// This method is deprecated and should not be used until resolved.
+  static HealthDataPoint? createWorkoutDataPoint({
+    required String uuid,
+    required DateTime start,
+    required DateTime end,
+    required int distance,
+    required int calories,
+    required String category, // 'Strength', 'Endurance', 'Hybrid'
+  }) {
+    return null;
+  }
 }
+
