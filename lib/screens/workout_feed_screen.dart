@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:health/health.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:pacelifter/models/workout_data_wrapper.dart';
 import 'package:pacelifter/screens/workout_detail_screen.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:pacelifter/models/time_period.dart';
 import 'package:pacelifter/services/workout_history_service.dart';
-import 'package:pacelifter/models/workout_data_wrapper.dart';
 import 'package:pacelifter/models/sessions/workout_session.dart';
+import 'package:pacelifter/models/templates/workout_template.dart';
 import 'package:pacelifter/services/template_service.dart';
-import 'package:pacelifter/utils/workout_ui_utils.dart';
 
 class WorkoutFeedScreen extends StatefulWidget {
   final List<HealthDataPoint> workoutData;
@@ -69,6 +69,28 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
     }
   }
 
+  bool _isStrengthWorkout(String type) {
+    final upperType = type.toUpperCase();
+    return upperType.contains('STRENGTH') ||
+        upperType.contains('WEIGHT') ||
+        upperType.contains('FUNCTIONAL') ||
+        upperType.contains('CORE') ||
+        upperType.contains('TRADITIONAL_STRENGTH_TRAINING');
+  }
+
+  String _getWorkoutCategory(String type) {
+    final upperType = type.toUpperCase();
+    if (upperType.contains('CORE') ||
+        upperType.contains('FUNCTIONAL') ||
+        upperType.contains('STRENGTH') ||
+        upperType.contains('WEIGHT') ||
+        upperType.contains('TRADITIONAL_STRENGTH_TRAINING')) {
+      return 'Strength';
+    } else {
+      return 'Endurance';
+    }
+  }
+
   Color _getCategoryColor(String category, BuildContext context) {
     switch (category) {
       case 'Strength':
@@ -80,9 +102,65 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
     }
   }
 
+  Widget _getWorkoutIconWidget(String type, Color color, {double iconSize = 24, String? environmentType}) {
+    final upperType = type.toUpperCase();
+
+    // 트레일 러닝 환경이면 트레일 아이콘 우선 사용
+    if (environmentType == 'Trail') {
+      return SvgPicture.asset(
+        'assets/images/trail-icon.svg',
+        width: iconSize,
+        height: iconSize,
+        colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+      );
+    }
+
+    if (upperType.contains('RUNNING') ||
+        upperType.contains('WALKING') ||
+        upperType.contains('HIKING')) {
+      return SvgPicture.asset(
+        'assets/images/runner-icon.svg',
+        width: iconSize,
+        height: iconSize,
+        colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+      );
+    }
+
+    // CORE TRAINING은 core-icon.svg 사용
+    if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
+      return SvgPicture.asset(
+        'assets/images/core-icon.svg',
+        width: iconSize,
+        height: iconSize,
+        colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+      );
+    }
+
+    // 나머지 Strength 운동은 lifter-icon.svg 사용
+    if (upperType.contains('STRENGTH') || upperType.contains('WEIGHT')) {
+      return SvgPicture.asset(
+        'assets/images/lifter-icon.svg',
+        width: iconSize,
+        height: iconSize,
+        colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+      );
+    }
+
+    return Icon(Icons.fitness_center, size: iconSize, color: color);
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Calculate statistics
+    // 필터링된 데이터 생성
+    final filteredData = widget.workoutData.where((data) {
+      if (_filterType == 'All') return true;
+      final hasSession = _sessionMap.containsKey(data.uuid);
+      if (_filterType == 'Set') return hasSession;
+      if (_filterType == 'Unset') return !hasSession;
+      return true;
+    }).toList();
+
+    // Calculate statistics (filtered 기준이 아닌 전체 기준 유지 권장 혹은 필터 기준 선택 가능)
     int strengthCount = 0;
     int enduranceCount = 0;
     double totalDistance = 0.0;
@@ -91,7 +169,7 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
     for (final data in widget.workoutData) {
       final workout = data.value as WorkoutHealthValue;
       final type = workout.workoutActivityType.name;
-      if (WorkoutUIUtils.getWorkoutCategory(type) == 'Strength') {
+      if (_isStrengthWorkout(type)) {
         strengthCount++;
       } else {
         enduranceCount++;
@@ -129,6 +207,7 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
             ),
             child: Column(
               children: [
+                // 날짜 범위 텍스트를 크고 하얗게 상단 배치
                 Text(
                   widget.dateRangeText,
                   style: const TextStyle(
@@ -148,7 +227,7 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
                         '${widget.workoutData.length}회',
                         null,
                         svgPath: 'assets/images/pllogo.svg',
-                        iconSize: 36,
+                        iconSize: 36, // 28에서 36으로 증가
                         color: Theme.of(context).colorScheme.secondary,
                       ),
                     ),
@@ -158,7 +237,7 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
                         'Endurance',
                         '$enduranceCount회',
                         null,
-                        svgPath: 'assets/images/endurance/runner-icon.svg',
+                        svgPath: 'assets/images/runner-icon.svg',
                         color: Theme.of(context).colorScheme.secondary,
                       ),
                     ),
@@ -168,10 +247,11 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
                         'Strength',
                         '$strengthCount회',
                         null,
-                        svgPath: 'assets/images/strength/lifter-icon.svg',
+                        svgPath: 'assets/images/lifter-icon.svg',
                         color: Theme.of(context).colorScheme.primary,
                       ),
                     ),
+                    // 총 거리/총 시간 토글 (클릭 가능)
                     if (totalDistance > 0 || totalTime > Duration.zero)
                       Expanded(
                         child: _buildToggleableStatItem(
@@ -231,7 +311,7 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
     double? iconSize,
   }) {
     final displayColor = color ?? Theme.of(context).colorScheme.primary;
-    final size = iconSize ?? 32.0;
+    final size = iconSize ?? 32.0; // 기본 크기를 24에서 32로 증가
     return Column(
       children: [
         if (svgPath != null)
@@ -243,19 +323,19 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
           )
         else if (icon != null)
           Icon(icon, size: size, color: displayColor),
-        const SizedBox(height: 8),
+        const SizedBox(height: 8), // 4에서 8로 증가
         Text(
           label,
           style: TextStyle(
-            fontSize: 13,
+            fontSize: 13, // 12에서 13으로 증가
             color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 4), // 2에서 4로 증가
         Text(
           value,
           style: TextStyle(
-            fontSize: 18,
+            fontSize: 18, // 16에서 18로 증가
             fontWeight: FontWeight.bold,
             color: displayColor,
           ),
@@ -264,6 +344,7 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
     );
   }
 
+  /// 총 거리/총 시간 토글 가능한 통계 항목
   Widget _buildToggleableStatItem(
     BuildContext context,
     double totalDistance,
@@ -272,6 +353,7 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
     final displayColor = Theme.of(context).colorScheme.primary;
     const size = 32.0;
 
+    // 시간 포맷팅
     String formatDuration(Duration duration) {
       final hours = duration.inHours;
       final minutes = duration.inMinutes.remainder(60);
@@ -334,14 +416,15 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
     final workout = data.value as WorkoutHealthValue;
     final distance = workout.totalDistance ?? 0.0;
     final type = workout.workoutActivityType.name;
-    final workoutCategory = WorkoutUIUtils.getWorkoutCategory(type);
+    final workoutCategory = _getWorkoutCategory(type);
     final color = _getCategoryColor(workoutCategory, context);
 
+    // 저장된 세션이 있는지 확인하고 표시 이름 결정
     String displayName;
     final session = _sessionMap[data.uuid];
     
     if (session != null) {
-      displayName = session.templateName;
+      displayName = session.templateName; // 저장된 템플릿 이름 사용
     } else {
       final upperType = type.toUpperCase();
       if (type == 'TRADITIONAL_STRENGTH_TRAINING') {
@@ -358,6 +441,7 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
     final Color backgroundColor;
     final Color iconColor;
 
+    // CORE TRAINING: secondary color 아이콘, primary color 배경 (Strength와 동일)
     final upperType = type.toUpperCase();
     if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
       backgroundColor = Theme.of(context).colorScheme.primary.withValues(alpha: 0.2);
@@ -367,48 +451,28 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
       iconColor = color;
     }
 
-    // 세부 운동 아이콘이 있는지 확인 (배경 제거 로직용)
-    bool hasSpecificIcon = false;
-    if (session != null && session.templateId != null) {
-      final template = TemplateService.getTemplateById(session.templateId!);
-      if (template != null && template.phases.isNotEmpty) {
-        final firstBlock = template.phases.first.blocks.isNotEmpty ? template.phases.first.blocks.first : null;
-        if (firstBlock != null && firstBlock.exerciseId != null) {
-          final exercise = TemplateService.getExerciseById(firstBlock.exerciseId!);
-          if (exercise?.imagePath != null) hasSpecificIcon = true;
-        }
-      }
-    }
-
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
-        onTap: () async {
-          await Navigator.of(context).push(
+        onTap: () {
+          Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) => WorkoutDetailScreen(
-                dataWrapper: WorkoutDataWrapper(healthData: data, session: session),
+                dataWrapper: WorkoutDataWrapper(healthData: data),
               ),
             ),
           );
-          _loadSessions();
         },
         onLongPress: () {
           _showTemplateSelectionDialog(context, data);
         },
         leading: Container(
-          padding: hasSpecificIcon ? EdgeInsets.zero : const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: hasSpecificIcon ? Colors.transparent : backgroundColor,
+            color: backgroundColor,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: WorkoutUIUtils.getWorkoutIconWidget(
-            context: context,
-            type: type,
-            color: iconColor,
-            environmentType: session?.environmentType,
-            session: session,
-          ),
+          child: _getWorkoutIconWidget(type, iconColor, environmentType: session?.environmentType),
         ),
         title: Text(displayName, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Column(
@@ -459,8 +523,9 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
   void _showTemplateSelectionDialog(BuildContext context, HealthDataPoint data) {
     final workout = data.value as WorkoutHealthValue;
     final type = workout.workoutActivityType.name;
-    final category = WorkoutUIUtils.getWorkoutCategory(type);
+    final category = _getWorkoutCategory(type);
     
+    // 해당 카테고리의 템플릿만 로드 (없으면 전체 로드)
     final templates = TemplateService.getTemplatesByCategory(category);
     if (templates.isEmpty) {
       templates.addAll(TemplateService.getAllTemplates());
@@ -507,6 +572,7 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
                         title: Text(template.name),
                         subtitle: Text(template.description, maxLines: 1, overflow: TextOverflow.ellipsis),
                         onTap: () async {
+                          // 템플릿 연결
                           await WorkoutHistoryService().linkTemplateToWorkout(
                             healthKitId: data.uuid,
                             template: template,
@@ -518,7 +584,7 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
                           
                           if (mounted) {
                             Navigator.pop(context);
-                            _loadSessions(); 
+                            _loadSessions(); // 목록 새로고침
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text('${template.name} 템플릿으로 설정되었습니다.')),
                             );

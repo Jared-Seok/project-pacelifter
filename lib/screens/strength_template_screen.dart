@@ -9,7 +9,9 @@ import '../models/templates/template_phase.dart';
 import '../models/templates/template_block.dart';
 import '../models/exercises/exercise.dart';
 import '../services/template_service.dart';
+import '../widgets/exercise_config_sheet.dart';
 import 'strength_tracking_screen.dart';
+import 'strength_routine_preview_screen.dart';
 import '../utils/korean_search_utils.dart';
 
 class StrengthTemplateScreen extends StatefulWidget {
@@ -19,30 +21,61 @@ class StrengthTemplateScreen extends StatefulWidget {
   State<StrengthTemplateScreen> createState() => _StrengthTemplateScreenState();
 }
 
-class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> with SingleTickerProviderStateMixin {
+class _StrengthTemplateScreenState extends State<StrengthTemplateScreen>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
 
   final List<Map<String, dynamic>> _muscleGroups = [
-    {'id': 'chest', 'name': '가슴', 'icon': 'assets/images/strength/lifter-icon.svg'},
-    {'id': 'shoulders', 'name': '어깨', 'icon': 'assets/images/strength/lifter-icon.svg'},
-    {'id': 'back', 'name': '등', 'icon': 'assets/images/strength/lifter-icon.svg'},
-    {'id': 'biceps', 'name': '이두', 'icon': 'assets/images/strength/lifter-icon.svg'},
-    {'id': 'triceps', 'name': '삼두', 'icon': 'assets/images/strength/lifter-icon.svg'},
-    {'id': 'forearms', 'name': '전완', 'icon': 'assets/images/strength/lifter-icon.svg'},
-    {'id': 'legs', 'name': '하체', 'icon': 'assets/images/strength/lifter-icon.svg'},
-    {'id': 'core', 'name': '코어', 'icon': 'assets/images/strength/core-icon.svg'},
-    {'id': 'compound', 'name': '복합', 'icon': 'assets/images/strength/lifter-icon.svg'},
+    {
+      'id': 'chest',
+      'name': '가슴',
+      'icon': 'assets/images/strength/category/chest.svg',
+    },
+    {
+      'id': 'shoulders',
+      'name': '어깨',
+      'icon': 'assets/images/strength/category/shoulders.svg',
+    },
+    {
+      'id': 'back',
+      'name': '등',
+      'icon': 'assets/images/strength/category/back.svg',
+    },
+    {
+      'id': 'biceps',
+      'name': '이두',
+      'icon': 'assets/images/strength/category/biceps.svg',
+    },
+    {
+      'id': 'triceps',
+      'name': '삼두',
+      'icon': 'assets/images/strength/category/triceps.svg',
+    },
+    {
+      'id': 'forearms',
+      'name': '전완',
+      'icon': 'assets/images/strength/category/forearms.svg',
+    },
+    {
+      'id': 'legs',
+      'name': '하체',
+      'icon': 'assets/images/strength/category/legs.svg',
+    },
+    {
+      'id': 'core',
+      'name': '코어',
+      'icon': 'assets/images/strength/category/core.svg',
+    },
+    {
+      'id': 'compound',
+      'name': '복합',
+      'icon': 'assets/images/strength/lifter-icon.svg',
+    },
   ];
 
   @override
   void initState() {
     super.initState();
-    _searchController.addListener(() {
-      setState(() {
-        _searchQuery = _searchController.text;
-      });
-    });
   }
 
   @override
@@ -55,41 +88,26 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> with Si
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ExerciseListScreen(muscleGroupId: id, title: name),
+        builder: (context) =>
+            ExerciseListScreen(muscleGroupId: id, title: name),
       ),
     );
   }
 
-  void _addExerciseToRoutine(Exercise exercise) {
-    final provider = Provider.of<StrengthRoutineProvider>(context, listen: false);
-    
-    final block = TemplateBlock(
-      id: const Uuid().v4(),
-      name: exercise.nameKo,
-      type: 'strength',
-      exerciseId: exercise.id,
-      sets: 3,
-      reps: 10,
-      restSeconds: 60,
-      order: provider.blocks.length,
-    );
-
-    provider.addBlock(block);
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${exercise.nameKo}가 루틴에 추가되었습니다'),
-        duration: const Duration(seconds: 1),
-        action: SnackBarAction(
-          label: '취소',
-          onPressed: () => provider.removeBlock(block.id),
-        ),
-      ),
+  void _onExerciseTap(Exercise exercise) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ExerciseConfigSheet(exercise: exercise),
     );
   }
 
   Future<void> _saveCustomRoutine() async {
-    final blocks = Provider.of<StrengthRoutineProvider>(context, listen: false).blocks;
+    final blocks = Provider.of<StrengthRoutineProvider>(
+      context,
+      listen: false,
+    ).blocks;
     if (blocks.isEmpty) return;
 
     final nameController = TextEditingController();
@@ -137,9 +155,9 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> with Si
 
               if (mounted) {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('루틴이 저장되었습니다')),
-                );
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('루틴이 저장되었습니다')));
                 setState(() {});
               }
             },
@@ -151,7 +169,10 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> with Si
   }
 
   void _startCustomRoutine() {
-    final blocks = Provider.of<StrengthRoutineProvider>(context, listen: false).blocks;
+    final blocks = Provider.of<StrengthRoutineProvider>(
+      context,
+      listen: false,
+    ).blocks;
     if (blocks.isEmpty) return;
 
     final template = WorkoutTemplate(
@@ -174,7 +195,7 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> with Si
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => StrengthTrackingScreen(template: template),
+        builder: (context) => StrengthRoutinePreviewScreen(template: template),
       ),
     );
   }
@@ -193,10 +214,13 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> with Si
             IconButton(
               icon: const Icon(Icons.refresh),
               onPressed: () {
-                Provider.of<StrengthRoutineProvider>(context, listen: false).clear();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('루틴이 초기화되었습니다')),
-                );
+                Provider.of<StrengthRoutineProvider>(
+                  context,
+                  listen: false,
+                ).clear();
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('루틴이 초기화되었습니다')));
               },
             ),
           ],
@@ -209,12 +233,7 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> with Si
         ),
         body: Stack(
           children: [
-            TabBarView(
-              children: [
-                _buildSelectionTab(),
-                _buildMyRoutinesTab(),
-              ],
-            ),
+            TabBarView(children: [_buildSelectionTab(), _buildMyRoutinesTab()]),
             Positioned(
               left: 0,
               right: 0,
@@ -234,63 +253,92 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> with Si
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: TextField(
+            key: const ValueKey('strength_search_field'),
             controller: _searchController,
             decoration: InputDecoration(
               hintText: '운동 검색 (예: 벤치프레스, ㅂㅊ)',
               prefixIcon: const Icon(Icons.search),
-              suffixIcon: _searchQuery.isNotEmpty 
-                ? IconButton(
-                    icon: const Icon(Icons.clear),
-                    onPressed: () => _searchController.clear(),
-                  )
-                : null,
+              suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _searchController,
+                builder: (context, value, child) {
+                  return value.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () => _searchController.clear(),
+                        )
+                      : const SizedBox.shrink();
+                },
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
               ),
               filled: true,
-              fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              fillColor: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
             ),
           ),
         ),
 
         // 2. 검색 결과 또는 부위별 그리드
         Expanded(
-          child: _searchQuery.isEmpty 
-            ? GridView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 200), // 더 넓은 하단 공간 확보
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                  childAspectRatio: 0.95,
-                ),
-                itemCount: _muscleGroups.length,
-                itemBuilder: (context, index) {
-                  final group = _muscleGroups[index];
-                  return _buildMuscleCard(group);
-                },
-              )
-            : _buildFilteredExerciseList(),
+          child: ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _searchController,
+            builder: (context, value, child) {
+              final query = value.text;
+              return query.isEmpty
+                  ? GridView.builder(
+                      padding: const EdgeInsets.fromLTRB(
+                        16,
+                        0,
+                        16,
+                        200,
+                      ), // 더 넓은 하단 공간 확보
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        crossAxisSpacing: 10,
+                        mainAxisSpacing: 10,
+                        childAspectRatio: 0.85,
+                      ),
+                      itemCount: _muscleGroups.length,
+                      itemBuilder: (context, index) {
+                        final group = _muscleGroups[index];
+                        return _buildMuscleCard(group);
+                      },
+                    )
+                  : _buildFilteredExerciseList(query);
+            },
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildFilteredExerciseList() {
+  Widget _buildFilteredExerciseList(String query) {
     final allExercises = TemplateService.getAllExercises();
-    final filtered = allExercises.where((ex) => 
-      KoreanSearchUtils.matches(ex.nameKo, _searchQuery) || 
-      KoreanSearchUtils.matches(ex.name, _searchQuery)
-    ).toList();
+    final filtered = allExercises
+        .where(
+          (ex) =>
+              KoreanSearchUtils.matches(ex.nameKo, query) ||
+              KoreanSearchUtils.matches(ex.name, query),
+        )
+        .toList();
 
     if (filtered.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.search_off, size: 64, color: Colors.grey.withValues(alpha: 0.3)),
+            Icon(
+              Icons.search_off,
+              size: 64,
+              color: Colors.grey.withValues(alpha: 0.3),
+            ),
             const SizedBox(height: 16),
             const Text('일치하는 운동이 없습니다', style: TextStyle(color: Colors.grey)),
           ],
@@ -307,37 +355,51 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> with Si
         return Card(
           margin: const EdgeInsets.only(bottom: 8),
           child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 8,
+            ),
             leading: hasSpecificIcon
-              ? SvgPicture.asset(
-                  ex.imagePath!,
-                  width: 66,
-                  height: 66,
-                  colorFilter: ColorFilter.mode(
-                    Theme.of(context).colorScheme.primary,
-                    BlendMode.srcIn,
-                  ),
-                )
-              : Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: SvgPicture.asset(
-                    'assets/images/strength/lifter-icon.svg',
-                    width: 40,
-                    height: 40,
+                ? SvgPicture.asset(
+                    ex.imagePath!,
+                    width: 66,
+                    height: 66,
                     colorFilter: ColorFilter.mode(
                       Theme.of(context).colorScheme.primary,
                       BlendMode.srcIn,
                     ),
+                  )
+                : Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: SvgPicture.asset(
+                      'assets/images/strength/lifter-icon.svg',
+                      width: 40,
+                      height: 40,
+                      colorFilter: ColorFilter.mode(
+                        Theme.of(context).colorScheme.primary,
+                        BlendMode.srcIn,
+                      ),
+                    ),
                   ),
-                ),
-            title: Text(ex.nameKo, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            subtitle: Text('${ex.equipment} | ${ex.primaryMuscles.join(", ")}', style: const TextStyle(fontSize: 13)),
-            trailing: const Icon(Icons.add_circle_outline),
-            onTap: () => _addExerciseToRoutine(ex),
+            title: Text(
+              ex.nameKo,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            subtitle: Text(
+              '${ex.equipment} | ${ex.primaryMuscles.join(", ")}',
+              style: const TextStyle(fontSize: 13),
+            ),
+            trailing: IconButton(
+              icon: const Icon(Icons.add_circle_outline),
+              onPressed: () => _onExerciseTap(ex),
+            ),
+            onTap: () => _onExerciseTap(ex),
           ),
         );
       },
@@ -346,7 +408,9 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> with Si
 
   Widget _buildMyRoutinesTab() {
     final allTemplates = TemplateService.getAllTemplates();
-    final myRoutines = allTemplates.where((t) => t.category == 'Strength' && t.isCustom).toList();
+    final myRoutines = allTemplates
+        .where((t) => t.category == 'Strength' && t.isCustom)
+        .toList();
 
     if (myRoutines.isEmpty) {
       return Container(
@@ -366,13 +430,20 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> with Si
               ),
               const SizedBox(height: 24),
               const Text(
-                '저장된 루틴이 없습니다', 
-                style: TextStyle(color: Colors.grey, fontSize: 16, fontWeight: FontWeight.bold), // 14에서 10% 이상 증가
+                '저장된 루틴이 없습니다',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ), // 14에서 10% 이상 증가
               ),
               const SizedBox(height: 10),
               const Text(
-                '운동을 선택하고 나만의 루틴을 만들어보세요', 
-                style: TextStyle(color: Colors.grey, fontSize: 13), // 12에서 약 10% 증가
+                '운동을 선택하고 나만의 루틴을 만들어보세요',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 13,
+                ), // 12에서 약 10% 증가
               ),
             ],
           ),
@@ -389,7 +460,9 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> with Si
           margin: const EdgeInsets.only(bottom: 12),
           child: ListTile(
             leading: CircleAvatar(
-              backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+              backgroundColor: Theme.of(
+                context,
+              ).colorScheme.primary.withValues(alpha: 0.1),
               child: SvgPicture.asset(
                 'assets/images/strength/lifter-icon.svg',
                 width: 24,
@@ -400,7 +473,10 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> with Si
                 ),
               ),
             ),
-            title: Text(routine.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+            title: Text(
+              routine.name,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
             subtitle: Text('${routine.phases.first.blocks.length}개 운동'),
             trailing: IconButton(
               icon: const Icon(Icons.play_arrow),
@@ -409,7 +485,8 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> with Si
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => StrengthTrackingScreen(template: routine),
+                    builder: (context) =>
+                        StrengthTrackingScreen(template: routine),
                   ),
                 );
               },
@@ -421,12 +498,18 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> with Si
                   title: const Text('루틴 삭제'),
                   content: Text('${routine.name} 루틴을 삭제하시겠습니까?'),
                   actions: [
-                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
-                    TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('삭제')),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('취소'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('삭제'),
+                    ),
                   ],
                 ),
               );
-              
+
               if (confirm == true) {
                 await TemplateService.deleteTemplate(routine.id);
                 setState(() {});
@@ -444,7 +527,9 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> with Si
       borderRadius: BorderRadius.circular(16),
       child: Container(
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+          color: Theme.of(
+            context,
+          ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
@@ -454,29 +539,15 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> with Si
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: SvgPicture.asset(
-                group['icon'],
-                width: 24,
-                height: 24,
-                colorFilter: ColorFilter.mode(
-                  Theme.of(context).colorScheme.primary,
-                  BlendMode.srcIn,
-                ),
-              ),
+            SvgPicture.asset(
+              group['icon'],
+              width: 104,
+              height: 104,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
             Text(
               group['name'],
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -492,7 +563,9 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> with Si
 
         return Container(
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.98),
+            color: Theme.of(
+              context,
+            ).colorScheme.surface.withValues(alpha: 0.98),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.4),
@@ -517,8 +590,8 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> with Si
                       itemCount: provider.blocks.length,
                       itemBuilder: (context, index) {
                         final block = provider.blocks[index];
-                        final exercise = block.exerciseId != null 
-                            ? TemplateService.getExerciseById(block.exerciseId!) 
+                        final exercise = block.exerciseId != null
+                            ? TemplateService.getExerciseById(block.exerciseId!)
                             : null;
                         final imagePath = exercise?.imagePath;
 
@@ -529,10 +602,14 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> with Si
                               width: 91, // 기존 70에서 30% 증가
                               height: 91,
                               decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.surface, // 앱 배경색과 일치
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.surface, // 앱 배경색과 일치
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
-                                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.primary.withValues(alpha: 0.5),
                                   width: 2.0,
                                 ),
                               ),
@@ -540,7 +617,8 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> with Si
                                 child: Padding(
                                   padding: const EdgeInsets.all(2.0), // 여백 최소화
                                   child: SvgPicture.asset(
-                                    imagePath ?? 'assets/images/strength/lifter-icon.svg',
+                                    imagePath ??
+                                        'assets/images/strength/lifter-icon.svg',
                                     fit: BoxFit.contain, // 최대한 채우기
                                     colorFilter: ColorFilter.mode(
                                       Theme.of(context).colorScheme.primary,
@@ -561,7 +639,11 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> with Si
                                     color: Colors.red,
                                     shape: BoxShape.circle,
                                   ),
-                                  child: const Icon(Icons.close, size: 16, color: Colors.white),
+                                  child: const Icon(
+                                    Icons.close,
+                                    size: 16,
+                                    color: Colors.white,
+                                  ),
                                 ),
                               ),
                             ),
@@ -585,8 +667,8 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> with Si
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: hasSelection 
-                                    ? Theme.of(context).colorScheme.primary 
+                                color: hasSelection
+                                    ? Theme.of(context).colorScheme.primary
                                     : Colors.grey,
                               ),
                             ),
@@ -603,9 +685,16 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen> with Si
                       ElevatedButton(
                         onPressed: hasSelection ? _startCustomRoutine : null,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.primary,
-                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primary,
+                          foregroundColor: Theme.of(
+                            context,
+                          ).colorScheme.onPrimary,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),

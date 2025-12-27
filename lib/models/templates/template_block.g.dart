@@ -32,6 +32,7 @@ class TemplateBlockAdapter extends TypeAdapter<TemplateBlock> {
       weight: fields[12] as double?,
       weightType: fields[13] as String?,
       restSeconds: fields[14] as int?,
+      selectedVariations: (fields[17] as List?)?.cast<String>(),
       order: fields[15] as int,
       notes: fields[16] as String?,
     );
@@ -40,7 +41,7 @@ class TemplateBlockAdapter extends TypeAdapter<TemplateBlock> {
   @override
   void write(BinaryWriter writer, TemplateBlock obj) {
     writer
-      ..writeByte(17)
+      ..writeByte(18)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -74,7 +75,9 @@ class TemplateBlockAdapter extends TypeAdapter<TemplateBlock> {
       ..writeByte(15)
       ..write(obj.order)
       ..writeByte(16)
-      ..write(obj.notes);
+      ..write(obj.notes)
+      ..writeByte(17)
+      ..write(obj.selectedVariations);
   }
 
   @override

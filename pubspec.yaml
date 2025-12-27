@@ -120,20 +120,19 @@ flutter:
     - assets/images/
     - assets/images/endurance/
     - assets/images/strength/
+    - assets/images/strength/category/
     - assets/images/strength/chest/
-    - assets/images/strength/shoulders/
-    - assets/images/strength/back/
-    - assets/images/strength/biceps/
-    - assets/images/strength/triceps/
-    - assets/images/strength/forearms/
-    - assets/images/strength/legs/
-    - assets/images/strength/core/
-    - assets/images/strength/compound/
     - assets/images/app-icon/
     - assets/data/templates/endurance/
     - assets/data/templates/strength/
     - assets/data/templates/hybrid/
     - assets/data/exercises/
+    - assets/data/exercises/shoulder_exercises.json
+    - assets/data/exercises/biceps_exercises.json
+    - assets/data/exercises/triceps_exercises.json
+    - assets/data/exercises/forearms_exercises.json
+    - assets/data/exercises/legs_exercises.json
+    - assets/data/exercises/core_exercises.json
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

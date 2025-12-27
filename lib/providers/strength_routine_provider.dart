@@ -12,6 +12,7 @@ class StrengthRoutineProvider extends ChangeNotifier {
     required int sets,
     required int reps,
     required double weight,
+    List<String>? selectedVariations,
   }) {
     final block = TemplateBlock(
       id: DateTime.now().toString(),
@@ -21,6 +22,7 @@ class StrengthRoutineProvider extends ChangeNotifier {
       sets: sets,
       reps: reps,
       weight: weight,
+      selectedVariations: selectedVariations,
       order: _blocks.length,
     );
     _blocks.add(block);

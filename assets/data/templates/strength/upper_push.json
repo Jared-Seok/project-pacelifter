@@ -15,14 +15,15 @@
       "blocks": [
         {
           "id": "block_warmup_1",
-          "name": "Push-up Warm-up",
+          "name": "푸쉬업",
           "type": "strength",
           "description": "푸시업으로 워밍업",
-          "exerciseId": "ex_pushup",
+          "exerciseId": "push_ups",
           "sets": 2,
           "reps": 15,
           "weightType": "bodyweight",
           "restSeconds": 60,
+          "selectedVariations": ["타겟: 일반"],
           "order": 0,
           "notes": "천천히 수행하며 가동범위를 늘려갑니다"
         }
@@ -36,35 +37,37 @@
       "blocks": [
         {
           "id": "block_main_1",
-          "name": "Barbell Bench Press",
+          "name": "바벨 벤치 프레스",
           "type": "strength",
           "description": "바벨 벤치 프레스",
-          "exerciseId": "ex_barbell_bench_press",
+          "exerciseId": "barbell_bench_press",
           "sets": 4,
           "reps": 8,
           "weight": 60,
           "weightType": "fixed",
           "restSeconds": 180,
+          "selectedVariations": ["경사도: 플랫"],
           "order": 0,
           "notes": "복합운동. 가슴 발달의 핵심 운동입니다."
         },
         {
           "id": "block_main_2",
-          "name": "Incline Dumbbell Press",
+          "name": "덤벨 벤치 프레스 (인클라인)",
           "type": "strength",
           "description": "인클라인 덤벨 프레스",
-          "exerciseId": "ex_incline_dumbbell_press",
+          "exerciseId": "dumbbell_bench_press",
           "sets": 3,
           "reps": 10,
           "weight": 20,
           "weightType": "fixed",
           "restSeconds": 120,
+          "selectedVariations": ["경사도: 인클라인"],
           "order": 1,
           "notes": "상부 가슴 집중. 각도는 30-45도"
         },
         {
           "id": "block_main_3",
-          "name": "Dumbbell Shoulder Press",
+          "name": "덤벨 숄더 프레스",
           "type": "strength",
           "description": "덤벨 숄더 프레스",
           "exerciseId": "ex_dumbbell_shoulder_press",
@@ -78,30 +81,17 @@
         },
         {
           "id": "block_main_4",
-          "name": "Tricep Dips",
+          "name": "딥스",
           "type": "strength",
-          "description": "트라이셉 딥스",
-          "exerciseId": "ex_tricep_dips",
+          "description": "딥스",
+          "exerciseId": "weighted_dips",
           "sets": 3,
           "reps": 12,
           "weightType": "bodyweight",
           "restSeconds": 90,
+          "selectedVariations": ["유형: 맨몸"],
           "order": 3,
           "notes": "삼두근 고립 운동"
-        },
-        {
-          "id": "block_main_5",
-          "name": "Lateral Raises",
-          "type": "strength",
-          "description": "래터럴 레이즈",
-          "exerciseId": "ex_lateral_raises",
-          "sets": 3,
-          "reps": 15,
-          "weight": 10,
-          "weightType": "fixed",
-          "restSeconds": 60,
-          "order": 4,
-          "notes": "어깨 측면 고립. 가벼운 무게로 정확한 폼"
         }
       ]
     },

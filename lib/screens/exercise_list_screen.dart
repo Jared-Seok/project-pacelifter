@@ -11,6 +11,7 @@ import '../models/templates/workout_template.dart';
 import '../models/templates/template_phase.dart';
 import '../models/templates/template_block.dart';
 import 'strength_tracking_screen.dart';
+import 'strength_routine_preview_screen.dart';
 
 class ExerciseListScreen extends StatefulWidget {
   final String muscleGroupId;
@@ -28,7 +29,6 @@ class ExerciseListScreen extends StatefulWidget {
 
 class _ExerciseListScreenState extends State<ExerciseListScreen> {
   final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
   Map<String, List<Exercise>> _groupedExercises = {};
   List<Exercise> _allFilteredExercises = []; 
   bool _isLoading = true;
@@ -36,11 +36,6 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
   @override
   void initState() {
     super.initState();
-    _searchController.addListener(() {
-      setState(() {
-        _searchQuery = _searchController.text;
-      });
-    });
     _loadExercises();
   }
 
@@ -57,12 +52,15 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
       final p = ex.primaryMuscles.first.toLowerCase();
       final id = widget.muscleGroupId;
 
-      if (id == 'chest') return p == 'chest' || p == 'upper_chest' || p == 'lower_chest';
-      if (id == 'back') return p == 'back' || p == 'lats' || p == 'traps';
-      if (id == 'shoulders') return p == 'shoulders';
-      if (id == 'legs') return p == 'quads' || p == 'hamstrings' || p == 'glutes' || p == 'calves';
-      if (id == 'arms') return p == 'biceps' || p == 'triceps' || p == 'forearms';
-      if (id == 'core') return p == 'core';
+      if (id == 'chest') return p.contains('chest');
+      if (id == 'back') return (p.contains('back') && !p.contains('lower')) || p == 'lats' || p == 'traps';
+      if (id == 'shoulders') return p == 'shoulders' || p.contains('delt') || p == 'rotator_cuff' || p == 'traps';
+      if (id == 'legs') return p == 'quads' || p == 'hamstrings' || p == 'calves' || p == 'legs';
+      if (id == 'arms') return p == 'biceps' || p == 'triceps' || p == 'forearms' || p == 'arms';
+      if (id == 'biceps') return p.contains('biceps') || p.contains('brachialis');
+      if (id == 'triceps') return p.contains('triceps');
+      if (id == 'forearms') return p.contains('forearm') || p.contains('brachioradialis');
+      if (id == 'core') return p == 'core' || p.contains('abs') || p == 'obliques' || p.contains('lower_back') || p == 'erector_spinae' || p == 'glutes' || p.contains('gluteus');
       if (id == 'compound') return ex.isCompound;
       
       return false;
@@ -72,7 +70,7 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
 
     final Map<String, List<Exercise>> grouped = {};
     for (var ex in filtered) {
-      final groupName = ex.group ?? 'Others';
+      final groupName = ex.group ?? '기타';
       if (!grouped.containsKey(groupName)) {
         grouped[groupName] = [];
       }
@@ -80,7 +78,68 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
     }
 
     setState(() {
-      _groupedExercises = grouped;
+      final sortedKeys = grouped.keys.toList();
+      
+      // 부위별 커스텀 정렬 로직
+      sortedKeys.sort((a, b) {
+        // 1. 등(Back) 운동 정렬: '로우' 우선
+        if (widget.muscleGroupId == 'back') {
+          if (a == '로우') return -1;
+          if (b == '로우') return 1;
+        }
+        
+        // 2. 어깨(Shoulders) 운동 정렬: '프레스' 우선, '기타' 최하단
+        if (widget.muscleGroupId == 'shoulders') {
+          if (a == '프레스') return -1;
+          if (b == '프레스') return 1;
+        }
+
+        // 3. 이두(Biceps) 운동 정렬: '바벨 컬' 우선
+        if (widget.muscleGroupId == 'biceps') {
+          if (a == '바벨 컬') return -1;
+          if (b == '바벨 컬') return 1;
+        }
+
+        // 4. 삼두(Triceps) 운동 정렬: '복합 관절 운동' 우선
+        if (widget.muscleGroupId == 'triceps') {
+          if (a == '복합 관절 운동') return -1;
+          if (b == '복합 관절 운동') return 1;
+        }
+
+        // 5. 전완(Forearms) 운동 정렬: '손목 운동' 우선
+        if (widget.muscleGroupId == 'forearms') {
+          if (a == '손목 운동') return -1;
+          if (b == '손목 운동') return 1;
+        }
+
+        // 6. 하체(Legs) 운동 정렬: '스쿼트' 우선
+        if (widget.muscleGroupId == 'legs') {
+          if (a == '스쿼트') return -1;
+          if (b == '스쿼트') return 1;
+        }
+
+        // 7. 코어(Core) 운동 정렬: 복근 > 허리 > 둔근(힙)
+        if (widget.muscleGroupId == 'core') {
+          final coreOrder = {'복근': 0, '허리': 1, '둔근(힙)': 2};
+          final aOrder = coreOrder[a] ?? 99;
+          final bOrder = coreOrder[b] ?? 99;
+          if (aOrder != bOrder) return aOrder.compareTo(bOrder);
+        }
+
+        // 8. 공통: '기타'는 항상 아래로 (부위 상관없이)
+        if (a == '기타' && b != '기타') return 1;
+        if (b == '기타' && a != '기타') return -1;
+        
+        return a.compareTo(b);
+      });
+      
+      // 정렬된 키 순서대로 새로운 맵 생성
+      final Map<String, List<Exercise>> sortedGrouped = {};
+      for (var key in sortedKeys) {
+        sortedGrouped[key] = grouped[key]!;
+      }
+      
+      _groupedExercises = sortedGrouped;
       _isLoading = false;
     });
   }
@@ -118,7 +177,7 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => StrengthTrackingScreen(template: template),
+        builder: (context) => StrengthRoutinePreviewScreen(template: template),
       ),
     );
   }
@@ -201,9 +260,15 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
               Expanded(
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
-                    : _searchQuery.isEmpty 
-                        ? _buildGroupedList() 
-                        : _buildSearchResults(),
+                    : ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: _searchController,
+                        builder: (context, value, child) {
+                          final query = value.text;
+                          return query.isEmpty 
+                              ? _buildGroupedList() 
+                              : _buildSearchResults(query);
+                        },
+                      ),
               ),
             ],
           ),
@@ -222,16 +287,22 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: TextField(
+        key: const ValueKey('exercise_search_field'),
         controller: _searchController,
         decoration: InputDecoration(
           hintText: '${widget.title} 운동 검색 (예: ㅂㅊ)',
           prefixIcon: const Icon(Icons.search),
-          suffixIcon: _searchQuery.isNotEmpty 
-            ? IconButton(
-                icon: const Icon(Icons.clear),
-                onPressed: () => _searchController.clear(),
-              )
-            : null,
+          suffixIcon: ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _searchController,
+            builder: (context, value, child) {
+              return value.text.isNotEmpty 
+                ? IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () => _searchController.clear(),
+                  )
+                : const SizedBox.shrink();
+            },
+          ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
@@ -280,10 +351,10 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
     );
   }
 
-  Widget _buildSearchResults() {
+  Widget _buildSearchResults(String query) {
     final filtered = _allFilteredExercises.where((ex) => 
-      KoreanSearchUtils.matches(ex.nameKo, _searchQuery) || 
-      KoreanSearchUtils.matches(ex.name, _searchQuery)
+      KoreanSearchUtils.matches(ex.nameKo, query) || 
+      KoreanSearchUtils.matches(ex.name, query)
     ).toList();
 
     if (filtered.isEmpty) {

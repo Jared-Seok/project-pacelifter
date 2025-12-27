@@ -115,16 +115,18 @@ class VolumeScorer {
     required int weeklyFrequency,
   }) {
     double distanceScore = 0;
-    if (weeklyDistanceKm >= 80) distanceScore = 60;
-    else if (weeklyDistanceKm >= 60) distanceScore = 50 + 10 * ((weeklyDistanceKm - 60) / 20);
+    if (weeklyDistanceKm >= 80) {
+      distanceScore = 60;
+    } else if (weeklyDistanceKm >= 60) distanceScore = 50 + 10 * ((weeklyDistanceKm - 60) / 20);
     else if (weeklyDistanceKm >= 40) distanceScore = 40 + 10 * ((weeklyDistanceKm - 40) / 20);
     else if (weeklyDistanceKm >= 20) distanceScore = 30 + 10 * ((weeklyDistanceKm - 20) / 20);
     else if (weeklyDistanceKm >= 10) distanceScore = 20 + 10 * ((weeklyDistanceKm - 10) / 10);
     else distanceScore = 20 * (weeklyDistanceKm / 10);
 
     double frequencyScore = 0;
-    if (weeklyFrequency >= 6) frequencyScore = 40;
-    else if (weeklyFrequency >= 1) frequencyScore = 10 + 6 * (weeklyFrequency - 1);
+    if (weeklyFrequency >= 6) {
+      frequencyScore = 40;
+    } else if (weeklyFrequency >= 1) frequencyScore = 10 + 6 * (weeklyFrequency - 1);
 
     return (distanceScore + frequencyScore).clamp(0, 100);
   }

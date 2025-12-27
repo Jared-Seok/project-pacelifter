@@ -53,6 +53,9 @@ class TemplateBlock extends HiveObject {
   @HiveField(14)
   final int? restSeconds; // 세트 간 휴식 시간
 
+  @HiveField(17)
+  final List<String>? selectedVariations; // 선택된 세부 설정 (예: ["경사도: 인클라인"])
+
   // 공통 필드
   @HiveField(15)
   final int order; // 블록 순서
@@ -76,6 +79,7 @@ class TemplateBlock extends HiveObject {
     this.weight,
     this.weightType,
     this.restSeconds,
+    this.selectedVariations,
     required this.order,
     this.notes,
   });
@@ -102,6 +106,9 @@ class TemplateBlock extends HiveObject {
       weight: json['weight'] != null ? (json['weight'] as num).toDouble() : null,
       weightType: json['weightType'] as String?,
       restSeconds: json['restSeconds'] as int?,
+      selectedVariations: json['selectedVariations'] != null 
+          ? List<String>.from(json['selectedVariations'] as List) 
+          : null,
       order: json['order'] as int,
       notes: json['notes'] as String?,
     );
@@ -125,6 +132,7 @@ class TemplateBlock extends HiveObject {
       'weight': weight,
       'weightType': weightType,
       'restSeconds': restSeconds,
+      'selectedVariations': selectedVariations,
       'order': order,
       'notes': notes,
     };
@@ -147,6 +155,7 @@ class TemplateBlock extends HiveObject {
     double? weight,
     String? weightType,
     int? restSeconds,
+    List<String>? selectedVariations,
     int? order,
     String? notes,
   }) {
@@ -166,6 +175,7 @@ class TemplateBlock extends HiveObject {
       weight: weight ?? this.weight,
       weightType: weightType ?? this.weightType,
       restSeconds: restSeconds ?? this.restSeconds,
+      selectedVariations: selectedVariations ?? this.selectedVariations,
       order: order ?? this.order,
       notes: notes ?? this.notes,
     );

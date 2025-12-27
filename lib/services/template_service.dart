@@ -37,12 +37,20 @@ class TemplateService {
   /// 운동 라이브러리 로드
   static Future<void> _loadExercisesLibrary() async {
     final box = Hive.box<Exercise>(_exercisesBoxName);
+    
+    // 기존 운동 데이터 초기화 (중복 및 구버전 데이터 제거)
+    await box.clear();
 
     // 기본 운동 데이터 파일 목록
     final libraryFiles = [
-      'assets/data/exercises/exercises_library.json',
       'assets/data/exercises/chest_exercises.json',
       'assets/data/exercises/back_exercises.json',
+      'assets/data/exercises/shoulder_exercises.json',
+      'assets/data/exercises/biceps_exercises.json',
+      'assets/data/exercises/triceps_exercises.json',
+      'assets/data/exercises/forearms_exercises.json',
+      'assets/data/exercises/legs_exercises.json',
+      'assets/data/exercises/core_exercises.json',
     ];
 
     try {

@@ -15,34 +15,37 @@
       "blocks": [
         {
           "id": "str_bench",
-          "name": "Barbell Bench Press",
+          "name": "바벨 벤치 프레스",
           "type": "strength",
           "exerciseId": "barbell_bench_press",
           "sets": 5,
           "reps": 5,
           "restSeconds": 180,
+          "selectedVariations": ["경사도: 플랫"],
           "order": 0,
           "notes": "5x5 스트렝스 훈련. 충분한 휴식을 취하세요."
         },
         {
           "id": "str_incline",
-          "name": "Incline Dumbbell Press",
+          "name": "덤벨 벤치 프레스 (인클라인)",
           "type": "strength",
-          "exerciseId": "incline_dumbbell_press",
+          "exerciseId": "dumbbell_bench_press",
           "sets": 3,
           "reps": 8,
           "restSeconds": 120,
+          "selectedVariations": ["경사도: 인클라인"],
           "order": 1,
           "notes": "보조 근육 강화"
         },
         {
           "id": "str_dips",
-          "name": "Weighted Dips",
+          "name": "딥스",
           "type": "strength",
           "exerciseId": "weighted_dips",
           "sets": 3,
           "reps": 6,
           "restSeconds": 120,
+          "selectedVariations": ["유형: 중량"],
           "order": 2,
           "notes": "중량을 추가하여 수행합니다."
         }
