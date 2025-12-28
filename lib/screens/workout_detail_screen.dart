@@ -84,13 +84,6 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   }
 
   void _fetchLinkedSession() {
-    if (widget.dataWrapper.session != null) {
-      setState(() {
-        _session = widget.dataWrapper.session;
-      });
-      return;
-    }
-
     final session = WorkoutHistoryService().getSessionByHealthKitId(widget.dataWrapper.uuid);
     if (mounted) {
       setState(() {
@@ -607,6 +600,16 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                         '${((workout?.totalEnergyBurned ?? _session?.calories) ?? 0).toStringAsFixed(0)} kcal',
                       ),
                     ],
+                    if (_session?.totalVolume != null) ...[
+                      const Divider(height: 24),
+                      _buildInfoRow(
+                        Icons.fitness_center,
+                        '총 볼륨',
+                        _session!.totalVolume! >= 1000 
+                          ? '${(_session!.totalVolume! / 1000).toStringAsFixed(2)} t' 
+                          : '${_session!.totalVolume!.toStringAsFixed(0)} kg',
+                      ),
+                    ],
                     if (_avgHeartRate > 0) ...[
                       const Divider(height: 24),
                       _buildInfoRow(
@@ -675,6 +678,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
               ),
               const SizedBox(height: 16),
             ],
+            // 상세 운동 기록 (Strength 전용)
+            if (_session?.exerciseRecords != null && _session!.exerciseRecords!.isNotEmpty) ...[
+              _buildStrengthRecordsSection(),
+              const SizedBox(height: 16),
+            ],
             // 데이터 소스
             Card(
               child: Padding(
@@ -702,6 +710,78 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildStrengthRecordsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
+          child: Text(
+            '운동 기록 상세',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+        ),
+        ..._session!.exerciseRecords!.map((record) {
+          return Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            child: ExpansionTile(
+              initiallyExpanded: true,
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: SvgPicture.asset(
+                  'assets/images/strength/lifter-icon.svg',
+                  width: 24, height: 24,
+                  colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.primary, BlendMode.srcIn),
+                ),
+              ),
+              title: Text(record.exerciseName, style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text(
+                '${record.sets.length} 세트 | 총 ${record.totalVolume >= 1000 ? (record.totalVolume / 1000).toStringAsFixed(2) + "t" : record.totalVolume.toStringAsFixed(0) + "kg"}',
+                style: const TextStyle(fontSize: 12, color: Colors.grey)
+              ),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: Column(
+                    children: [
+                      const Divider(),
+                      const Row(
+                        children: [
+                          SizedBox(width: 40, child: Text('SET', style: TextStyle(fontSize: 11, color: Colors.grey))),
+                          Expanded(child: Text('무게', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: Colors.grey))),
+                          Expanded(child: Text('횟수', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: Colors.grey))),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      ...record.sets.asMap().entries.map((entry) {
+                        final idx = entry.key;
+                        final set = entry.value;
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4.0),
+                          child: Row(
+                            children: [
+                              SizedBox(width: 40, child: Text('${idx + 1}', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold))),
+                              Expanded(child: Text('${set.weight?.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '') ?? 0} kg', textAlign: TextAlign.center)),
+                              Expanded(child: Text('${set.repsCompleted ?? set.repsTarget ?? 0} 회', textAlign: TextAlign.center)),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
     );
   }
 
@@ -1396,13 +1476,13 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   String _getWorkoutIconPath(String type) {
     final upperType = type.toUpperCase();
     if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
-      return 'assets/images/core-icon.svg';
+      return 'assets/images/strength/core-icon.svg';
     } else if (upperType.contains('STRENGTH') ||
         upperType.contains('WEIGHT') ||
         upperType.contains('TRADITIONAL_STRENGTH_TRAINING')) {
-      return 'assets/images/lifter-icon.svg';
+      return 'assets/images/strength/lifter-icon.svg';
     } else {
-      return 'assets/images/runner-icon.svg';
+      return 'assets/images/endurance/runner-icon.svg';
     }
   }
 

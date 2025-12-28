@@ -4,6 +4,7 @@ import '../models/exercises/exercise.dart';
 import '../providers/strength_routine_provider.dart';
 import '../services/profile_service.dart';
 import '../utils/strength_standards.dart';
+import '../utils/workout_ui_utils.dart';
 
 class ExerciseConfigSheet extends StatefulWidget {
   final Exercise exercise;
@@ -70,9 +71,7 @@ class _ExerciseConfigSheetState extends State<ExerciseConfigSheet> {
     );
 
     Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('장바구니에 담겼습니다')),
-    );
+    WorkoutUIUtils.showTopNotification(context, '${widget.exercise.nameKo}가 루틴에 추가되었습니다.');
   }
 
   @override
@@ -211,7 +210,7 @@ class _ExerciseConfigSheetState extends State<ExerciseConfigSheet> {
               ),
               child: _isLoading 
                 ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : const Text('장바구니에 담기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                : const Text('루틴에 추가', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             ),
           ],
         ),

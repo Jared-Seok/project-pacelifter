@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import '../models/templates/workout_template.dart';
 import '../models/templates/template_phase.dart';
@@ -8,6 +9,7 @@ import '../models/templates/template_block.dart';
 import '../models/exercises/exercise.dart';
 import '../models/sessions/exercise_record.dart';
 import '../services/template_service.dart';
+import '../providers/strength_routine_provider.dart';
 import 'strength_tracking_screen.dart';
 
 class StrengthRoutinePreviewScreen extends StatefulWidget {
@@ -170,8 +172,10 @@ class _StrengthRoutinePreviewScreenState extends State<StrengthRoutinePreviewScr
   @override
   void initState() {
     super.initState();
+    // 1. 프로바이더의 현재 상태를 로컬로 복사
     _modifiableBlocks = List.from(widget.template.phases.first.blocks);
     
+    // 2. 블록 데이터를 개별 세트 리스트로 변환하여 관리
     for (var block in _modifiableBlocks) {
       _blockSets[block.id] = List.generate(
         block.sets ?? 3,
@@ -183,6 +187,19 @@ class _StrengthRoutinePreviewScreenState extends State<StrengthRoutinePreviewScr
         ),
       );
     }
+  }
+
+  void _onReorder(int oldIndex, int newIndex) {
+    setState(() {
+      if (oldIndex < newIndex) {
+        newIndex -= 1;
+      }
+      final TemplateBlock item = _modifiableBlocks.removeAt(oldIndex);
+      _modifiableBlocks.insert(newIndex, item);
+      
+      // 프로바이더 상태도 업데이트 (장바구니 순서 유지)
+      Provider.of<StrengthRoutineProvider>(context, listen: false).reorderBlocks(oldIndex, newIndex);
+    });
   }
 
   void _addSet(String blockId) {
@@ -220,7 +237,6 @@ class _StrengthRoutinePreviewScreenState extends State<StrengthRoutinePreviewScr
     });
   }
 
-  // 루틴 저장 로직
   Future<void> _saveCurrentRoutine() async {
     final nameController = TextEditingController();
     final bool? shouldSave = await showDialog<bool>(
@@ -245,7 +261,7 @@ class _StrengthRoutinePreviewScreenState extends State<StrengthRoutinePreviewScr
         final sets = _blockSets[block.id]!;
         return block.copyWith(
           sets: sets.length,
-          weight: sets.first.weight, // 첫 세트 기준 저장
+          weight: sets.first.weight,
           reps: sets.first.repsTarget,
         );
       }).toList();
@@ -265,7 +281,6 @@ class _StrengthRoutinePreviewScreenState extends State<StrengthRoutinePreviewScr
     }
   }
 
-  // 운동 시작 전 저장 여부 확인
   Future<void> _handleStartWorkout() async {
     final bool? saveBeforeStart = await showDialog<bool>(
       context: context,
@@ -346,16 +361,19 @@ class _StrengthRoutinePreviewScreenState extends State<StrengthRoutinePreviewScr
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
+            child: ReorderableListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: _modifiableBlocks.length,
+              onReorder: _onReorder,
               itemBuilder: (context, index) {
                 final block = _modifiableBlocks[index];
-                return _buildExerciseEditor(block, index);
+                return Container(
+                  key: ValueKey(block.id),
+                  child: _buildExerciseEditor(block, index),
+                );
               },
             ),
           ),
-          // 요약 정보 및 시작 버튼 영역
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -372,7 +390,12 @@ class _StrengthRoutinePreviewScreenState extends State<StrengthRoutinePreviewScr
                     children: [
                       _buildSummaryItem('운동', '$totalExercises'),
                       _buildSummaryItem('세트', '$totalSets'),
-                      _buildSummaryItem('예상 볼륨', '${totalVolume.toStringAsFixed(0)} kg'),
+                      _buildSummaryItem(
+                        '예상 볼륨', 
+                        totalVolume >= 1000 
+                          ? '${(totalVolume / 1000).toStringAsFixed(2)} t' 
+                          : '${totalVolume.toStringAsFixed(0)} kg'
+                      ),
                     ],
                   ),
                   const SizedBox(height: 20),
@@ -424,6 +447,14 @@ class _StrengthRoutinePreviewScreenState extends State<StrengthRoutinePreviewScr
             padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
             child: Row(
               children: [
+                // 드래그 핸들 추가
+                ReorderableDragStartListener(
+                  index: blockIndex,
+                  child: const Padding(
+                    padding: EdgeInsets.only(right: 8.0),
+                    child: Icon(Icons.drag_indicator, color: Colors.grey),
+                  ),
+                ),
                 Container(
                   width: 40, height: 44,
                   decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),

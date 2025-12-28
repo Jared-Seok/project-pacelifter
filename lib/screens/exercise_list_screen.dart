@@ -424,130 +424,146 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
         final count = provider.blocks.length;
         final bool hasSelection = count > 0;
 
-        return Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.98),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.4),
-                blurRadius: 20,
-                offset: const Offset(0, -5),
-              ),
-            ],
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (hasSelection)
-                  Container(
-                    height: 130,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: provider.blocks.length,
-                      itemBuilder: (context, index) {
-                        final block = provider.blocks[index];
-                        final exercise = block.exerciseId != null 
-                            ? TemplateService.getExerciseById(block.exerciseId!) 
-                            : null;
-                        final imagePath = exercise?.imagePath;
+        return TweenAnimationBuilder<double>(
+          key: ValueKey(provider.lastAddedTimestamp),
+          duration: const Duration(milliseconds: 300),
+          tween: Tween(begin: 0.0, end: 1.0),
+          builder: (context, value, child) {
+            final double offset = (1.0 - value) * -15.0;
+            return Transform.translate(
+              offset: Offset(0, offset),
+              child: child,
+            );
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.98),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.4),
+                  blurRadius: 20,
+                  offset: const Offset(0, -5),
+                ),
+              ],
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (hasSelection)
+                    Container(
+                      height: 130,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: provider.blocks.length,
+                        itemBuilder: (context, index) {
+                          final block = provider.blocks[index];
+                          final exercise = block.exerciseId != null 
+                              ? TemplateService.getExerciseById(block.exerciseId!) 
+                              : null;
+                          final imagePath = exercise?.imagePath;
 
-                        return Stack(
-                          children: [
-                            Container(
-                              margin: const EdgeInsets.only(right: 16, top: 6),
-                              width: 91,
-                              height: 91,
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.surface,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
-                                  width: 2.0,
+                          final bool isLast = index == provider.blocks.length - 1;
+
+                          return Stack(
+                            children: [
+                              Container(
+                                margin: const EdgeInsets.only(right: 16, top: 6),
+                                width: 91,
+                                height: 91,
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.surface,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: isLast 
+                                      ? Theme.of(context).colorScheme.secondary
+                                      : Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+                                    width: isLast ? 3.0 : 2.0,
+                                  ),
                                 ),
-                              ),
-                              child: Center(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(2.0),
-                                  child: SvgPicture.asset(
-                                    imagePath ?? 'assets/images/strength/lifter-icon.svg',
-                                    fit: BoxFit.contain,
-                                    colorFilter: ColorFilter.mode(
-                                      Theme.of(context).colorScheme.primary,
-                                      BlendMode.srcIn,
+                                child: Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(2.0),
+                                    child: SvgPicture.asset(
+                                      imagePath ?? 'assets/images/strength/lifter-icon.svg',
+                                      fit: BoxFit.contain,
+                                      colorFilter: ColorFilter.mode(
+                                        isLast ? Theme.of(context).colorScheme.secondary : Theme.of(context).colorScheme.primary,
+                                        BlendMode.srcIn,
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-                            Positioned(
-                              right: 6,
-                              top: 0,
-                              child: GestureDetector(
-                                onTap: () => provider.removeBlock(block.id),
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.red,
-                                    shape: BoxShape.circle,
+                              Positioned(
+                                right: 6,
+                                top: 0,
+                                child: GestureDetector(
+                                  onTap: () => provider.removeBlock(block.id),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.close, size: 16, color: Colors.white),
                                   ),
-                                  child: const Icon(Icons.close, size: 16, color: Colors.white),
                                 ),
                               ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              '$count개 운동 선택됨',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: hasSelection 
-                                    ? Theme.of(context).colorScheme.primary 
-                                    : Colors.grey,
-                              ),
-                            ),
-                          ],
-                        ),
+                            ],
+                          );
+                        },
                       ),
-                      if (hasSelection)
-                        TextButton.icon(
-                          onPressed: _saveCustomRoutine,
-                          icon: const Icon(Icons.save_alt),
-                          label: const Text('저장'),
-                        ),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        onPressed: hasSelection ? _startCustomRoutine : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.primary,
-                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '$count개 운동 선택됨',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: hasSelection 
+                                      ? Theme.of(context).colorScheme.primary 
+                                      : Colors.grey,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        child: const Text('루틴 시작'),
-                      ),
-                    ],
+                        if (hasSelection)
+                          TextButton.icon(
+                            onPressed: _saveCustomRoutine,
+                            icon: const Icon(Icons.save_alt),
+                            label: const Text('저장'),
+                          ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: hasSelection ? _startCustomRoutine : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(context).colorScheme.primary,
+                            foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text('루틴 시작'),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );

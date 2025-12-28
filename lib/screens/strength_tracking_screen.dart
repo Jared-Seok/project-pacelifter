@@ -9,6 +9,8 @@ import '../models/exercises/exercise.dart';
 import '../models/sessions/workout_session.dart';
 import '../models/sessions/exercise_record.dart';
 import '../services/template_service.dart';
+import '../services/workout_history_service.dart';
+import '../services/scoring_engine.dart';
 
 enum WorkoutStatus { warmup, ready, active, rest, finished }
 
@@ -190,8 +192,10 @@ class _StrengthTrackingScreenState extends State<StrengthTrackingScreen> {
       totalSets: exerciseRecords.fold<int>(0, (sum, r) => sum + r.sets.length),
     );
 
-    final box = await Hive.openBox<WorkoutSession>('user_workout_history');
-    await box.put(session.id, session);
+    await WorkoutHistoryService().saveSession(session);
+    
+    // 점수 재계산 트리거 (백그라운드)
+    ScoringEngine().calculateAndSaveScores();
 
     if (mounted) {
       Navigator.of(context).popUntil((route) => route.isFirst);
@@ -243,7 +247,7 @@ class _StrengthTrackingScreenState extends State<StrengthTrackingScreen> {
           const SizedBox(height: 4),
           Text(
             _formatDuration(_elapsed),
-            style: const TextStyle(fontSize: 42, fontWeight: FontWeight.black, fontFamily: 'monospace', letterSpacing: 2),
+            style: const TextStyle(fontSize: 42, fontWeight: FontWeight.w900, fontFamily: 'monospace', letterSpacing: 2),
           ),
         ],
       ),
@@ -340,7 +344,7 @@ class _StrengthTrackingScreenState extends State<StrengthTrackingScreen> {
               const Text('마지막 휴식', style: TextStyle(fontSize: 24, color: Colors.grey)),
               const SizedBox(height: 24),
               Text(_formatRestTime(_restSecondsRemaining), 
-                style: const TextStyle(fontSize: 100, fontWeight: FontWeight.black, fontFamily: 'monospace', color: Colors.orangeAccent)),
+                style: const TextStyle(fontSize: 100, fontWeight: FontWeight.w900, fontFamily: 'monospace', color: Colors.orangeAccent)),
             ],
           ),
         );
@@ -357,7 +361,7 @@ class _StrengthTrackingScreenState extends State<StrengthTrackingScreen> {
           const Text('휴식 중', style: TextStyle(fontSize: 20, color: Colors.grey, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Text(_formatRestTime(_restSecondsRemaining), 
-            style: const TextStyle(fontSize: 100, fontWeight: FontWeight.black, fontFamily: 'monospace', color: Colors.orangeAccent)),
+            style: const TextStyle(fontSize: 100, fontWeight: FontWeight.w900, fontFamily: 'monospace', color: Colors.orangeAccent)),
           const SizedBox(height: 24),
           const Divider(indent: 40, endIndent: 40),
           const SizedBox(height: 16),
@@ -431,7 +435,7 @@ class _StrengthTrackingScreenState extends State<StrengthTrackingScreen> {
   Widget _buildInfoBit(String value, String unit) {
     return Column(
       children: [
-        Text(value, style: const TextStyle(fontSize: 56, fontWeight: FontWeight.black)),
+        Text(value, style: const TextStyle(fontSize: 56, fontWeight: FontWeight.w900)),
         Text(unit, style: const TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.bold)),
       ],
     );
@@ -444,7 +448,7 @@ class _StrengthTrackingScreenState extends State<StrengthTrackingScreen> {
         children: [
           const Icon(Icons.wb_sunny_outlined, size: 100, color: Colors.orangeAccent),
           const SizedBox(height: 24),
-          const Text('웜업 스테이지', style: TextStyle(fontSize: 36, fontWeight: FontWeight.black)),
+          const Text('웜업 스테이지', style: TextStyle(fontSize: 36, fontWeight: FontWeight.w900)),
           const SizedBox(height: 16),
           const Text('가벼운 스트레칭으로\n부상을 예방하고 근육을 활성화하세요', textAlign: TextAlign.center, style: TextStyle(fontSize: 18, color: Colors.grey)),
         ],
@@ -459,7 +463,7 @@ class _StrengthTrackingScreenState extends State<StrengthTrackingScreen> {
         children: [
           const Icon(Icons.check_circle_outline, size: 100, color: Colors.greenAccent),
           const SizedBox(height: 24),
-          const Text('모든 운동 완료!', style: TextStyle(fontSize: 36, fontWeight: FontWeight.black)),
+          const Text('모든 운동 완료!', style: TextStyle(fontSize: 36, fontWeight: FontWeight.w900)),
           const SizedBox(height: 16),
           const Text('수고하셨습니다.\n오늘의 기록을 저장하고 마무리하세요.', textAlign: TextAlign.center, style: TextStyle(fontSize: 18, color: Colors.grey)),
         ],

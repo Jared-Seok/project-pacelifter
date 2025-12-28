@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
+import 'package:hive/hive.dart';
 import 'package:health/health.dart';
 import 'package:pacelifter/models/race.dart';
 import 'package:pacelifter/models/time_period.dart';
@@ -35,7 +37,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   late PageController _mainPageController;
   late PageController _racePageController;
   final ScrollController _scrollController = ScrollController();
-  List<HealthDataPoint> _workoutData = [];
+  List<WorkoutDataWrapper> _unifiedWorkouts = [];
+  List<HealthDataPoint> _workoutData = []; // Deprecating usage but keeping for potential internal references
   List<Race> _races = [];
   bool _isLoading = true;
   TimePeriod _selectedPeriod = TimePeriod.week;
@@ -53,6 +56,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   
   Map<String, WorkoutSession> _sessionMap = {};
   PerformanceScores? _scores;
+  StreamSubscription? _historySubscription;
 
   @override
   void initState() {
@@ -61,6 +65,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _racePageController = PageController();
     _scrollController.addListener(_onScroll);
     _initialize();
+    
+    // 로컬 운동 기록 변경 감지 및 자동 새로고침
+    _historySubscription = Hive.box<WorkoutSession>('user_workout_history').watch().listen((event) {
+      _loadHealthData();
+    });
   }
 
   @override
@@ -69,6 +78,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _racePageController.dispose();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _historySubscription?.cancel();
     super.dispose();
   }
 
@@ -77,7 +87,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _updateVisibleMonth() {
-    if (_workoutData.isEmpty) return;
+    if (_unifiedWorkouts.isEmpty) return;
 
     // 화면 상단(sticky 헤더 바로 아래)에 보이는 첫 번째 운동 데이터의 월을 찾음
     String? newVisibleMonth;
@@ -101,7 +111,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     // 찾지 못했다면 현재 화면에 보이는 첫 번째 데이터의 월 사용
     if (newVisibleMonth == null) {
-      for (var data in _workoutData) {
+      for (var data in _unifiedWorkouts) {
         final monthKey = '${data.dateFrom.year}년 ${data.dateFrom.month}월';
         if (_monthKeyMap.containsKey(monthKey)) {
           final key = _monthKeyMap[monthKey];
@@ -251,15 +261,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() {
       _isLoading = true;
     });
+    
+    // 1. HealthKit 데이터 가져오기
     final workoutData = await _healthService.fetchWorkoutData();
+    
+    // 2. 로컬 Hive 세션 가져오기
+    final sessions = WorkoutHistoryService().getAllSessions();
+    final sessionMap = <String, WorkoutSession>{};
+    for (var s in sessions) {
+      if (s.healthKitWorkoutId != null) {
+        sessionMap[s.healthKitWorkoutId!] = s;
+      }
+    }
+
+    // 3. 통합 리스트 생성
+    final List<WorkoutDataWrapper> unified = [];
+    final Set<String> linkedSessionIds = {};
+
+    // 3-1. HealthKit 데이터 기반 매핑
+    for (var data in workoutData) {
+      final session = sessionMap[data.uuid];
+      if (session != null) {
+        linkedSessionIds.add(session.id);
+      }
+      unified.add(WorkoutDataWrapper(healthData: data, session: session));
+    }
+
+    // 3-2. 연결되지 않은 로컬 세션 추가 (주로 로컬 Strength 운동)
+    for (var s in sessions) {
+      if (!linkedSessionIds.contains(s.id)) {
+        unified.add(WorkoutDataWrapper(session: s));
+      }
+    }
+
+    // 4. 날짜순 정렬 (최신순)
+    unified.sort((a, b) => b.dateFrom.compareTo(a.dateFrom));
+
     if (mounted) {
       setState(() {
-        _workoutData = workoutData;
+        _unifiedWorkouts = unified;
+        _workoutData = workoutData; // 레거시 호환용
+        _loadSessions(); // 세션 맵 업데이트
         _calculateStatistics();
         _prepareMonthKeys();
         _isLoading = false;
       });
-      _loadSessions();
     }
   }
   
@@ -280,11 +326,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _prepareMonthKeys() {
     _monthKeyMap.clear();
-    if (_workoutData.isEmpty) return;
+    if (_unifiedWorkouts.isEmpty) return;
 
     // 각 월의 첫 번째 데이터에 대한 Key 생성
     Set<String> processedMonths = {};
-    for (var data in _workoutData) {
+    for (var data in _unifiedWorkouts) {
       final date = data.dateFrom;
       final monthKey = '${date.year}년 ${date.month}월';
       if (!processedMonths.contains(monthKey)) {
@@ -538,7 +584,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         break;
     }
 
-    final filteredData = _workoutData
+    final filteredData = _unifiedWorkouts
         .where((data) =>
             data.dateFrom.isAfter(startDate.subtract(const Duration(seconds: 1))) &&
             data.dateFrom.isBefore(endDate.add(const Duration(seconds: 1))))
@@ -548,7 +594,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => WorkoutFeedScreen(
-          workoutData: filteredData,
+          unifiedWorkouts: filteredData,
           period: _selectedPeriod,
           dateRangeText: _dateRangeText,
         ),
@@ -610,7 +656,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         break;
     }
 
-    final filteredData = _workoutData
+    final filteredData = _unifiedWorkouts
         .where((data) =>
             data.dateFrom.isAfter(startDate.subtract(const Duration(seconds: 1))) &&
             data.dateFrom.isBefore(endDate.add(const Duration(seconds: 1))))
@@ -620,15 +666,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     int strengthCount = 0;
     int enduranceCount = 0;
 
-    for (var data in filteredData) {
-      if (data.value is WorkoutHealthValue) {
-        final workout = data.value as WorkoutHealthValue;
-        final type = workout.workoutActivityType.name;
-        if (WorkoutUIUtils.getWorkoutCategory(type) == 'Strength') {
-          strengthCount++;
-        } else {
-          enduranceCount++;
-        }
+    for (var wrapper in filteredData) {
+      String category = '';
+      if (wrapper.session != null) {
+        category = wrapper.session!.category;
+      } else if (wrapper.healthData != null && wrapper.healthData!.value is WorkoutHealthValue) {
+        final workout = wrapper.healthData!.value as WorkoutHealthValue;
+        category = WorkoutUIUtils.getWorkoutCategory(workout.workoutActivityType.name);
+      }
+
+      if (category == 'Strength') {
+        strengthCount++;
+      } else if (category == 'Endurance' || category == 'Hybrid') {
+        enduranceCount++;
       }
     }
 
@@ -1002,7 +1052,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => WorkoutFeedScreen(
-          workoutData: trainingWorkouts,
+          unifiedWorkouts: trainingWorkouts.map((d) => WorkoutDataWrapper(healthData: d)).toList(),
           period: TimePeriod.month, // 기본값으로 month 사용
           dateRangeText: dateRangeText,
           raceName: race.name, // 레이스 이름 전달
@@ -1441,7 +1491,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               (context, index) {
                 return _buildWorkoutItem(index);
               },
-              childCount: _workoutData.length,
+              childCount: _unifiedWorkouts.length,
             ),
           ),
         ),
@@ -1454,30 +1504,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildWorkoutItem(int index) {
-    final data = _workoutData[index];
-    final date = data.dateFrom;
+    final wrapper = _unifiedWorkouts[index];
+    final date = wrapper.dateFrom;
     final monthKey = '${date.year}년 ${date.month}월';
 
     // 해당 월의 첫 번째 항목인지 확인
     final isFirstOfMonth = index == 0 ||
-        _workoutData[index - 1].dateFrom.month != date.month ||
-        _workoutData[index - 1].dateFrom.year != date.year;
+        _unifiedWorkouts[index - 1].dateFrom.month != date.month ||
+        _unifiedWorkouts[index - 1].dateFrom.year != date.year;
 
-    final workout = data.value as WorkoutHealthValue;
-    final distance = workout.totalDistance ?? 0.0;
-    final type = workout.workoutActivityType.name;
-    final workoutCategory = WorkoutUIUtils.getWorkoutCategory(type);
+    // 데이터 추출
+    String type = 'UNKNOWN';
+    double distance = 0.0;
+    String workoutCategory = 'Unknown';
+    final session = wrapper.session;
+    final healthData = wrapper.healthData;
+
+    if (healthData != null && healthData.value is WorkoutHealthValue) {
+      final workout = healthData.value as WorkoutHealthValue;
+      type = workout.workoutActivityType.name;
+      distance = (workout.totalDistance ?? 0.0).toDouble();
+      workoutCategory = WorkoutUIUtils.getWorkoutCategory(type);
+    } else if (session != null) {
+      workoutCategory = session.category;
+      type = session.category == 'Strength' ? 'TRADITIONAL_STRENGTH_TRAINING' : 'OTHER';
+    }
+
     final color = _getCategoryColor(workoutCategory);
-    
-    // Define upperType here for wider scope
     final upperType = type.toUpperCase();
 
-    // 저장된 세션이 있는지 확인하고 표시 이름 결정
+    // 표시 이름 결정
     String displayName;
-    final session = _sessionMap[data.uuid];
-    
     if (session != null) {
-      displayName = session.templateName; // 저장된 템플릿 이름 사용
+      displayName = session.templateName;
     } else {
       if (type == 'TRADITIONAL_STRENGTH_TRAINING') {
         displayName = 'STRENGTH TRAINING';
@@ -1493,7 +1552,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final Color backgroundColor;
     final Color iconColor;
 
-    // CORE TRAINING: secondary color 아이콘, primary color 배경 (Strength와 동일)
     if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
       backgroundColor = Theme.of(context).colorScheme.primary.withValues(alpha: 0.2);
       iconColor = Theme.of(context).colorScheme.secondary;
@@ -1502,7 +1560,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       iconColor = color;
     }
 
-    // 세부 운동 아이콘이 있는지 확인 (배경 제거 로직용)
+    // 세부 운동 아이콘 확인
     bool hasSpecificIcon = false;
     if (session != null && session.templateId != null) {
       final template = TemplateService.getTemplateById(session.templateId!);
@@ -1518,7 +1576,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 월별 섹션 헤더 (sticky 헤더와 중복되지 않을 때만 표시)
         if (isFirstOfMonth && monthKey != _currentVisibleMonth)
           Container(
             key: _monthKeyMap[monthKey],
@@ -1532,7 +1589,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
           ),
-        // 운동 카드 (첫 번째 운동에는 월 이동을 위한 key 부여)
         Card(
           key: isFirstOfMonth && monthKey == _currentVisibleMonth ? _monthKeyMap[monthKey] : null,
           margin: const EdgeInsets.only(bottom: 12),
@@ -1541,13 +1597,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               await Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (context) => WorkoutDetailScreen(
-                    dataWrapper: WorkoutDataWrapper(healthData: data, session: session),
+                    dataWrapper: wrapper,
                   ),
                 ),
               );
-              // 돌아왔을 때 세션 정보 새로고침
-              _loadSessions();
+              _loadHealthData(); // 데이터 새로고침
             },
+            onLongPress: session != null ? () => _showDeleteWorkoutDialog(wrapper) : null,
             leading: Container(
               padding: hasSpecificIcon ? EdgeInsets.zero : const EdgeInsets.all(8),
               decoration: BoxDecoration(
@@ -1567,7 +1623,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(DateFormat('yyyy-MM-dd').format(data.dateFrom)),
+                Text(DateFormat('yyyy-MM-dd').format(date)),
                 if (session != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 6.0),
@@ -1620,6 +1676,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
       default:
         return Theme.of(context).colorScheme.secondary;
     }
+  }
+
+  void _showDeleteWorkoutDialog(WorkoutDataWrapper wrapper) {
+    final session = wrapper.session;
+    if (session == null) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('운동 기록 삭제'),
+        content: Text('${session.templateName} 기록을 PaceLifter에서 삭제하시겠습니까?\n\n*이 작업은 PaceLifter 내부 기록만 삭제하며, Apple 건강 앱의 원본 데이터는 유지됩니다.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await WorkoutHistoryService().deleteSession(session.id);
+              _loadHealthData(); // 목록 새로고침
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('PaceLifter 기록이 삭제되었습니다.')),
+                );
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
   }
 }
 
