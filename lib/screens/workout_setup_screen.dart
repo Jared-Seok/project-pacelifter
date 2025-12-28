@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import '../services/workout_tracking_service.dart';
 import '../services/template_service.dart';
+import '../services/health_service.dart';
 import '../models/templates/workout_template.dart';
 import '../models/templates/template_block.dart';
 import '../models/templates/custom_phase_preset.dart';
@@ -157,6 +158,9 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
   }
 
   void _startWorkout() async {
+    // 운동 시작 전 건강 데이터 권한 확인 (심박수 등)
+    await HealthService().requestAuthorization();
+
     if (widget.template.category == 'Strength') {
       Navigator.pushReplacement(
         context,

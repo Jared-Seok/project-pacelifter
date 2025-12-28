@@ -1,5 +1,6 @@
 import 'package:hive/hive.dart';
 import 'exercise_record.dart';
+import 'route_point.dart';
 
 part 'workout_session.g.dart';
 
@@ -49,6 +50,12 @@ class WorkoutSession extends HiveObject {
 
   @HiveField(13)
   final String? environmentType; // 'Indoor', 'Outdoor', 'Track'
+
+  @HiveField(24)
+  final List<RoutePoint>? routePoints; // 운동 경로 데이터
+
+  @HiveField(25)
+  final double? elevationGain; // 누적 상승 고도 (미터)
 
   // Strength 관련 필드
   @HiveField(14)
@@ -107,6 +114,8 @@ class WorkoutSession extends HiveObject {
     this.tags,
     this.healthKitWorkoutId,
     this.isCompleted = true,
+    this.routePoints,
+    this.elevationGain,
   });
 
   /// JSON에서 세션 생성
@@ -148,6 +157,14 @@ class WorkoutSession extends HiveObject {
       tags: json['tags'] != null ? List<String>.from(json['tags'] as List) : null,
       healthKitWorkoutId: json['healthKitWorkoutId'] as String?,
       isCompleted: json['isCompleted'] as bool? ?? true,
+      routePoints: json['routePoints'] != null
+          ? (json['routePoints'] as List)
+              .map((rp) => RoutePoint.fromJson(rp as Map<String, dynamic>))
+              .toList()
+          : null,
+      elevationGain: json['elevationGain'] != null
+          ? (json['elevationGain'] as num).toDouble()
+          : null,
     );
   }
 
@@ -178,6 +195,8 @@ class WorkoutSession extends HiveObject {
       'tags': tags,
       'healthKitWorkoutId': healthKitWorkoutId,
       'isCompleted': isCompleted,
+      'routePoints': routePoints?.map((rp) => rp.toJson()).toList(),
+      'elevationGain': elevationGain,
     };
   }
 
@@ -207,6 +226,8 @@ class WorkoutSession extends HiveObject {
     List<String>? tags,
     String? healthKitWorkoutId,
     bool? isCompleted,
+    List<RoutePoint>? routePoints,
+    double? elevationGain,
   }) {
     return WorkoutSession(
       id: id ?? this.id,
@@ -233,6 +254,8 @@ class WorkoutSession extends HiveObject {
       tags: tags ?? this.tags,
       healthKitWorkoutId: healthKitWorkoutId ?? this.healthKitWorkoutId,
       isCompleted: isCompleted ?? this.isCompleted,
+      routePoints: routePoints ?? this.routePoints,
+      elevationGain: elevationGain ?? this.elevationGain,
     );
   }
 }

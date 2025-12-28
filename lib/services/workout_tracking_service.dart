@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:health/health.dart';
+import '../models/sessions/route_point.dart';
 
 /// 운동 추적 서비스
 ///
@@ -18,8 +19,9 @@ class WorkoutTrackingService extends ChangeNotifier {
   DateTime? _pausedTime;
   Duration _totalPausedDuration = Duration.zero;
 
-  final List<Position> _route = [];
+  final List<RoutePoint> _route = [];
   double _totalDistance = 0; // 미터
+  double _totalElevationGain = 0; // 누적 상승 고도 (미터)
 
   // 실시간 지표 계산용
   final List<_SpeedDataPoint> _recentSpeeds = [];
@@ -71,6 +73,7 @@ class WorkoutTrackingService extends ChangeNotifier {
     _totalPausedDuration = Duration.zero;
     _route.clear();
     _totalDistance = 0;
+    _totalElevationGain = 0;
     _recentSpeeds.clear();
     _paceHistory.clear();
     _latestHeartRate = null;
@@ -112,14 +115,13 @@ class WorkoutTrackingService extends ChangeNotifier {
   void _onLocationUpdate(Position position) {
     if (!_isTracking || _isPaused) return;
 
-    // 3.1 경로에 추가
-    _route.add(position);
-
-    // 3.2 거리 계산 (이전 위치와의 거리)
-    if (_route.length > 1) {
+    // 3.1 거리 및 고도 계산 (이전 위치와의 차이)
+    if (_route.isNotEmpty) {
+      final lastPoint = _route.last;
+      
       double distance = Geolocator.distanceBetween(
-        _route[_route.length - 2].latitude,
-        _route[_route.length - 2].longitude,
+        lastPoint.latitude,
+        lastPoint.longitude,
         position.latitude,
         position.longitude,
       );
@@ -128,10 +130,14 @@ class WorkoutTrackingService extends ChangeNotifier {
       if (distance < 100) {
         _totalDistance += distance;
 
+        // 고도 상승분 계산 (Elevation Gain)
+        double elevationDiff = position.altitude - lastPoint.altitude;
+        if (elevationDiff > 0) {
+          _totalElevationGain += elevationDiff;
+        }
+
         // 속도 계산 및 저장
-        final timeDiff = position.timestamp.difference(
-          _route[_route.length - 2].timestamp,
-        );
+        final timeDiff = position.timestamp.difference(lastPoint.timestamp);
 
         if (timeDiff.inSeconds > 0) {
           double speed = distance / timeDiff.inSeconds;
@@ -147,6 +153,16 @@ class WorkoutTrackingService extends ChangeNotifier {
         }
       }
     }
+
+    // 3.2 경로에 추가
+    _route.add(RoutePoint(
+      latitude: position.latitude,
+      longitude: position.longitude,
+      altitude: position.altitude,
+      timestamp: position.timestamp,
+      speed: position.speed,
+      accuracy: position.accuracy,
+    ));
   }
 
   // ==============================
@@ -198,9 +214,6 @@ class WorkoutTrackingService extends ChangeNotifier {
       ));
     }
 
-    // 5.6 평균 심박수 (실시간 - 추후 구현)
-    // TODO: HealthKit에서 실시간 심박수 가져오기
-
     // 5.7 UI 업데이트
     _workoutStateController.add(
       WorkoutState(
@@ -214,6 +227,7 @@ class WorkoutTrackingService extends ChangeNotifier {
         calories: calories,
         heartRate: _latestHeartRate,
         routePointsCount: _route.length,
+        elevationGain: _totalElevationGain,
       ),
     );
   }
@@ -328,7 +342,7 @@ class WorkoutTrackingService extends ChangeNotifier {
   // 11. 운동 종료
   // ==============================
 
-  Future<WorkoutSummary> stopWorkout() async {
+  Future<WorkoutSummary> stopWorkout({int? avgHeartRate}) async {
     if (!_isTracking) {
       throw Exception('운동 중이 아닙니다');
     }
@@ -346,9 +360,6 @@ class WorkoutTrackingService extends ChangeNotifier {
     _updateTimer?.cancel();
 
     // 11.3 최종 시간 계산
-    // endTime: 사용자가 "완료"를 누른 시간 (HealthKit의 session.end)
-    // stopTime: 사용자가 "중지"를 누른 시간 (HealthKit의 stopActivity)
-    // activeDuration: 실제 운동 시간 (일시정지 제외)
     final endTime = DateTime.now();
     final activeDuration =
         _stopTime!.difference(_startTime!) - _totalPausedDuration;
@@ -361,19 +372,17 @@ class WorkoutTrackingService extends ChangeNotifier {
       duration: activeDuration, // 실제 운동 시간 (일시정지 제외)
       totalDuration: endTime.difference(_startTime!),
       distanceMeters: _totalDistance,
+      elevationGain: _totalElevationGain,
       averagePace: _calculatePace(_totalDistance / 1000, activeDuration),
       calories: _calculateCalories(_totalDistance / 1000, activeDuration),
       routePoints: List.from(_route),
-      averageHeartRate: _latestHeartRate,
+      averageHeartRate: avgHeartRate ?? _latestHeartRate,
       pausedDuration: _totalPausedDuration,
       paceData: List.from(_paceHistory),
     );
 
     // 11.3 HealthKit에 저장
     await _saveToHealthKit(summary);
-
-    // 11.4 로컬 DB에 저장 (추후 구현)
-    // TODO: Hive에 저장
 
     return summary;
   }
@@ -385,8 +394,6 @@ class WorkoutTrackingService extends ChangeNotifier {
   Future<void> _saveToHealthKit(WorkoutSummary summary) async {
     try {
       // 12.1 HKWorkout 저장
-      // HealthKit의 stopActivity 시점(stopTime)을 종료 시간으로 사용
-      // 이렇게 해야 HealthKit이 자동으로 계산하는 평균 페이스가 정확함
       bool workoutSaved = await _health.writeWorkoutData(
         activityType: HealthWorkoutActivityType.RUNNING,
         start: summary.startTime,
@@ -416,7 +423,6 @@ class WorkoutTrackingService extends ChangeNotifier {
       );
 
       // 12.4 걸음 수 저장 (추정)
-      // 평균 보폭 0.8m 가정
       int estimatedSteps = (summary.distanceMeters / 0.8).round();
       await _health.writeHealthData(
         value: estimatedSteps.toDouble(),
@@ -436,7 +442,6 @@ class WorkoutTrackingService extends ChangeNotifier {
 
   void _enableBackgroundTracking() {
     // iOS: Background Modes - Location updates 필요
-    // TODO: workmanager 패키지 사용 (추후 구현)
   }
 
   // ==============================
@@ -459,7 +464,6 @@ class WorkoutTrackingService extends ChangeNotifier {
   }
 
   Future<bool> _checkHealthPermission() async {
-    // HealthService의 권한 요청 사용
     try {
       bool granted = await _health.requestAuthorization(
         [
@@ -483,15 +487,6 @@ class WorkoutTrackingService extends ChangeNotifier {
     }
   }
 
-  // ==============================
-  // 15. 유틸리티
-  // ==============================
-
-
-  // ==============================
-  // 16. 정리
-  // ==============================
-
   @override
   void dispose() {
     _positionStream?.cancel();
@@ -504,12 +499,13 @@ class WorkoutTrackingService extends ChangeNotifier {
   bool get isTracking => _isTracking;
   bool get isPaused => _isPaused;
   double get totalDistance => _totalDistance;
+  List<RoutePoint> get route => List.unmodifiable(_route);
   int get routePointsCount => _route.length;
   double? get goalDistance => _goalDistance;
   Duration? get goalTime => _goalTime;
   Pace? get goalPace => _goalPace;
 
-  // 목표 설정 메서드 (부분 업데이트)
+  // 목표 설정 메서드
   void setGoals({double? distance, Duration? time, Pace? pace}) {
     if (distance != null) _goalDistance = distance;
     if (time != null) _goalTime = time;
@@ -542,6 +538,7 @@ class WorkoutState {
   final double calories;
   final int? heartRate;
   final int routePointsCount;
+  final double elevationGain;
 
   WorkoutState({
     required this.isTracking,
@@ -554,38 +551,36 @@ class WorkoutState {
     required this.calories,
     this.heartRate,
     required this.routePointsCount,
+    this.elevationGain = 0.0,
   });
 
   String get distanceKm => (distanceMeters / 1000).toStringAsFixed(2);
-
   String get distanceKmFormatted => '$distanceKm km';
-
   String get currentSpeedKmh => (currentSpeedMs * 3.6).toStringAsFixed(1);
-
   String get durationFormatted {
     int hours = duration.inHours;
     int minutes = duration.inMinutes.remainder(60);
     int seconds = duration.inSeconds.remainder(60);
     return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
-
   String get caloriesFormatted => calories.toStringAsFixed(0);
 }
 
 /// 운동 완료 요약
 class WorkoutSummary {
   final DateTime startTime;
-  final DateTime endTime; // 완료 시간 (HealthKit의 session.end)
-  final DateTime stopTime; // 중지 시간 (HealthKit의 stopActivity) - 페이스 계산 기준
-  final Duration duration; // 실제 운동 시간 (일시정지 제외)
-  final Duration totalDuration; // 전체 시간 (일시정지 포함)
+  final DateTime endTime;
+  final DateTime stopTime;
+  final Duration duration;
+  final Duration totalDuration;
   final double distanceMeters;
+  final double elevationGain;
   final String averagePace;
   final double calories;
-  final List<Position> routePoints;
+  final List<RoutePoint> routePoints;
   final int? averageHeartRate;
   final Duration pausedDuration;
-  final List<PaceDataPoint> paceData; // 페이스 시각화용 데이터
+  final List<PaceDataPoint> paceData;
 
   WorkoutSummary({
     required this.startTime,
@@ -594,6 +589,7 @@ class WorkoutSummary {
     required this.duration,
     required this.totalDuration,
     required this.distanceMeters,
+    required this.elevationGain,
     required this.averagePace,
     required this.calories,
     required this.routePoints,
@@ -603,34 +599,25 @@ class WorkoutSummary {
   });
 
   String get distanceKm => (distanceMeters / 1000).toStringAsFixed(2);
-
   String get durationFormatted {
     int hours = duration.inHours;
     int minutes = duration.inMinutes.remainder(60);
     int seconds = duration.inSeconds.remainder(60);
-
-    if (hours > 0) {
-      return '${hours}h ${minutes}m ${seconds}s';
-    } else {
-      return '${minutes}m ${seconds}s';
-    }
+    if (hours > 0) return '${hours}h ${minutes}m ${seconds}s';
+    return '${minutes}m ${seconds}s';
   }
 }
 
-/// 속도 데이터 포인트 (내부 사용)
 class _SpeedDataPoint {
   final DateTime timestamp;
   final double speedMs;
-
   _SpeedDataPoint({required this.timestamp, required this.speedMs});
 }
 
-/// 페이스 데이터 포인트 (시각화용)
 class PaceDataPoint {
-  final Duration elapsedTime; // 운동 시작 후 경과 시간 (일시정지 제외)
-  final double paceMinPerKm; // 페이스 (분/km)
-  final double speedMs; // 속도 (m/s)
-
+  final Duration elapsedTime;
+  final double paceMinPerKm;
+  final double speedMs;
   PaceDataPoint({
     required this.elapsedTime,
     required this.paceMinPerKm,
@@ -638,15 +625,10 @@ class PaceDataPoint {
   });
 }
 
-/// 페이스 목표 (분:초 형식)
 class Pace {
   final int minutes;
   final int seconds;
-
   Pace({required this.minutes, required this.seconds});
-
   @override
-  String toString() {
-    return '$minutes:${seconds.toString().padLeft(2, '0')}';
-  }
+  String toString() => '$minutes:${seconds.toString().padLeft(2, '0')}';
 }

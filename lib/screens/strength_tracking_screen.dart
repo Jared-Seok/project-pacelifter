@@ -11,6 +11,8 @@ import '../models/sessions/exercise_record.dart';
 import '../services/template_service.dart';
 import '../services/workout_history_service.dart';
 import '../services/scoring_engine.dart';
+import '../services/heart_rate_service.dart';
+import '../widgets/heart_rate_monitor_widget.dart';
 
 enum WorkoutStatus { warmup, ready, active, rest, finished }
 
@@ -44,6 +46,7 @@ class _StrengthTrackingScreenState extends State<StrengthTrackingScreen> {
   
   Timer? _restTimer;
   int _restSecondsRemaining = 0;
+  final HeartRateService _hrService = HeartRateService();
 
   @override
   void initState() {
@@ -52,6 +55,7 @@ class _StrengthTrackingScreenState extends State<StrengthTrackingScreen> {
     _blocks = widget.template.phases.expand((p) => p.blocks).where((b) => b.type == 'strength').toList();
     _initializePlan();
     _startTimers();
+    _hrService.startMonitoring();
   }
 
   void _initializePlan() {
@@ -142,7 +146,7 @@ class _StrengthTrackingScreenState extends State<StrengthTrackingScreen> {
     });
   }
 
-  void _completeSet() {
+  Future<void> _completeSet() async {
     final currentBlock = _blocks[_currentBlockIndex];
     final sets = _workoutPlan[currentBlock.id]!;
     final currentSet = sets[_currentSetIndex];
@@ -157,10 +161,14 @@ class _StrengthTrackingScreenState extends State<StrengthTrackingScreen> {
   Future<void> _finishWorkout() async {
     _totalTimer?.cancel();
     _restTimer?.cancel();
+    _hrService.stopMonitoring();
     
     final endTime = DateTime.now();
     final exerciseRecords = <ExerciseRecord>[];
     int order = 0;
+
+    // 심박수 통계 계산
+    final hrStats = _hrService.getSessionStats();
 
     _workoutPlan.forEach((blockId, sets) {
       final block = _blocks.firstWhere((b) => b.id == blockId);
@@ -190,6 +198,8 @@ class _StrengthTrackingScreenState extends State<StrengthTrackingScreen> {
       exerciseRecords: exerciseRecords,
       totalVolume: exerciseRecords.fold<double>(0.0, (sum, r) => sum + r.totalVolume),
       totalSets: exerciseRecords.fold<int>(0, (sum, r) => sum + r.sets.length),
+      averageHeartRate: hrStats['average']?.toInt(),
+      maxHeartRate: hrStats['max']?.toInt(),
     );
 
     await WorkoutHistoryService().saveSession(session);
@@ -249,6 +259,8 @@ class _StrengthTrackingScreenState extends State<StrengthTrackingScreen> {
             _formatDuration(_elapsed),
             style: const TextStyle(fontSize: 42, fontWeight: FontWeight.w900, fontFamily: 'monospace', letterSpacing: 2),
           ),
+          const SizedBox(height: 12),
+          HeartRateMonitorWidget(),
         ],
       ),
     );

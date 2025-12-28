@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../models/sessions/route_point.dart';
 import '../services/workout_tracking_service.dart';
+import '../services/heart_rate_service.dart';
+import '../widgets/heart_rate_monitor_widget.dart';
 import 'dart:async';
 
 /// 실시간 운동 추적 화면
@@ -19,6 +23,7 @@ class WorkoutTrackingScreen extends StatefulWidget {
 
 class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> with SingleTickerProviderStateMixin {
   late WorkoutTrackingService _service;
+  final HeartRateService _hrService = HeartRateService();
   WorkoutState? _currentState;
 
   // 카운트다운 관련
@@ -75,6 +80,7 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> with Sing
         } else {
           _showCountdown = false;
           _pulseController.stop();
+          _hrService.startMonitoring(); // 심박수 모니터링 시작
           timer.cancel();
         }
       });
@@ -84,6 +90,7 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> with Sing
   @override
   void dispose() {
     _pulseController.dispose();
+    _hrService.stopMonitoring();
     super.dispose();
   }
 
@@ -237,9 +244,18 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> with Sing
 
                 // 현재 페이스 (강조)
                 _buildCurrentPaceCard(),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
 
-                // 칼로리 & 심박수
+                // 실시간 심박수 모니터 (Endurance 스타일에 맞게 배치)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    HeartRateMonitorWidget(),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // 칼로리 & 상승 고도
                 Row(
                   children: [
                     Expanded(
@@ -254,18 +270,18 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> with Sing
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildCompactMetric(
-                        label: '심박수',
-                        value: _currentState!.heartRate?.toString() ?? '--',
-                        unit: 'bpm',
-                        icon: Icons.favorite,
-                        color: Colors.red,
+                        label: '상승 고도',
+                        value: _currentState!.elevationGain.toStringAsFixed(0),
+                        unit: 'm',
+                        icon: Icons.terrain,
+                        color: Colors.cyan,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 24),
 
-                // GPS 포인트 정보
+                // GPS 포인트 정보 (텍스트로만 유지)
                 Container(
                   padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                   decoration: BoxDecoration(
@@ -299,6 +315,52 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> with Sing
         // 하단: 컨트롤 버튼
         _buildControls(),
       ],
+    );
+  }
+
+  Widget _buildLiveMap() {
+    final route = _service.route;
+    final List<LatLng> polylinePoints = route.map((p) => LatLng(p.latitude, p.longitude)).toList();
+
+    return Container(
+      height: 250,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: polylinePoints.isEmpty
+          ? Center(
+              child: Text(
+                '위치 정보를 수집 중입니다...',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+            )
+          : GoogleMap(
+              initialCameraPosition: CameraPosition(
+                target: polylinePoints.last,
+                zoom: 16,
+              ),
+              polylines: {
+                Polyline(
+                  polylineId: const PolylineId('workout_route'),
+                  points: polylinePoints,
+                  color: Theme.of(context).colorScheme.secondary,
+                  width: 5,
+                  jointType: JointType.round,
+                  startCap: Cap.roundCap,
+                  endCap: Cap.roundCap,
+                ),
+              },
+              myLocationEnabled: true,
+              myLocationButtonEnabled: false,
+              zoomControlsEnabled: false,
+              mapToolbarEnabled: false,
+              onMapCreated: (controller) {
+                // 필요시 컨트롤러 관리
+              },
+            ),
     );
   }
 
@@ -741,7 +803,10 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> with Sing
   /// 운동 종료
   Future<void> _stopWorkout() async {
     try {
-      final summary = await _service.stopWorkout();
+      final hrStats = _hrService.getSessionStats();
+      final summary = await _service.stopWorkout(
+        avgHeartRate: hrStats['average']?.toInt(),
+      );
 
       if (mounted) {
         // 결과 화면으로 이동
@@ -855,6 +920,12 @@ class WorkoutSummaryScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
+            // 운동 경로 지도 (완료 후 결과로 표시)
+            if (summary.routePoints.isNotEmpty) ...[
+              _buildResultMap(context, summary.routePoints),
+              const SizedBox(height: 24),
+            ],
+
             // 거리
             _buildSummaryCard(
               context,
@@ -892,6 +963,16 @@ class WorkoutSummaryScreen extends StatelessWidget {
               summary.calories.toStringAsFixed(0),
               'kcal',
               Icons.local_fire_department,
+            ),
+            const SizedBox(height: 16),
+
+            // 심박수 (평균)
+            _buildSummaryCard(
+              context,
+              '평균 심박수',
+              summary.averageHeartRate?.toString() ?? '--',
+              'bpm',
+              Icons.favorite,
             ),
             const SizedBox(height: 32),
 
@@ -1030,6 +1111,63 @@ class WorkoutSummaryScreen extends StatelessWidget {
             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildResultMap(BuildContext context, List<dynamic> routePoints) {
+    final List<LatLng> points = routePoints.map((p) => LatLng(p.latitude, p.longitude)).toList();
+    
+    // 경로를 포함하는 경계 상자 계산 (카메라 중심 맞추기)
+    LatLngBounds bounds;
+    if (points.length > 1) {
+      double minLat = points.first.latitude;
+      double maxLat = points.first.latitude;
+      double minLng = points.first.longitude;
+      double maxLng = points.first.longitude;
+
+      for (var p in points) {
+        if (p.latitude < minLat) minLat = p.latitude;
+        if (p.latitude > maxLat) maxLat = p.latitude;
+        if (p.longitude < minLng) minLng = p.longitude;
+        if (p.longitude > maxLng) maxLng = p.longitude;
+      }
+      bounds = LatLngBounds(
+        southwest: LatLng(minLat, minLng),
+        northeast: LatLng(maxLat, maxLng),
+      );
+    } else {
+      bounds = LatLngBounds(southwest: points.first, northeast: points.first);
+    }
+
+    return Container(
+      height: 300,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: GoogleMap(
+        initialCameraPosition: CameraPosition(target: points.first, zoom: 15),
+        polylines: {
+          Polyline(
+            polylineId: const PolylineId('result_route'),
+            points: points,
+            color: Theme.of(context).colorScheme.secondary,
+            width: 5,
+            jointType: JointType.round,
+          ),
+        },
+        myLocationEnabled: false,
+        zoomControlsEnabled: false,
+        mapToolbarEnabled: false,
+        onMapCreated: (controller) {
+          if (points.length > 1) {
+            Future.delayed(const Duration(milliseconds: 500), () {
+              controller.animateCamera(CameraUpdate.newLatLngBounds(bounds, 50));
+            });
+          }
+        },
       ),
     );
   }

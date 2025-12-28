@@ -29,6 +29,7 @@ class ExerciseListScreen extends StatefulWidget {
 
 class _ExerciseListScreenState extends State<ExerciseListScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _routineScrollController = ScrollController();
   Map<String, List<Exercise>> _groupedExercises = {};
   List<Exercise> _allFilteredExercises = []; 
   bool _isLoading = true;
@@ -42,7 +43,20 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _routineScrollController.dispose();
     super.dispose();
+  }
+
+  void _scrollToEnd() {
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (_routineScrollController.hasClients) {
+        _routineScrollController.animateTo(
+          _routineScrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   Future<void> _loadExercises() async {
@@ -451,17 +465,21 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (hasSelection)
-                    Container(
-                      height: 130,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: provider.blocks.length,
-                        itemBuilder: (context, index) {
-                          final block = provider.blocks[index];
-                          final exercise = block.exerciseId != null 
+                                  if (hasSelection)
+                                    Container(
+                                      height: 130,
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      child: ListView.builder(
+                                        controller: _routineScrollController,
+                                        scrollDirection: Axis.horizontal,
+                                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                                        itemCount: provider.blocks.length,
+                                        itemBuilder: (context, index) {
+                                          // 리스트 빌드 시 마지막 아이템 추가 감지하여 스크롤
+                                          if (index == provider.blocks.length - 1) {
+                                            _scrollToEnd();
+                                          }
+                                          final block = provider.blocks[index];                          final exercise = block.exerciseId != null 
                               ? TemplateService.getExerciseById(block.exerciseId!) 
                               : null;
                           final imagePath = exercise?.imagePath;

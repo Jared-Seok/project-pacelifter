@@ -10,6 +10,8 @@ import 'package:pacelifter/services/workout_history_service.dart';
 import 'package:pacelifter/models/sessions/workout_session.dart';
 import 'package:pacelifter/services/template_service.dart';
 import 'package:pacelifter/models/workout_data_wrapper.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:pacelifter/models/sessions/route_point.dart';
 import 'dart:math';
 
 /// 운동 세부 정보 화면
@@ -561,6 +563,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
               ),
             ),
             const SizedBox(height: 16),
+            // 운동 경로 지도 (세션 데이터가 있고 경로가 있는 경우)
+            if (_session?.routePoints != null && _session!.routePoints!.isNotEmpty) ...[
+              _buildRouteMap(context, _session!.routePoints!),
+              const SizedBox(height: 16),
+            ],
             // 운동 데이터
             Card(
               child: Padding(
@@ -782,6 +789,63 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           );
         }),
       ],
+    );
+  }
+
+  Widget _buildRouteMap(BuildContext context, List<RoutePoint> routePoints) {
+    final List<LatLng> points = routePoints.map((p) => LatLng(p.latitude, p.longitude)).toList();
+    
+    LatLngBounds bounds;
+    if (points.length > 1) {
+      double minLat = points.first.latitude;
+      double maxLat = points.first.latitude;
+      double minLng = points.first.longitude;
+      double maxLng = points.first.longitude;
+
+      for (var p in points) {
+        if (p.latitude < minLat) minLat = p.latitude;
+        if (p.latitude > maxLat) maxLat = p.latitude;
+        if (p.longitude < minLng) minLng = p.longitude;
+        if (p.longitude > maxLng) maxLng = p.longitude;
+      }
+      bounds = LatLngBounds(
+        southwest: LatLng(minLat, minLng),
+        northeast: LatLng(maxLat, maxLng),
+      );
+    } else {
+      bounds = LatLngBounds(southwest: points.first, northeast: points.first);
+    }
+
+    return Card(
+      child: Container(
+        height: 250,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: GoogleMap(
+          initialCameraPosition: CameraPosition(target: points.first, zoom: 15),
+          polylines: {
+            Polyline(
+              polylineId: const PolylineId('detail_route'),
+              points: points,
+              color: Theme.of(context).colorScheme.secondary,
+              width: 4,
+              jointType: JointType.round,
+            ),
+          },
+          myLocationEnabled: false,
+          zoomControlsEnabled: false,
+          mapToolbarEnabled: false,
+          onMapCreated: (controller) {
+            if (points.length > 1) {
+              Future.delayed(const Duration(milliseconds: 500), () {
+                controller.animateCamera(CameraUpdate.newLatLngBounds(bounds, 40));
+              });
+            }
+          },
+        ),
+      ),
     );
   }
 

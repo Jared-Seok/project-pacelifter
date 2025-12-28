@@ -24,6 +24,7 @@ class StrengthTemplateScreen extends StatefulWidget {
 class _StrengthTemplateScreenState extends State<StrengthTemplateScreen>
     with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _routineScrollController = ScrollController();
 
   final List<Map<String, dynamic>> _muscleGroups = [
     {
@@ -81,7 +82,20 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen>
   @override
   void dispose() {
     _searchController.dispose();
+    _routineScrollController.dispose();
     super.dispose();
+  }
+
+  void _scrollToEnd() {
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (_routineScrollController.hasClients) {
+        _routineScrollController.animateTo(
+          _routineScrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   void _onMuscleGroupTap(String id, String name) {
@@ -597,10 +611,14 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen>
                       height: 130, // 아이콘 크기 증가에 따른 높이 확보
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       child: ListView.builder(
+                        controller: _routineScrollController,
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         itemCount: provider.blocks.length,
                         itemBuilder: (context, index) {
+                          if (index == provider.blocks.length - 1) {
+                            _scrollToEnd();
+                          }
                           final block = provider.blocks[index];
                           final exercise = block.exerciseId != null
                               ? TemplateService.getExerciseById(block.exerciseId!)

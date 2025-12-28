@@ -9,6 +9,7 @@ import '../models/templates/template_block.dart';
 import '../models/exercises/exercise.dart';
 import '../models/sessions/exercise_record.dart';
 import '../services/template_service.dart';
+import '../services/health_service.dart';
 import '../providers/strength_routine_provider.dart';
 import 'strength_tracking_screen.dart';
 
@@ -282,6 +283,11 @@ class _StrengthRoutinePreviewScreenState extends State<StrengthRoutinePreviewScr
   }
 
   Future<void> _handleStartWorkout() async {
+    // 운동 시작 전 건강 데이터 권한 확인 (심박수 등)
+    await HealthService().requestAuthorization();
+
+    if (!mounted) return;
+
     final bool? saveBeforeStart = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
