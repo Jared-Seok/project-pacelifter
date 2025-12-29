@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:pacelifter/services/auth_service.dart';
 import 'package:pacelifter/models/user_profile.dart';
 import 'package:pacelifter/services/profile_service.dart';
+import 'package:intl/intl.dart';
 
 /// 애슬릿 화면 (개인 정보 및 운동 기록)
 class AthleteScreen extends StatefulWidget {
@@ -157,6 +158,21 @@ class _AthleteScreenState extends State<AthleteScreen> with SingleTickerProvider
                 onTap: () => _editGender(),
               ),
               _buildEditableItem(
+                label: '생년월일',
+                value: _userProfile?.birthDate != null ? DateFormat('yyyy - MM - dd').format(_userProfile!.birthDate!) : '미설정',
+                onTap: () => _editBirthDate(),
+              ),
+              _buildEditableItem(
+                label: '만 나이',
+                value: _userProfile?.age != null ? '${_userProfile!.age} 세' : '미설정',
+                onTap: () => _editBirthDate(),
+              ),
+              _buildEditableItem(
+                label: '최대 심박수 (예상)',
+                value: _userProfile?.maxHeartRate != null ? '${_userProfile!.maxHeartRate} BPM' : '미설정',
+                onTap: () {}, // 자동 계산 항목
+              ),
+              _buildEditableItem(
                 label: '키',
                 value: _userProfile?.height != null ? '${_userProfile!.height!.toStringAsFixed(1)} cm' : '미설정',
                 onTap: () => _editHeight(),
@@ -165,6 +181,40 @@ class _AthleteScreenState extends State<AthleteScreen> with SingleTickerProvider
                 label: '체중',
                 value: _userProfile?.weight != null ? '${_userProfile!.weight!.toStringAsFixed(1)} kg' : '미설정',
                 onTap: () => _editWeight(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildEditableSection(
+            title: '러닝 프로필',
+            svgIcon: 'assets/images/endurance/runner-icon.svg',
+            items: [
+              _buildEditableItem(
+                label: '러닝 구력',
+                value: _userProfile?.runningExperience != null ? '${_userProfile!.runningExperience!.toStringAsFixed(1)} 년' : '미설정',
+                onTap: () => _editExperience('running'),
+              ),
+              _buildEditableItem(
+                label: '러닝 실력',
+                value: _formatLevel(_userProfile?.runningLevel),
+                onTap: () => _editLevel('running'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildEditableSection(
+            title: '웨이트 프로필',
+            svgIcon: 'assets/images/strength/lifter-icon.svg',
+            items: [
+              _buildEditableItem(
+                label: '웨이트 구력',
+                value: _userProfile?.strengthExperience != null ? '${_userProfile!.strengthExperience!.toStringAsFixed(1)} 년' : '미설정',
+                onTap: () => _editExperience('strength'),
+              ),
+              _buildEditableItem(
+                label: '웨이트 실력',
+                value: _formatLevel(_userProfile?.strengthLevel),
+                onTap: () => _editLevel('strength'),
               ),
             ],
           ),
@@ -198,7 +248,7 @@ class _AthleteScreenState extends State<AthleteScreen> with SingleTickerProvider
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildEditableSection(
-            title: '러닝 기록',
+            title: '러닝 최고 기록',
             svgIcon: 'assets/images/endurance/runner-icon.svg',
             items: [
               _buildEditableItem(
@@ -361,6 +411,16 @@ class _AthleteScreenState extends State<AthleteScreen> with SingleTickerProvider
     return '$hours:$minutes:$seconds';
   }
 
+  String _formatLevel(String? level) {
+    if (level == null) return '미설정';
+    switch (level) {
+      case 'beginner': return '초급';
+      case 'intermediate': return '중급';
+      case 'advanced': return '고급';
+      default: return level;
+    }
+  }
+
   // ==================== Edit Methods ====================
 
   void _editGender() {
@@ -391,6 +451,38 @@ class _AthleteScreenState extends State<AthleteScreen> with SingleTickerProvider
           ),
         );
       },
+    );
+  }
+
+  void _editBirthDate() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('생년월일 선택'),
+        content: SizedBox(
+          height: 200,
+          width: double.maxFinite,
+          child: Localizations.override(
+            context: context,
+            locale: const Locale('ko', 'KR'),
+            child: CupertinoDatePicker(
+              mode: CupertinoDatePickerMode.date,
+              initialDateTime: _userProfile?.birthDate ?? DateTime(1995, 1, 1),
+              minimumYear: 1950,
+              maximumDate: DateTime.now(),
+              onDateTimeChanged: (DateTime newDate) {
+                _saveProfile(_userProfile?.copyWith(birthDate: newDate));
+              },
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('저장'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -426,6 +518,70 @@ class _AthleteScreenState extends State<AthleteScreen> with SingleTickerProvider
         if (weight != null && weight > 0) {
           _saveProfile(_userProfile?.copyWith(weight: weight));
         }
+      },
+    );
+  }
+
+  void _editExperience(String type) {
+    double? currentValue = type == 'running' ? _userProfile?.runningExperience : _userProfile?.strengthExperience;
+    final controller = TextEditingController(
+      text: currentValue?.toStringAsFixed(1) ?? '',
+    );
+
+    _showNumericInputDialog(
+      title: type == 'running' ? '러닝 구력 입력' : '웨이트 구력 입력',
+      hint: '구력을 입력하세요 (년)',
+      controller: controller,
+      onSave: (value) {
+        final exp = double.tryParse(value);
+        if (exp != null && exp >= 0) {
+          if (type == 'running') {
+            _saveProfile(_userProfile?.copyWith(runningExperience: exp));
+          } else {
+            _saveProfile(_userProfile?.copyWith(strengthExperience: exp));
+          }
+        }
+      },
+    );
+  }
+
+  void _editLevel(String type) {
+    showCupertinoModalPopup(
+      context: context,
+      builder: (context) {
+        return CupertinoActionSheet(
+          title: Text(type == 'running' ? '러닝 실력 선택' : '웨이트 실력 선택'),
+          actions: [
+            CupertinoActionSheetAction(
+              child: const Text('초급'),
+              onPressed: () {
+                if (type == 'running') _saveProfile(_userProfile?.copyWith(runningLevel: 'beginner'));
+                else _saveProfile(_userProfile?.copyWith(strengthLevel: 'beginner'));
+                Navigator.pop(context);
+              },
+            ),
+            CupertinoActionSheetAction(
+              child: const Text('중급'),
+              onPressed: () {
+                if (type == 'running') _saveProfile(_userProfile?.copyWith(runningLevel: 'intermediate'));
+                else _saveProfile(_userProfile?.copyWith(strengthLevel: 'intermediate'));
+                Navigator.pop(context);
+              },
+            ),
+            CupertinoActionSheetAction(
+              child: const Text('고급'),
+              onPressed: () {
+                if (type == 'running') _saveProfile(_userProfile?.copyWith(runningLevel: 'advanced'));
+                else _saveProfile(_userProfile?.copyWith(strengthLevel: 'advanced'));
+                Navigator.pop(context);
+              },
+            ),
+          ],
+          cancelButton: CupertinoActionSheetAction(
+            child: const Text('취소'),
+            onPressed: () => Navigator.pop(context),
+          ),
+        );
       },
     );
   }
@@ -484,7 +640,7 @@ class _AthleteScreenState extends State<AthleteScreen> with SingleTickerProvider
     }
 
     _showTimeInputDialog(
-      title: '$type 기록 입력',
+      title: '기록 입력',
       currentTime: currentTime,
       onSave: (duration) {
         UserProfile? updated;
@@ -644,7 +800,6 @@ class _AthleteScreenState extends State<AthleteScreen> with SingleTickerProvider
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              controller.dispose();
             },
             child: Text(
               '취소',
@@ -658,7 +813,6 @@ class _AthleteScreenState extends State<AthleteScreen> with SingleTickerProvider
             onPressed: () {
               final value = controller.text;
               Navigator.pop(context);
-              controller.dispose();
               onSave(value);
             },
             style: FilledButton.styleFrom(

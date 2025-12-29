@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:pacelifter/models/user_profile.dart';
 import 'package:pacelifter/services/profile_service.dart';
 import 'package:pacelifter/screens/main_navigation.dart';
+import 'package:intl/intl.dart';
 
 /// 사용자 프로필 설정을 위한 다단계 화면
 class ProfileSetupScreen extends StatefulWidget {
@@ -18,7 +20,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
   UserProfile _userProfile = UserProfile();
 
   int _currentPage = 0;
-  final int _totalPages = 5;
+  final int _totalPages = 7; // 기본정보, 러닝경험, 웨이트경험, 인바디, 러닝기록, 맨몸운동, 3RM
 
   late AnimationController _progressAnimationController;
   late Animation<double> _progressAnimation;
@@ -72,6 +74,63 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     }
   }
 
+  void _previousPage() {
+    if (_currentPage > 0) {
+      setState(() {
+        _currentPage--;
+      });
+      _progressAnimation =
+          Tween<double>(
+            begin: (_currentPage + 1) / _totalPages,
+            end: _currentPage / _totalPages,
+          ).animate(
+            CurvedAnimation(
+              parent: _progressAnimationController,
+              curve: Curves.easeInOut,
+            ),
+          );
+      _progressAnimationController.reset();
+      _progressAnimationController.forward();
+
+      _pageController.previousPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  void _showBirthDatePicker() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('생년월일 선택'),
+        content: SizedBox(
+          height: 200,
+          width: double.maxFinite,
+          child: Localizations.override(
+            context: context,
+            locale: const Locale('ko', 'KR'),
+            child: CupertinoDatePicker(
+              mode: CupertinoDatePickerMode.date,
+              initialDateTime: _userProfile.birthDate ?? DateTime(1995, 1, 1),
+              minimumYear: 1950,
+              maximumDate: DateTime.now(),
+              onDateTimeChanged: (DateTime newDate) {
+                setState(() => _userProfile = _userProfile.copyWith(birthDate: newDate));
+              },
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('저장'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _finishSetup() async {
     await _profileService.saveProfile(_userProfile);
     await _profileService.setProfileSetupCompleted(true);
@@ -83,18 +142,14 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     );
   }
 
-  /// hh:mm:ss 형식의 문자열을 Duration으로 변환합니다.
   Duration? _parseDuration(String? time) {
     if (time == null || time.isEmpty) return null;
     final parts = time.split(':');
     if (parts.length != 3) return null;
-
     final hours = int.tryParse(parts[0]);
     final minutes = int.tryParse(parts[1]);
     final seconds = int.tryParse(parts[2]);
-
     if (hours == null || minutes == null || seconds == null) return null;
-
     return Duration(hours: hours, minutes: minutes, seconds: seconds);
   }
 
@@ -103,6 +158,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('프로필 설정'),
+        leading: _currentPage > 0 
+          ? IconButton(icon: const Icon(Icons.arrow_back), onPressed: _previousPage)
+          : null,
         automaticallyImplyLeading: false,
       ),
       body: Column(
@@ -113,7 +171,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
               return LinearProgressIndicator(
                 value: _progressAnimation.value,
                 minHeight: 8,
-                backgroundColor: Colors.white,
+                backgroundColor: Colors.white10,
                 valueColor: AlwaysStoppedAnimation<Color>(
                   Theme.of(context).colorScheme.secondary,
                 ),
@@ -125,11 +183,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
               controller: _pageController,
               physics: const NeverScrollableScrollPhysics(),
               children: [
-                _buildStep1(),
-                _buildStep2(),
-                _buildStep3(),
-                _buildStep4(),
-                _buildStep5(),
+                _buildStep1(), // 기본 정보 (성별, 키, 체중, 생년월일)
+                _buildStep2(), // 러닝 구력/레벨
+                _buildStep3(), // 웨이트 구력/레벨
+                _buildStep4(), // 인바디
+                _buildStep5(), // 러닝 기록
+                _buildStep6(), // 맨몸 운동
+                _buildStep7(), // 3RM
               ],
             ),
           ),
@@ -138,127 +198,76 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     );
   }
 
+  // 1단계: 기본 정보 (생년월일 추가)
   Widget _buildStep1() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '기본 정보 입력',
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-          ),
+          const Text('기본 정보 입력', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          Text(
-            '정확한 분석을 위해 기본 신체 정보를 입력해주세요.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
+          const Text('정확한 분석 및 최대 심박수 계산을 위해 필요합니다.', style: TextStyle(color: Colors.grey)),
           const SizedBox(height: 32),
+          
           Text('성별', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           SegmentedButton<String>(
             emptySelectionAllowed: true,
             segments: const [
-              ButtonSegment(
-                value: 'male',
-                label: Text('남성'),
-                icon: Icon(Icons.male),
-              ),
-              ButtonSegment(
-                value: 'female',
-                label: Text('여성'),
-                icon: Icon(Icons.female),
-              ),
+              ButtonSegment(value: 'male', label: Text('남성'), icon: Icon(Icons.male)),
+              ButtonSegment(value: 'female', label: Text('여성'), icon: Icon(Icons.female)),
             ],
             selected: _userProfile.gender != null ? {_userProfile.gender!} : {},
-            onSelectionChanged: (Set<String> newSelection) {
-              setState(() {
-                _userProfile = _userProfile.copyWith(
-                  gender: newSelection.first,
-                );
-              });
-            },
-            style: SegmentedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 48),
+            onSelectionChanged: (val) => setState(() => _userProfile = _userProfile.copyWith(gender: val.first)),
+          ),
+          
+          const SizedBox(height: 24),
+          Text('생년월일', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          InkWell(
+            onTap: () => _showBirthDatePicker(),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(border: Border.all(color: Colors.grey), borderRadius: BorderRadius.circular(8)),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(_userProfile.birthDate == null ? '날짜 선택' : DateFormat('yyyy - MM - dd').format(_userProfile.birthDate!)),
+                  const Icon(Icons.calendar_today, size: 18),
+                ],
+              ),
             ),
           ),
+
           const SizedBox(height: 24),
           Text('키 (cm)', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           TextField(
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              hintText: '예: 175',
-              border: OutlineInputBorder(),
-            ),
-            onChanged: (value) {
-              setState(() {
-                _userProfile = _userProfile.copyWith(
-                  height: double.tryParse(value),
-                );
-              });
-            },
+            decoration: const InputDecoration(hintText: '예: 175', border: OutlineInputBorder()),
+            onChanged: (val) => setState(() => _userProfile = _userProfile.copyWith(height: double.tryParse(val))),
           ),
+          
           const SizedBox(height: 24),
           Text('체중 (kg)', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           TextField(
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              hintText: '예: 70.5',
-              border: OutlineInputBorder(),
-            ),
-            onChanged: (value) {
-              setState(() {
-                _userProfile = _userProfile.copyWith(
-                  weight: double.tryParse(value),
-                );
-              });
-            },
+            decoration: const InputDecoration(hintText: '예: 70', border: OutlineInputBorder()),
+            onChanged: (val) => setState(() => _userProfile = _userProfile.copyWith(weight: double.tryParse(val))),
           ),
+
           const SizedBox(height: 48),
-          Center(
-            child: Text(
-              '애슬릿의 모든 정보는 디바이스에 저장되며, 서버가 수집하지 않습니다.',
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: Colors.grey),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          const SizedBox(height: 16),
           SizedBox(
-            width: double.infinity,
-            height: 56,
+            width: double.infinity, height: 56,
             child: ElevatedButton(
-              onPressed:
-                  (_userProfile.gender != null &&
-                      _userProfile.height != null &&
-                      _userProfile.weight != null)
-                  ? _nextPage
-                  : null,
+              onPressed: (_userProfile.gender != null && _userProfile.birthDate != null && _userProfile.height != null && _userProfile.weight != null) ? _nextPage : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    (_userProfile.gender != null &&
-                        _userProfile.height != null &&
-                        _userProfile.weight != null)
-                    ? Theme.of(context).colorScheme.secondary
-                    : Colors.grey,
-                foregroundColor:
-                    (_userProfile.gender != null &&
-                        _userProfile.height != null &&
-                        _userProfile.weight != null)
-                    ? Colors.black
-                    : Colors.white,
-                disabledBackgroundColor: Colors.grey,
-                disabledForegroundColor: Colors.white,
+                backgroundColor: Theme.of(context).colorScheme.secondary,
+                foregroundColor: Colors.black,
               ),
-              child: const Text(
-                '다음',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
+              child: const Text('다음', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -266,454 +275,243 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     );
   }
 
+  // 2단계: 러닝 구력 및 레벨
   Widget _buildStep2() {
-    final hasInput =
-        _userProfile.skeletalMuscleMass != null ||
-        _userProfile.bodyFatPercentage != null;
-
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '인바디 정보 입력 (선택)',
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-          ),
+          const Text('러닝 프로필', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          Text(
-            '더욱 정확한 퍼포먼스 분석을 위해 인바디 정보를 입력할 수 있습니다.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
+          const Text('귀하의 러닝 경험을 알려주세요.', style: TextStyle(color: Colors.grey)),
           const SizedBox(height: 32),
-          Text('골격근량 (kg)', style: Theme.of(context).textTheme.titleMedium),
+          
+          Text('러닝 구력 (년)', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           TextField(
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              hintText: '예: 35.5',
-              border: OutlineInputBorder(),
-            ),
-            onChanged: (value) {
-              setState(() {
-                _userProfile = _userProfile.copyWith(
-                  skeletalMuscleMass: double.tryParse(value),
-                );
-              });
-            },
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(hintText: '예: 1.5', border: OutlineInputBorder(), suffixText: '년'),
+            onChanged: (val) => setState(() => _userProfile = _userProfile.copyWith(runningExperience: double.tryParse(val))),
           ),
-          const SizedBox(height: 24),
-          Text('체지방률 (%)', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          TextField(
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              hintText: '예: 15.2',
-              border: OutlineInputBorder(),
-            ),
-            onChanged: (value) {
-              setState(() {
-                _userProfile = _userProfile.copyWith(
-                  bodyFatPercentage: double.tryParse(value),
-                );
-              });
-            },
+
+          const SizedBox(height: 32),
+          Text('러닝 실력 (자체 평가)', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 12),
+          _buildLevelSelector(
+            current: _userProfile.runningLevel,
+            onSelect: (val) => setState(() => _userProfile = _userProfile.copyWith(runningLevel: val)),
           ),
+
           const SizedBox(height: 48),
           SizedBox(
-            width: double.infinity,
-            height: 56,
+            width: double.infinity, height: 56,
             child: ElevatedButton(
-              onPressed: _nextPage,
+              onPressed: (_userProfile.runningExperience != null && _userProfile.runningLevel != null) ? _nextPage : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(
-                  context,
-                ).colorScheme.primary.withValues(alpha: 0.7),
-                foregroundColor: Colors.white,
+                backgroundColor: Theme.of(context).colorScheme.secondary,
+                foregroundColor: Colors.black,
               ),
-              child: const Text(
-                '건너뛰기',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
+              child: const Text('다음', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: ElevatedButton(
-              onPressed: hasInput ? _nextPage : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: hasInput
-                    ? Theme.of(context).colorScheme.secondary
-                    : Colors.grey,
-                foregroundColor: hasInput ? Colors.black : Colors.white,
-                disabledBackgroundColor: Colors.grey,
-                disabledForegroundColor: Colors.white,
-              ),
-              child: const Text(
-                '다음',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
+          TextButton(
+            onPressed: _nextPage,
+            child: const Center(child: Text('나중에 입력하기', style: TextStyle(color: Colors.grey))),
           ),
         ],
       ),
     );
   }
 
+  // 3단계: 웨이트 구력 및 레벨
   Widget _buildStep3() {
-    final hasInput =
-        _userProfile.fullMarathonTime != null ||
-        _userProfile.halfMarathonTime != null ||
-        _userProfile.tenKmTime != null ||
-        _userProfile.fiveKmTime != null;
-
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '러닝 최고 기록 (선택)',
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-          ),
+          const Text('웨이트 프로필', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          Text(
-            '러닝 퍼포먼스 분석에 사용됩니다. 없으면 건너뛸 수 있습니다.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
+          const Text('귀하의 근력 운동 경험을 알려주세요.', style: TextStyle(color: Colors.grey)),
           const SizedBox(height: 32),
-          Text(
-            'Full (42.195km)',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          
+          Text('웨이트 구력 (년)', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           TextField(
-            keyboardType: TextInputType.datetime,
-            decoration: const InputDecoration(
-              hintText: '예: 03:30:00',
-              border: OutlineInputBorder(),
-            ),
-            onChanged: (value) {
-              setState(() {
-                _userProfile = _userProfile.copyWith(
-                  fullMarathonTime: _parseDuration(value),
-                );
-              });
-            },
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(hintText: '예: 2', border: OutlineInputBorder(), suffixText: '년'),
+            onChanged: (val) => setState(() => _userProfile = _userProfile.copyWith(strengthExperience: double.tryParse(val))),
           ),
-          const SizedBox(height: 24),
-          Text('Half', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          TextField(
-            keyboardType: TextInputType.datetime,
-            decoration: const InputDecoration(
-              hintText: '예: 01:45:00',
-              border: OutlineInputBorder(),
-            ),
-            onChanged: (value) {
-              setState(() {
-                _userProfile = _userProfile.copyWith(
-                  halfMarathonTime: _parseDuration(value),
-                );
-              });
-            },
+
+          const SizedBox(height: 32),
+          Text('웨이트 실력 (자체 평가)', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 12),
+          _buildLevelSelector(
+            current: _userProfile.strengthLevel,
+            onSelect: (val) => setState(() => _userProfile = _userProfile.copyWith(strengthLevel: val)),
           ),
-          const SizedBox(height: 24),
-          Text('10K', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          TextField(
-            keyboardType: TextInputType.datetime,
-            decoration: const InputDecoration(
-              hintText: '예: 00:45:00',
-              border: OutlineInputBorder(),
-            ),
-            onChanged: (value) {
-              setState(() {
-                _userProfile = _userProfile.copyWith(
-                  tenKmTime: _parseDuration(value),
-                );
-              });
-            },
-          ),
-          const SizedBox(height: 24),
-          Text('5K', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          TextField(
-            keyboardType: TextInputType.datetime,
-            decoration: const InputDecoration(
-              hintText: '예: 00:21:00',
-              border: OutlineInputBorder(),
-            ),
-            onChanged: (value) {
-              setState(() {
-                _userProfile = _userProfile.copyWith(
-                  fiveKmTime: _parseDuration(value),
-                );
-              });
-            },
-          ),
+
           const SizedBox(height: 48),
           SizedBox(
-            width: double.infinity,
-            height: 56,
+            width: double.infinity, height: 56,
             child: ElevatedButton(
-              onPressed: _nextPage,
+              onPressed: (_userProfile.strengthExperience != null && _userProfile.strengthLevel != null) ? _nextPage : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(
-                  context,
-                ).colorScheme.primary.withValues(alpha: 0.7),
-                foregroundColor: Colors.white,
+                backgroundColor: Theme.of(context).colorScheme.secondary,
+                foregroundColor: Colors.black,
               ),
-              child: const Text(
-                '건너뛰기',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
+              child: const Text('다음', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: ElevatedButton(
-              onPressed: hasInput ? _nextPage : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: hasInput
-                    ? Theme.of(context).colorScheme.secondary
-                    : Colors.grey,
-                foregroundColor: hasInput ? Colors.black : Colors.white,
-                disabledBackgroundColor: Colors.grey,
-                disabledForegroundColor: Colors.white,
-              ),
-              child: const Text(
-                '다음',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
+          TextButton(
+            onPressed: _nextPage,
+            child: const Center(child: Text('나중에 입력하기', style: TextStyle(color: Colors.grey))),
           ),
         ],
       ),
     );
   }
 
+  Widget _buildLevelSelector({String? current, required Function(String) onSelect}) {
+    return Column(
+      children: [
+        _levelTile('beginner', '초급', '기본기를 익히고 있는 단계', current, onSelect),
+        const SizedBox(height: 12),
+        _levelTile('intermediate', '중급', '숙련된 자세로 꾸준히 운동 중', current, onSelect),
+        const SizedBox(height: 12),
+        _levelTile('advanced', '고급', '고강도 훈련 및 정교한 루틴 수행', current, onSelect),
+      ],
+    );
+  }
+
+  Widget _levelTile(String id, String title, String desc, String? current, Function(String) onSelect) {
+    final isSelected = current == id;
+    return InkWell(
+      onTap: () => onSelect(id),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected ? Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1) : Colors.transparent,
+          border: Border.all(color: isSelected ? Theme.of(context).colorScheme.secondary : Colors.grey[800]!),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isSelected ? Theme.of(context).colorScheme.secondary : Colors.white)),
+                  Text(desc, style: TextStyle(fontSize: 12, color: Colors.grey[400])),
+                ],
+              ),
+            ),
+            if (isSelected) Icon(Icons.check_circle, color: Theme.of(context).colorScheme.secondary),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 4단계: 인바디 (선택)
   Widget _buildStep4() {
-    final hasInput =
-        _userProfile.maxPullUps != null || _userProfile.maxPushUps != null;
+    return _buildSelectionStep('인바디 정보 입력 (선택)', '정확한 분석을 위해 필요한 정보입니다.', [
+      _buildNumericField('골격근량 (kg)', (val) => _userProfile = _userProfile.copyWith(skeletalMuscleMass: double.tryParse(val))),
+      _buildNumericField('체지방률 (%)', (val) => _userProfile = _userProfile.copyWith(bodyFatPercentage: double.tryParse(val))),
+    ]);
+  }
 
+  // 5단계: 러닝 기록 (선택)
+  Widget _buildStep5() {
+    return _buildSelectionStep('러닝 최고 기록 (선택)', '러닝 퍼포먼스 분석에 사용됩니다.', [
+      _buildTimeField('Full (42.195km)', (val) => _userProfile = _userProfile.copyWith(fullMarathonTime: _parseDuration(val))),
+      _buildTimeField('Half (21.097km)', (val) => _userProfile = _userProfile.copyWith(halfMarathonTime: _parseDuration(val))),
+      _buildTimeField('10K', (val) => _userProfile = _userProfile.copyWith(tenKmTime: _parseDuration(val))),
+      _buildTimeField('5K', (val) => _userProfile = _userProfile.copyWith(fiveKmTime: _parseDuration(val))),
+    ]);
+  }
+
+  // 6단계: 맨몸 운동 (선택)
+  Widget _buildStep6() {
+    return _buildSelectionStep('맨몸 운동 능력 (선택)', '수행 가능한 최대 횟수를 입력해주세요.', [
+      _buildNumericField('턱걸이 (최대)', (val) => _userProfile = _userProfile.copyWith(maxPullUps: int.tryParse(val))),
+      _buildNumericField('푸쉬업 (최대)', (val) => _userProfile = _userProfile.copyWith(maxPushUps: int.tryParse(val))),
+    ]);
+  }
+
+  // 7단계: 3RM (선택)
+  Widget _buildStep7() {
+    return _buildSelectionStep('3대 운동 3RM (선택)', '3회 반복 가능한 최대 무게를 입력해주세요.', [
+      _buildNumericField('스쿼트 (kg)', (val) => _userProfile = _userProfile.copyWith(squat3RM: double.tryParse(val))),
+      _buildNumericField('벤치프레스 (kg)', (val) => _userProfile = _userProfile.copyWith(benchPress3RM: double.tryParse(val))),
+      _buildNumericField('데드리프트 (kg)', (val) => _userProfile = _userProfile.copyWith(deadlift3RM: double.tryParse(val))),
+    ], isLast: true);
+  }
+
+  // 공통 선택사항 빌더
+  Widget _buildSelectionStep(String title, String desc, List<Widget> fields, {bool isLast = false}) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '맨몸 운동 능력 (선택)',
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-          ),
+          Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          Text(
-            '현재 수행 가능한 최대 횟수를 입력해주세요.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
+          Text(desc, style: const TextStyle(color: Colors.grey)),
           const SizedBox(height: 32),
-          Text(
-            '턱걸이 (Pull-ups)',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              hintText: '예: 10',
-              border: OutlineInputBorder(),
-            ),
-            onChanged: (value) {
-              setState(() {
-                _userProfile = _userProfile.copyWith(
-                  maxPullUps: int.tryParse(value),
-                );
-              });
-            },
-          ),
-          const SizedBox(height: 24),
-          Text(
-            '푸쉬업 (Push-ups)',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              hintText: '예: 30',
-              border: OutlineInputBorder(),
-            ),
-            onChanged: (value) {
-              setState(() {
-                _userProfile = _userProfile.copyWith(
-                  maxPushUps: int.tryParse(value),
-                );
-              });
-            },
-          ),
+          ...fields,
           const SizedBox(height: 48),
           SizedBox(
-            width: double.infinity,
-            height: 56,
+            width: double.infinity, height: 56,
             child: ElevatedButton(
-              onPressed: _nextPage,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(
-                  context,
-                ).colorScheme.primary.withValues(alpha: 0.7),
-                foregroundColor: Colors.white,
-              ),
-              child: const Text(
-                '건너뛰기',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
+              onPressed: isLast ? _finishSetup : _nextPage,
+              style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.secondary, foregroundColor: Colors.black),
+              child: Text(isLast ? '완료' : '다음', style: const TextStyle(fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: ElevatedButton(
-              onPressed: hasInput ? _nextPage : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: hasInput
-                    ? Theme.of(context).colorScheme.secondary
-                    : Colors.grey,
-                foregroundColor: hasInput ? Colors.black : Colors.white,
-                disabledBackgroundColor: Colors.grey,
-                disabledForegroundColor: Colors.white,
-              ),
-              child: const Text(
-                '다음',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
+          TextButton(
+            onPressed: isLast ? _finishSetup : _nextPage,
+            child: const Center(child: Text('나중에 입력하기', style: TextStyle(color: Colors.grey))),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStep5() {
-    final hasInput =
-        _userProfile.squat3RM != null ||
-        _userProfile.benchPress3RM != null ||
-        _userProfile.deadlift3RM != null;
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24.0),
+  Widget _buildNumericField(String label, Function(String) onChanged) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '3대 운동 3RM (선택)',
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '3회 반복 가능한 최대 무게(3RM)를 입력해주세요.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 32),
-          Text('스쿼트 (kg)', style: Theme.of(context).textTheme.titleMedium),
+          Text(label, style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 8),
           TextField(
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              hintText: '예: 100',
-              border: OutlineInputBorder(),
-            ),
-            onChanged: (value) {
-              setState(() {
-                _userProfile = _userProfile.copyWith(
-                  squat3RM: double.tryParse(value),
-                );
-              });
-            },
+            decoration: const InputDecoration(border: OutlineInputBorder()),
+            onChanged: onChanged,
           ),
-          const SizedBox(height: 24),
-          Text('벤치프레스 (kg)', style: Theme.of(context).textTheme.titleMedium),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimeField(String label, Function(String) onChanged) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 8),
           TextField(
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              hintText: '예: 80',
-              border: OutlineInputBorder(),
-            ),
-            onChanged: (value) {
-              setState(() {
-                _userProfile = _userProfile.copyWith(
-                  benchPress3RM: double.tryParse(value),
-                );
-              });
-            },
-          ),
-          const SizedBox(height: 24),
-          Text('데드리프트 (kg)', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          TextField(
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              hintText: '예: 120',
-              border: OutlineInputBorder(),
-            ),
-            onChanged: (value) {
-              setState(() {
-                _userProfile = _userProfile.copyWith(
-                  deadlift3RM: double.tryParse(value),
-                );
-              });
-            },
-          ),
-          const SizedBox(height: 48),
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: ElevatedButton(
-              onPressed: _finishSetup,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(
-                  context,
-                ).colorScheme.primary.withValues(alpha: 0.7),
-                foregroundColor: Colors.white,
-              ),
-              child: const Text(
-                '건너뛰기',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: ElevatedButton(
-              onPressed: hasInput ? _finishSetup : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: hasInput
-                    ? Theme.of(context).colorScheme.secondary
-                    : Colors.grey,
-                foregroundColor: hasInput ? Colors.black : Colors.white,
-                disabledBackgroundColor: Colors.grey,
-                disabledForegroundColor: Colors.white,
-              ),
-              child: const Text(
-                '완료',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
+            keyboardType: TextInputType.datetime,
+            decoration: const InputDecoration(hintText: 'HH:MM:SS', border: OutlineInputBorder()),
+            onChanged: onChanged,
           ),
         ],
       ),

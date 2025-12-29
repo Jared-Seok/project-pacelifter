@@ -6,21 +6,29 @@ class UserProfile {
   final double? weight; // kg
   final DateTime? birthDate;
 
-  // Step 2: Body Composition
+  // Step 2: Running Profile (New)
+  final double? runningExperience; // 연 단위 구력
+  final String? runningLevel; // 'beginner', 'intermediate', 'advanced'
+
+  // Step 3: Strength Profile (New)
+  final double? strengthExperience; // 연 단위 구력
+  final String? strengthLevel; // 'beginner', 'intermediate', 'advanced'
+
+  // Step 4: Body Composition (Optional)
   final double? skeletalMuscleMass; // kg
   final double? bodyFatPercentage; // %
 
-  // Step 3: Running Records
+  // Step 5: Running Records (Optional)
   final Duration? fullMarathonTime;
   final Duration? halfMarathonTime;
   final Duration? tenKmTime;
   final Duration? fiveKmTime;
 
-  // Step 4: Bodyweight Exercises
+  // Step 6: Bodyweight Exercises (Optional)
   final int? maxPullUps;
   final int? maxPushUps;
 
-  // Step 5: 3-Rep Max (3RM)
+  // Step 7: 3-Rep Max (3RM) (Optional)
   final double? squat3RM;
   final double? benchPress3RM;
   final double? deadlift3RM;
@@ -30,6 +38,10 @@ class UserProfile {
     this.height,
     this.weight,
     this.birthDate,
+    this.runningExperience,
+    this.runningLevel,
+    this.strengthExperience,
+    this.strengthLevel,
     this.skeletalMuscleMass,
     this.bodyFatPercentage,
     this.fullMarathonTime,
@@ -55,12 +67,23 @@ class UserProfile {
     return age;
   }
 
+  /// 최대 심박수 예상치 계산 (220 - 나이)
+  int? get maxHeartRate {
+    final currentAge = age;
+    if (currentAge == null) return null;
+    return 220 - currentAge;
+  }
+
   /// UserProfile을 복사하여 새로운 인스턴스를 생성하는 메서드
   UserProfile copyWith({
     String? gender,
     double? height,
     double? weight,
     DateTime? birthDate,
+    double? runningExperience,
+    String? runningLevel,
+    double? strengthExperience,
+    String? strengthLevel,
     double? skeletalMuscleMass,
     double? bodyFatPercentage,
     Duration? fullMarathonTime,
@@ -78,6 +101,10 @@ class UserProfile {
       height: height ?? this.height,
       weight: weight ?? this.weight,
       birthDate: birthDate ?? this.birthDate,
+      runningExperience: runningExperience ?? this.runningExperience,
+      runningLevel: runningLevel ?? this.runningLevel,
+      strengthExperience: strengthExperience ?? this.strengthExperience,
+      strengthLevel: strengthLevel ?? this.strengthLevel,
       skeletalMuscleMass: skeletalMuscleMass ?? this.skeletalMuscleMass,
       bodyFatPercentage: bodyFatPercentage ?? this.bodyFatPercentage,
       fullMarathonTime: fullMarathonTime ?? this.fullMarathonTime,
@@ -99,25 +126,21 @@ class UserProfile {
       height: json['height'],
       weight: json['weight'],
       birthDate: json['birthDate'] != null ? DateTime.parse(json['birthDate']) : null,
-      skeletalMuscleMass: json['skeletalMuscleMass'],
-      bodyFatPercentage: json['bodyFatPercentage'],
-      fullMarathonTime: json['fullMarathonTime'] != null
-          ? Duration(seconds: json['fullMarathonTime'])
-          : null,
-      halfMarathonTime: json['halfMarathonTime'] != null
-          ? Duration(seconds: json['halfMarathonTime'])
-          : null,
-      tenKmTime: json['tenKmTime'] != null
-          ? Duration(seconds: json['tenKmTime'])
-          : null,
-      fiveKmTime: json['fiveKmTime'] != null
-          ? Duration(seconds: json['fiveKmTime'])
-          : null,
+      runningExperience: json['runningExperience']?.toDouble(),
+      runningLevel: json['runningLevel'],
+      strengthExperience: json['strengthExperience']?.toDouble(),
+      strengthLevel: json['strengthLevel'],
+      skeletalMuscleMass: json['skeletalMuscleMass']?.toDouble(),
+      bodyFatPercentage: json['bodyFatPercentage']?.toDouble(),
+      fullMarathonTime: json['fullMarathonTime'] != null ? Duration(seconds: json['fullMarathonTime']) : null,
+      halfMarathonTime: json['halfMarathonTime'] != null ? Duration(seconds: json['halfMarathonTime']) : null,
+      tenKmTime: json['tenKmTime'] != null ? Duration(seconds: json['tenKmTime']) : null,
+      fiveKmTime: json['fiveKmTime'] != null ? Duration(seconds: json['fiveKmTime']) : null,
       maxPullUps: json['maxPullUps'],
       maxPushUps: json['maxPushUps'],
-      squat3RM: json['squat3RM'],
-      benchPress3RM: json['benchPress3RM'],
-      deadlift3RM: json['deadlift3RM'],
+      squat3RM: json['squat3RM']?.toDouble(),
+      benchPress3RM: json['benchPress3RM']?.toDouble(),
+      deadlift3RM: json['deadlift3RM']?.toDouble(),
     );
   }
 
@@ -128,6 +151,10 @@ class UserProfile {
       'height': height,
       'weight': weight,
       'birthDate': birthDate?.toIso8601String(),
+      'runningExperience': runningExperience,
+      'runningLevel': runningLevel,
+      'strengthExperience': strengthExperience,
+      'strengthLevel': strengthLevel,
       'skeletalMuscleMass': skeletalMuscleMass,
       'bodyFatPercentage': bodyFatPercentage,
       'fullMarathonTime': fullMarathonTime?.inSeconds,
