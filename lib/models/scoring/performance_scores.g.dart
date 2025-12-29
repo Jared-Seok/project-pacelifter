@@ -22,17 +22,22 @@ class PerformanceScoresAdapter extends TypeAdapter<PerformanceScores> {
       conditioningScore: fields[2] as double,
       hybridBalanceScore: fields[3] as double,
       lastUpdated: fields[4] as DateTime,
-      vo2MaxScore: fields[5] as double?,
-      paceScore: fields[6] as double?,
-      relativeStrengthScore: fields[7] as double?,
-      recoveryScore: fields[8] as double?,
+      enduranceWeeklyFreq: fields[9] as double? ?? 0,
+      enduranceBaselineFreq: fields[10] as double? ?? 0,
+      totalDistanceKm: fields[11] as double? ?? 0,
+      strengthWeeklyFreq: fields[12] as double? ?? 0,
+      strengthBaselineFreq: fields[13] as double? ?? 0,
+      totalVolumeTon: fields[14] as double? ?? 0,
+      acwr: fields[15] as double? ?? 1.0,
+      avgRestingHeartRate: fields[16] as double?,
+      avgHRV: fields[17] as double?,
     );
   }
 
   @override
   void write(BinaryWriter writer, PerformanceScores obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(14)
       ..writeByte(0)
       ..write(obj.enduranceScore)
       ..writeByte(1)
@@ -43,14 +48,24 @@ class PerformanceScoresAdapter extends TypeAdapter<PerformanceScores> {
       ..write(obj.hybridBalanceScore)
       ..writeByte(4)
       ..write(obj.lastUpdated)
-      ..writeByte(5)
-      ..write(obj.vo2MaxScore)
-      ..writeByte(6)
-      ..write(obj.paceScore)
-      ..writeByte(7)
-      ..write(obj.relativeStrengthScore)
-      ..writeByte(8)
-      ..write(obj.recoveryScore);
+      ..writeByte(9)
+      ..write(obj.enduranceWeeklyFreq)
+      ..writeByte(10)
+      ..write(obj.enduranceBaselineFreq)
+      ..writeByte(11)
+      ..write(obj.totalDistanceKm)
+      ..writeByte(12)
+      ..write(obj.strengthWeeklyFreq)
+      ..writeByte(13)
+      ..write(obj.strengthBaselineFreq)
+      ..writeByte(14)
+      ..write(obj.totalVolumeTon)
+      ..writeByte(15)
+      ..write(obj.acwr)
+      ..writeByte(16)
+      ..write(obj.avgRestingHeartRate)
+      ..writeByte(17)
+      ..write(obj.avgHRV);
   }
 
   @override

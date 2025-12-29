@@ -193,11 +193,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Color _getDayColor(int type, ColorScheme colorScheme) {
     switch (type) {
       case 1: // Strength
-        return colorScheme.primary;
+        return colorScheme.primary; // Orange
       case 2: // Endurance
-        return colorScheme.secondary;
+        return colorScheme.tertiary; // Deep Teal
       case 3: // Hybrid
-        return Color.lerp(colorScheme.primary, colorScheme.secondary, 0.5)!;
+        return colorScheme.secondary; // Neon Green
       default:
         return Colors.transparent;
     }
@@ -261,7 +261,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 sections: [
                   if (stats.enduranceDays > 0)
                     PieChartSectionData(
-                      color: colorScheme.secondary,
+                      color: colorScheme.tertiary, // Deep Teal
                       value: stats.enduranceDays.toDouble(),
                       title: '',
                       radius: 20,
@@ -269,7 +269,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ),
                   if (stats.strengthDays > 0)
                     PieChartSectionData(
-                      color: colorScheme.primary,
+                      color: colorScheme.primary, // Orange
                       value: stats.strengthDays.toDouble(),
                       title: '',
                       radius: 20,
@@ -277,7 +277,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ),
                   if (stats.hybridDays > 0)
                     PieChartSectionData(
-                      color: Color.lerp(colorScheme.primary, colorScheme.secondary, 0.5)!,
+                      color: colorScheme.secondary, // Neon Green
                       value: stats.hybridDays.toDouble(),
                       title: '',
                       radius: 20,
@@ -302,11 +302,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildStatRow('Endurance', stats.enduranceDays, colorScheme.secondary),
+                _buildStatRow('Endurance', stats.enduranceDays, colorScheme.tertiary),
                 const SizedBox(height: 6),
                 _buildStatRow('Strength', stats.strengthDays, colorScheme.primary),
                 const SizedBox(height: 6),
-                _buildStatRow('Hybrid', stats.hybridDays, Color.lerp(colorScheme.primary, colorScheme.secondary, 0.5)!),
+                _buildStatRow('Hybrid', stats.hybridDays, colorScheme.secondary),
                 const SizedBox(height: 6),
                 _buildStatRow('Rest Day', stats.restDays, colorScheme.onSurface.withValues(alpha: 0.5), isRest: true),
               ],
@@ -528,7 +528,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     final Color categoryColor = category == 'Strength' 
         ? Theme.of(context).colorScheme.primary 
-        : Theme.of(context).colorScheme.secondary;
+        : Theme.of(context).colorScheme.tertiary; // Deep Teal for Endurance
 
     final Color backgroundColor;
     final Color iconColor;

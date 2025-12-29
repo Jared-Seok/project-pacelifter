@@ -15,6 +15,7 @@ import 'package:pacelifter/screens/race_list_screen.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:pacelifter/screens/workout_detail_screen.dart';
 import 'package:pacelifter/screens/workout_feed_screen.dart';
+import 'package:pacelifter/screens/performance_analysis_screen.dart';
 import 'package:pacelifter/services/workout_history_service.dart';
 import 'package:pacelifter/models/sessions/workout_session.dart';
 import 'package:pacelifter/services/template_service.dart';
@@ -198,7 +199,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         builder: (context) => AlertDialog(
               title: Row(children: [
                 Icon(Icons.health_and_safety,
-                    color: Theme.of(context).colorScheme.primary),
+                    color: Theme.of(context).colorScheme.secondary),
                 const SizedBox(width: 12),
                 const Text('운동 데이터 동기화'),
               ]),
@@ -787,70 +788,86 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('종합 퍼포먼스', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  Text(
-                    '최근 업데이트: ${DateFormat('HH:mm').format(_scores!.lastUpdated)}',
-                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                  ),
-                ],
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => PerformanceAnalysisScreen(scores: _scores!),
               ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  SizedBox(
-                    width: 120,
-                    height: 120,
-                    child: RadarChart(
-                      RadarChartData(
-                        dataSets: [
-                          RadarDataSet(
-                            fillColor: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.3),
-                            borderColor: Theme.of(context).colorScheme.secondary,
-                            entryRadius: 2,
-                            dataEntries: [
-                              RadarEntry(value: _scores!.enduranceScore),
-                              RadarEntry(value: _scores!.strengthScore),
-                              RadarEntry(value: _scores!.conditioningScore),
-                            ],
-                          ),
-                        ],
-                        radarShape: RadarShape.polygon,
-                        getTitle: (index, angle) {
-                          switch (index) {
-                            case 0: return const RadarChartTitle(text: '지구력');
-                            case 1: return const RadarChartTitle(text: '근력');
-                            case 2: return const RadarChartTitle(text: '컨디셔닝');
-                            default: return const RadarChartTitle(text: '');
-                          }
-                        },
-                        tickCount: 1,
-                        ticksTextStyle: const TextStyle(color: Colors.transparent),
-                        gridBorderData: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 24),
-                  Expanded(
-                    child: Column(
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
                       children: [
-                        _buildScoreTile('Endurance', _scores!.enduranceScore, Theme.of(context).colorScheme.secondary),
-                        const Divider(height: 12),
-                        _buildScoreTile('Strength', _scores!.strengthScore, Theme.of(context).colorScheme.primary),
-                        const Divider(height: 12),
-                        _buildScoreTile('Conditioning', _scores!.conditioningScore, Colors.orange),
+                        const Text('종합 퍼포먼스', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        const SizedBox(width: 6),
+                        Icon(Icons.chevron_right, size: 20, color: Colors.grey.withValues(alpha: 0.5)),
                       ],
                     ),
-                  ),
-                ],
-              ),
-            ],
+                    Text(
+                      '최근 업데이트: ${DateFormat('HH:mm').format(_scores!.lastUpdated)}',
+                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    SizedBox(
+                      width: 120,
+                      height: 120,
+                      child: RadarChart(
+                        RadarChartData(
+                          dataSets: [
+                            RadarDataSet(
+                              fillColor: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2),
+                              borderColor: Theme.of(context).colorScheme.secondary,
+                              entryRadius: 2,
+                              dataEntries: [
+                                RadarEntry(value: _scores!.enduranceScore),
+                                RadarEntry(value: _scores!.strengthScore),
+                                RadarEntry(value: _scores!.conditioningScore),
+                              ],
+                            ),
+                          ],
+                          radarShape: RadarShape.polygon,
+                          getTitle: (index, angle) {
+                            switch (index) {
+                              case 0: return const RadarChartTitle(text: '지구력');
+                              case 1: return const RadarChartTitle(text: '근력');
+                              case 2: return const RadarChartTitle(text: '컨디셔닝');
+                              default: return const RadarChartTitle(text: '');
+                            }
+                          },
+                          tickCount: 1,
+                          ticksTextStyle: const TextStyle(color: Colors.transparent),
+                          gridBorderData: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 24),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          _buildScoreTile('Endurance', _scores!.enduranceScore, Theme.of(context).colorScheme.tertiary),
+                          const Divider(height: 12),
+                          _buildScoreTile('Strength', _scores!.strengthScore, Theme.of(context).colorScheme.primary),
+                          const Divider(height: 12),
+                          _buildScoreTile('Conditioning', _scores!.conditioningScore, Theme.of(context).colorScheme.secondary),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1111,7 +1128,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.primary),
+                      color: Theme.of(context).colorScheme.secondary),
                 ),
               ],
             ),
@@ -1131,7 +1148,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   width: 36,
                   height: 36,
                   colorFilter: ColorFilter.mode(
-                    Theme.of(context).colorScheme.secondary,
+                    Theme.of(context).colorScheme.tertiary, // Deep Teal
                     BlendMode.srcIn,
                   ),
                 ),
@@ -1141,7 +1158,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.secondary,
+                    color: Theme.of(context).colorScheme.tertiary, // Deep Teal
                   ),
                 ),
                 Padding(
@@ -1187,7 +1204,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   borderRadius: BorderRadius.circular(6),
                   backgroundColor: Colors.grey[200],
                   valueColor: AlwaysStoppedAnimation<Color>(
-                      Theme.of(context).colorScheme.primary),
+                      Theme.of(context).colorScheme.secondary),
                 ),
               ],
             ),
@@ -1301,7 +1318,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         width: isActive ? 24.0 : 8.0,
         decoration: BoxDecoration(
             color: isActive
-                ? Theme.of(context).colorScheme.primary
+                ? Theme.of(context).colorScheme.secondary // Neon Green
                 : Colors.grey.withValues(alpha: 0.5),
             borderRadius: const BorderRadius.all(Radius.circular(12))));
   }
@@ -1318,7 +1335,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             width: 42,
             height: 42,
             colorFilter: ColorFilter.mode(
-              Theme.of(context).colorScheme.secondary,
+              Theme.of(context).colorScheme.tertiary, // Deep Teal
               BlendMode.srcIn,
             ),
           ),
@@ -1330,7 +1347,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.secondary))
+                  color: Theme.of(context).colorScheme.tertiary)) // Deep Teal
         ])),
         // 원형 차트 (중앙)
         SizedBox(width: 120, height: 120, child: _buildPieChart()),
@@ -1419,7 +1436,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               showTitle: false),
           PieChartSectionData(
               value: _endurancePercentage,
-              color: Theme.of(context).colorScheme.secondary,
+              color: Theme.of(context).colorScheme.tertiary, // Deep Teal
               radius: 20,
               showTitle: false)
         ]));
@@ -1585,7 +1602,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
+                color: Theme.of(context).colorScheme.secondary, // Neon Green
               ),
             ),
           ),
@@ -1623,7 +1640,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(DateFormat('yyyy-MM-dd').format(date)),
+                Text(
+                  DateFormat('yyyy-MM-dd').format(date),
+                  style: TextStyle(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.8)),
+                ),
                 if (session != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 6.0),
@@ -1670,9 +1690,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Color _getCategoryColor(String category) {
     switch (category) {
       case 'Strength':
-        return Theme.of(context).colorScheme.primary;
+        return Theme.of(context).colorScheme.primary; // Orange
       case 'Endurance':
-        return Theme.of(context).colorScheme.secondary;
+        return Theme.of(context).colorScheme.tertiary; // Deep Teal
+      case 'Hybrid':
+        return Theme.of(context).colorScheme.secondary; // Neon Green
       default:
         return Theme.of(context).colorScheme.secondary;
     }
@@ -1746,7 +1768,7 @@ class _StickyMonthHeaderDelegate extends SliverPersistentHeaderDelegate {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.primary,
+                  color: Theme.of(context).colorScheme.secondary, // Neon Green
                 ),
               ),
               const SizedBox(width: 8),
@@ -1756,13 +1778,13 @@ class _StickyMonthHeaderDelegate extends SliverPersistentHeaderDelegate {
                 child: Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                    color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(
                     Icons.calendar_month,
                     size: 20,
-                    color: Theme.of(context).colorScheme.primary,
+                    color: Theme.of(context).colorScheme.secondary, // Neon Green
                   ),
                 ),
               ),

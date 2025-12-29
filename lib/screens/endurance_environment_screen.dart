@@ -47,7 +47,7 @@ class EnduranceEnvironmentScreen extends StatelessWidget {
                 title: '로드',
                 subtitle: '도로 및 야외 러닝',
                 iconPath: 'assets/images/endurance/runner-icon.svg',
-                color: Theme.of(context).colorScheme.secondary,
+                color: Theme.of(context).colorScheme.tertiary, // Deep Teal
                 onTap: () {
                   Navigator.push(
                     context,
@@ -66,7 +66,7 @@ class EnduranceEnvironmentScreen extends StatelessWidget {
                 title: '트레일',
                 subtitle: '산악 및 오프로드',
                 iconPath: 'assets/images/endurance/trail-icon.svg',
-                color: Colors.green,
+                color: Theme.of(context).colorScheme.tertiary, // Deep Teal
                 onTap: () {
                   Navigator.push(
                     context,
@@ -85,7 +85,7 @@ class EnduranceEnvironmentScreen extends StatelessWidget {
                 title: '실내',
                 subtitle: '러닝머신 (Treadmill)',
                 iconPath: 'assets/images/endurance/runner-icon.svg',
-                color: Colors.orange,
+                color: Theme.of(context).colorScheme.tertiary, // Deep Teal
                 onTap: () {
                   Navigator.push(
                     context,

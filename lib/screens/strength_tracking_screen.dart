@@ -198,6 +198,7 @@ class _StrengthTrackingScreenState extends State<StrengthTrackingScreen> {
       exerciseRecords: exerciseRecords,
       totalVolume: exerciseRecords.fold<double>(0.0, (sum, r) => sum + r.totalVolume),
       totalSets: exerciseRecords.fold<int>(0, (sum, r) => sum + r.sets.length),
+      totalReps: exerciseRecords.fold<int>(0, (sum, r) => sum + r.totalReps),
       averageHeartRate: hrStats['average']?.toInt(),
       maxHeartRate: hrStats['max']?.toInt(),
     );
@@ -469,6 +470,29 @@ class _StrengthTrackingScreenState extends State<StrengthTrackingScreen> {
   }
 
   Widget _buildFinishedView() {
+    final endTime = DateTime.now();
+    final exerciseRecords = <ExerciseRecord>[];
+    int order = 0;
+
+    _workoutPlan.forEach((blockId, sets) {
+      final block = _blocks.firstWhere((b) => b.id == blockId);
+      final completedSets = sets.where((s) => s.repsCompleted != null).toList();
+      
+      if (completedSets.isNotEmpty) {
+        exerciseRecords.add(ExerciseRecord(
+          id: const Uuid().v4(),
+          exerciseId: block.exerciseId!,
+          exerciseName: block.name,
+          sets: completedSets,
+          order: order++,
+          timestamp: endTime,
+        ));
+      }
+    });
+
+    final totalVolume = exerciseRecords.fold<double>(0.0, (sum, r) => sum + r.totalVolume);
+    final totalSets = exerciseRecords.fold<int>(0, (sum, r) => sum + r.sets.length);
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -477,9 +501,28 @@ class _StrengthTrackingScreenState extends State<StrengthTrackingScreen> {
           const SizedBox(height: 24),
           const Text('모든 운동 완료!', style: TextStyle(fontSize: 36, fontWeight: FontWeight.w900)),
           const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildFinishedStat('총 볼륨', totalVolume >= 1000 ? '${(totalVolume / 1000).toStringAsFixed(2)}t' : '${totalVolume.toInt()}kg'),
+              const SizedBox(width: 32),
+              _buildFinishedStat('총 세트', '$totalSets회'),
+            ],
+          ),
+          const SizedBox(height: 24),
           const Text('수고하셨습니다.\n오늘의 기록을 저장하고 마무리하세요.', textAlign: TextAlign.center, style: TextStyle(fontSize: 18, color: Colors.grey)),
         ],
       ),
+    );
+  }
+
+  Widget _buildFinishedStat(String label, String value) {
+    return Column(
+      children: [
+        Text(label, style: const TextStyle(fontSize: 14, color: Colors.grey)),
+        const SizedBox(height: 4),
+        Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+      ],
     );
   }
 

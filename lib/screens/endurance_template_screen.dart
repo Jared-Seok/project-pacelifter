@@ -70,9 +70,7 @@ class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
         ? 'assets/images/endurance/trail-icon.svg' 
         : 'assets/images/endurance/runner-icon.svg';
     
-    final Color themeColor = widget.environmentType == 'Trail'
-        ? Colors.green
-        : (widget.environmentType == 'Indoor' ? Colors.orange : Theme.of(context).colorScheme.secondary);
+    final Color themeColor = Theme.of(context).colorScheme.tertiary; // Deep Teal for all Endurance templates
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,

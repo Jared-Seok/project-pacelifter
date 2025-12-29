@@ -378,13 +378,13 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> with Sing
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2),
-            Theme.of(context).colorScheme.secondary.withValues(alpha: 0.05),
+            Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.2),
+            Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.3),
+          color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.3),
           width: 2,
         ),
       ),
@@ -409,7 +409,7 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> with Sing
                 style: TextStyle(
                   fontSize: 72,
                   fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.secondary,
+                  color: Theme.of(context).colorScheme.tertiary,
                   height: 1,
                 ),
               ),
@@ -420,7 +420,7 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> with Sing
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.7),
+                    color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.7),
                   ),
                 ),
               ),
@@ -630,12 +630,12 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> with Sing
       decoration: BoxDecoration(
         color: isPaused
             ? Colors.orange.withValues(alpha: 0.2)
-            : Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
+            : Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.1),
         border: Border(
           bottom: BorderSide(
             color: isPaused
                 ? Colors.orange
-                : Theme.of(context).colorScheme.secondary,
+                : Theme.of(context).colorScheme.tertiary,
             width: 2,
           ),
         ),
@@ -649,7 +649,7 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> with Sing
                 isPaused ? Icons.pause_circle : Icons.play_circle,
                 color: isPaused
                     ? Colors.orange
-                    : Theme.of(context).colorScheme.secondary,
+                    : Theme.of(context).colorScheme.tertiary,
                 size: 28,
               ),
               const SizedBox(width: 8),
@@ -660,7 +660,7 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> with Sing
                   fontWeight: FontWeight.bold,
                   color: isPaused
                       ? Colors.orange
-                      : Theme.of(context).colorScheme.secondary,
+                      : Theme.of(context).colorScheme.tertiary,
                 ),
               ),
             ],
@@ -1153,7 +1153,7 @@ class WorkoutSummaryScreen extends StatelessWidget {
           Polyline(
             polylineId: const PolylineId('result_route'),
             points: points,
-            color: Theme.of(context).colorScheme.secondary,
+            color: Theme.of(context).colorScheme.tertiary,
             width: 5,
             jointType: JointType.round,
           ),

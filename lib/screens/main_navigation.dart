@@ -24,8 +24,8 @@ class _MainNavigationState extends State<MainNavigation> {
     const SettingsScreen(),
   ];
 
-  // Hybrid Color: #B2BC68
-  static const Color hybridColor = Color(0xFFB2BC68);
+  // Brand Color (Hybrid & UI Core)
+  Color get brandColor => Theme.of(context).colorScheme.secondary;
 
   void _onTabTapped(int index) {
     setState(() {
@@ -77,7 +77,7 @@ class _MainNavigationState extends State<MainNavigation> {
 
   Widget _buildNavItem(int index, IconData icon, String label) {
     final bool isSelected = _currentIndex == index;
-    final Color activeColor = Theme.of(context).colorScheme.secondary;
+    final Color activeColor = brandColor;
     final Color inactiveColor = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5);
 
     return Expanded(
@@ -119,16 +119,14 @@ class _MainNavigationState extends State<MainNavigation> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // 제안 1: 내부 서클 배경 활용
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: hybridColor.withValues(alpha: 0.15), // 15% 투명도 배경
+                color: brandColor.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
-                // 제안 3: 선택 시 은은한 글로우 효과
                 boxShadow: isSelected ? [
                   BoxShadow(
-                    color: hybridColor.withValues(alpha: 0.3),
+                    color: brandColor.withValues(alpha: 0.3),
                     blurRadius: 10,
                     spreadRadius: 1,
                   )
@@ -136,9 +134,8 @@ class _MainNavigationState extends State<MainNavigation> {
               ),
               child: Icon(
                 icon,
-                // 제안 2: 상시 컬러 및 아이콘 스케일 차별화
-                color: hybridColor,
-                size: 28, // 다른 탭(24)보다 크게 설정
+                color: brandColor,
+                size: 28,
               ),
             ),
             const SizedBox(height: 2),
@@ -146,7 +143,7 @@ class _MainNavigationState extends State<MainNavigation> {
               label,
               style: TextStyle(
                 fontSize: 10,
-                color: hybridColor,
+                color: brandColor,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
               ),
             ),

@@ -2,15 +2,13 @@ import 'package:hive/hive.dart';
 import 'package:health/health.dart';
 import '../models/scoring/performance_scores.dart';
 import '../models/sessions/workout_session.dart';
-import '../models/user_profile.dart';
+import '../models/workout_data_wrapper.dart';
 import 'workout_history_service.dart';
 import 'profile_service.dart';
 import 'health_service.dart';
+import '../utils/workout_ui_utils.dart';
 
-/// Scoring Engine v3.0 (Discipline & Trend Focused)
-/// 
-/// 모든 지표를 '상대적 운동 추세(Discipline)'로 전환합니다.
-/// 180일간의 평균 주당 빈도를 베이스라인으로 하여, 최근 7일간의 수행력을 평가합니다.
+/// Scoring Engine v3.2 (Unified Data Source: Local + HealthKit)
 class ScoringEngine {
   static const String _scoresBoxName = 'user_scores';
 
@@ -22,169 +20,193 @@ class ScoringEngine {
   final _profileService = ProfileService();
   final _healthService = HealthService();
 
-  /// 점수 계산 및 업데이트 (메인 진입점)
+  /// 점수 계산 및 업데이트 (로컬 세션 + HealthKit 데이터 통합)
   Future<PerformanceScores> calculateAndSaveScores() async {
-    // 1. 데이터 로드 (최근 180일 베이스라인 확보)
-    final sessions = _historyService.getRecentSessions(days: 180);
-    
-    // 2. Discipline 기반 점수 계산 (7d vs 180d Baseline)
-    final enduranceScore = _calculateDisciplineScore(sessions, 'Endurance');
-    final strengthScore = _calculateDisciplineScore(sessions, 'Strength');
-    
-    // 3. 컨디셔닝 점수는 기존의 생체 지표 및 ACWR 유지 (이미 상대 추세 지표임)
-    final conditioningScore = await _calculateConditioningScore(sessions);
+    // 1. 모든 데이터 통합 수집
+    final unifiedWorkouts = await _getUnifiedWorkouts(days: 180);
+    final now = DateTime.now();
 
-    // 4. 밸런스 점수 계산
-    final balanceScore = _calculateHybridBalance(enduranceScore, strengthScore);
+    // 2. Endurance 상세 데이터 산출
+    final endResult = _calculateDetailedMetrics(unifiedWorkouts, 'Endurance');
+    
+    // 3. Strength 상세 데이터 산출
+    final strResult = _calculateDetailedMetrics(unifiedWorkouts, 'Strength');
+
+    // 4. 컨디셔닝 상세
+    final condResult = await _calculateDetailedConditioning(unifiedWorkouts);
 
     // 5. 결과 객체 생성
     final scores = PerformanceScores(
-      enduranceScore: enduranceScore,
-      strengthScore: strengthScore,
-      conditioningScore: conditioningScore,
-      hybridBalanceScore: balanceScore,
-      lastUpdated: DateTime.now(),
+      enduranceScore: endResult['score'],
+      enduranceWeeklyFreq: endResult['weeklyFreq'],
+      enduranceBaselineFreq: endResult['baselineFreq'],
+      totalDistanceKm: endResult['totalMetric'],
+      
+      strengthScore: strResult['score'],
+      strengthWeeklyFreq: strResult['weeklyFreq'],
+      strengthBaselineFreq: strResult['baselineFreq'],
+      totalVolumeTon: strResult['totalMetric'],
+
+      conditioningScore: condResult['score'],
+      acwr: condResult['acwr'],
+      avgRestingHeartRate: condResult['rhr'],
+      avgHRV: condResult['hrv'],
+
+      hybridBalanceScore: _calculateHybridBalance(endResult['score'], strResult['score']),
+      lastUpdated: now,
     );
 
-    // 6. 저장
     await _saveScores(scores);
     return scores;
   }
 
-  /// 최신 점수 불러오기
-  PerformanceScores getLatestScores() {
-    final box = Hive.box<PerformanceScores>(_scoresBoxName);
-    return box.get('current') ?? PerformanceScores.initial();
+  /// 로컬 세션과 HealthKit 데이터를 중복 없이 통합
+  Future<List<WorkoutDataWrapper>> _getUnifiedWorkouts({int days = 180}) async {
+    final now = DateTime.now();
+    final startDate = now.subtract(Duration(days: days));
+
+    // A. 로컬 세션 로드
+    final localSessions = _historyService.getRecentSessions(days: days);
+    
+    // B. HealthKit 데이터 로드
+    final healthData = await _healthService.getHealthDataFromTypes(
+      startDate, now, [HealthDataType.WORKOUT]
+    );
+
+    final List<WorkoutDataWrapper> unified = [];
+    final Set<String> linkedHealthIds = {};
+
+    // 1. 로컬 세션 기반으로 매핑 (연동된 Health ID 수집)
+    for (var session in localSessions) {
+      if (session.healthKitWorkoutId != null) {
+        linkedHealthIds.add(session.healthKitWorkoutId!);
+      }
+      unified.add(WorkoutDataWrapper(session: session));
+    }
+
+    // 2. 연동되지 않은 순수 HealthKit 데이터 추가
+    for (var data in healthData) {
+      if (!linkedHealthIds.contains(data.uuid)) {
+        unified.add(WorkoutDataWrapper(healthData: data));
+      }
+    }
+
+    return unified;
   }
 
-  Future<void> _saveScores(PerformanceScores scores) async {
-    final box = Hive.box<PerformanceScores>(_scoresBoxName);
-    await box.put('current', scores);
-  }
-
-  /// Discipline Score 산출 (추세 기반)
-  /// 
-  /// Logic:
-  /// 1. 180일간 해당 카테고리의 총 횟수를 구해 '주당 평균 횟수' 산출 (Baseline)
-  /// 2. 최근 7일간의 수행 횟수 산출 (Recent)
-  /// 3. Baseline 대비 Recent 비율로 점수화
-  double _calculateDisciplineScore(List<WorkoutSession> allSessions, String category) {
+  /// 상세 메트릭 계산기 (WorkoutDataWrapper 리스트 기반)
+  Map<String, dynamic> _calculateDetailedMetrics(List<WorkoutDataWrapper> workouts, String category) {
     final now = DateTime.now();
     final sevenDaysAgo = now.subtract(const Duration(days: 7));
     
-    // 카테고리 필터링
-    final categorySessions = allSessions.where((s) => 
-      s.category == category || (category == 'Strength' && s.category == 'Hybrid')
-    ).toList();
+    // 카테고리에 맞는 운동 필터링
+    final categoryWorkouts = workouts.where((w) {
+      String cat = 'Unknown';
+      if (w.session != null) {
+        cat = w.session!.category;
+      } else if (w.healthData != null && w.healthData!.value is WorkoutHealthValue) {
+        final type = (w.healthData!.value as WorkoutHealthValue).workoutActivityType.name;
+        cat = WorkoutUIUtils.getWorkoutCategory(type);
+      }
+      return cat == category || (category == 'Strength' && cat == 'Hybrid');
+    }).toList();
 
-    if (categorySessions.isEmpty) return 0.0;
-
-    // 1. Baseline: 180일 평균 주당 빈도
-    // 실제 데이터가 있는 기간을 고려하여 계산 (신규 유저 배려)
-    final firstSessionDate = categorySessions.map((s) => s.startTime).reduce((a, b) => a.isBefore(b) ? a : b);
-    final daysDiff = now.difference(firstSessionDate).inDays.clamp(7, 180);
-    final baselineWeeklyFreq = (categorySessions.length / daysDiff) * 7;
-
-    // 2. Recent: 최근 7일 빈도
-    final recentCount = categorySessions.where((s) => s.startTime.isAfter(sevenDaysAgo)).length.toDouble();
-
-    // 3. Scoring
-    if (baselineWeeklyFreq == 0) return recentCount > 0 ? 70.0 : 0.0;
-
-    // 비율 계산 (최근 / 기준)
-    final ratio = recentCount / baselineWeeklyFreq;
-
-    // 점수 곡선: 
-    // 1.0 (유지) -> 80점
-    // 1.2 이상 (상승) -> 90~100점
-    // 0.5 (하락) -> 40~50점
-    double score = 0;
-    if (ratio >= 1.2) {
-      score = 90 + (ratio - 1.2) * 10;
-    } else if (ratio >= 1.0) {
-      score = 80 + (ratio - 1.0) * 50; // 1.0~1.2 사이에서 80~90
-    } else if (ratio >= 0.5) {
-      score = 40 + (ratio - 0.5) * 80; // 0.5~1.0 사이에서 40~80
-    } else {
-      score = ratio * 80; // 0.5 미만
+    if (categoryWorkouts.isEmpty) {
+      return {'score': 0.0, 'weeklyFreq': 0.0, 'baselineFreq': 0.0, 'totalMetric': 0.0};
     }
 
-    return score.clamp(0, 100);
+    // Baseline: 주당 평균 빈도
+    final firstDate = categoryWorkouts.map((w) => w.dateFrom).reduce((a, b) => a.isBefore(b) ? a : b);
+    final daysDiff = now.difference(firstDate).inDays.clamp(7, 180);
+    final baselineFreq = (categoryWorkouts.length / daysDiff) * 7;
+
+    // Recent: 7일간 데이터
+    final recentWorkouts = categoryWorkouts.where((w) => w.dateFrom.isAfter(sevenDaysAgo)).toList();
+    final weeklyFreq = recentWorkouts.length.toDouble();
+
+    // 누적 지표 (Endurance: Km, Strength: Ton)
+    double totalMetric = 0;
+    for (var w in recentWorkouts) {
+      if (category == 'Endurance') {
+        if (w.session != null) {
+          totalMetric += (w.session!.totalDistance ?? 0) / 1000;
+        } else if (w.healthData != null && w.healthData!.value is WorkoutHealthValue) {
+          totalMetric += ((w.healthData!.value as WorkoutHealthValue).totalDistance ?? 0) / 1000;
+        }
+      } else {
+        // Strength: 로컬 세션 기록이 있는 경우에만 볼륨 합산 가능
+        totalMetric += (w.session?.totalVolume ?? 0) / 1000;
+      }
+    }
+
+    // Scoring Curve
+    double score = 0;
+    if (baselineFreq > 0) {
+      final ratio = weeklyFreq / baselineFreq;
+      if (ratio >= 1.2) score = 90 + (ratio - 1.2) * 10;
+      else if (ratio >= 1.0) score = 80 + (ratio - 1.0) * 50;
+      else if (ratio >= 0.5) score = 40 + (ratio - 0.5) * 80;
+      else score = ratio * 80;
+    } else {
+      score = weeklyFreq > 0 ? 70.0 : 0.0;
+    }
+
+    return {
+      'score': score.clamp(0, 100),
+      'weeklyFreq': weeklyFreq,
+      'baselineFreq': baselineFreq,
+      'totalMetric': totalMetric,
+    };
   }
 
-  Future<double> _calculateConditioningScore(List<WorkoutSession> sessions) async {
+  Future<Map<String, dynamic>> _calculateDetailedConditioning(List<WorkoutDataWrapper> workouts) async {
     double? rhr;
     double? hrv;
-    double? sleepHours;
-
     try {
       final now = DateTime.now();
       final yesterday = now.subtract(const Duration(days: 1));
-
       final rhrData = await _healthService.getHealthDataFromTypes(yesterday, now, [HealthDataType.RESTING_HEART_RATE]);
       if (rhrData.isNotEmpty) rhr = (rhrData.last.value as NumericHealthValue).numericValue.toDouble();
-
       final hrvData = await _healthService.getHealthDataFromTypes(yesterday, now, [HealthDataType.HEART_RATE_VARIABILITY_SDNN]);
       if (hrvData.isNotEmpty) hrv = (hrvData.last.value as NumericHealthValue).numericValue.toDouble();
+    } catch (e) {}
 
-      final sleepData = await _healthService.getHealthDataFromTypes(yesterday, now, [HealthDataType.SLEEP_ASLEEP]);
-      if (sleepData.isNotEmpty) {
-        double totalMinutes = 0;
-        for (var s in sleepData) {
-          totalMinutes += s.dateTo.difference(s.dateFrom).inMinutes;
-        }
-        sleepHours = totalMinutes / 60.0;
-      }
-    } catch (e) { /* ignore */ }
-
-    // Recovery Score (RHR, HRV 추세 반영)
-    final recoveryScore = _calculateRecoveryTrendScore(rhr, hrv);
-    final sleepScore = _calculateSleepScore(sleepHours);
-
-    // ACWR (Acute-Chronic Workload Ratio)
-    final acuteLoad = _calculateLoadSum(sessions.where((s) => s.startTime.isAfter(DateTime.now().subtract(const Duration(days: 7)))).toList());
-    final chronicLoad = _calculateLoadSum(sessions.where((s) => s.startTime.isAfter(DateTime.now().subtract(const Duration(days: 28)))).toList());
+    // ACWR (Load Sum 기반)
+    final acuteLoad = _calculateLoadSum(workouts.where((w) => w.dateFrom.isAfter(DateTime.now().subtract(const Duration(days: 7)))).toList());
+    final chronicLoad = _calculateLoadSum(workouts.where((w) => w.dateFrom.isAfter(DateTime.now().subtract(const Duration(days: 28)))).toList());
     
-    // ACWR 0.8~1.3 is optimal (100 pts)
+    double acwr = 1.0;
     double loadScore = 70;
     if (chronicLoad > 0) {
-      final acwr = acuteLoad / (chronicLoad / 4);
+      acwr = acuteLoad / (chronicLoad / 4);
       if (acwr >= 0.8 && acwr <= 1.3) loadScore = 100;
-      else if (acwr > 1.5) loadScore = 40; // Overreaching
+      else if (acwr > 1.5) loadScore = 40;
       else loadScore = (acwr / 0.8) * 100;
     }
 
-    return (recoveryScore * 0.4 + loadScore * 0.4 + sleepScore * 0.2).clamp(0, 100);
+    final score = (loadScore * 0.6 + (rhr != null ? 20 : 10) + (hrv != null ? 20 : 10)).clamp(0, 100);
+    return {'score': score, 'acwr': acwr, 'rhr': rhr, 'hrv': hrv};
   }
 
-  double _calculateRecoveryTrendScore(double? rhr, double? hrv) {
-    double score = 70; // 기본값
-    if (rhr != null) {
-      if (rhr <= 60) score += 15;
-      else if (rhr >= 80) score -= 20;
-    }
-    if (hrv != null) {
-      if (hrv >= 60) score += 15;
-      else if (hrv <= 30) score -= 20;
-    }
-    return score.clamp(0, 100);
-  }
-
-  double _calculateSleepScore(double? hours) {
-    if (hours == null) return 70;
-    if (hours >= 7 && hours <= 9) return 100;
-    if (hours < 6) return 50;
-    return 80;
-  }
-
-  double _calculateLoadSum(List<WorkoutSession> sessions) {
+  double _calculateLoadSum(List<WorkoutDataWrapper> workouts) {
     double sum = 0;
-    for (var s in sessions) {
-      if (s.category == 'Endurance') {
-        sum += (s.totalDistance ?? 0) / 1000;
-      } else {
-        sum += (s.totalVolume ?? 0) / 1000;
+    for (var w in workouts) {
+      String cat = 'Unknown';
+      double dist = 0;
+      double vol = 0;
+
+      if (w.session != null) {
+        cat = w.session!.category;
+        dist = w.session!.totalDistance ?? 0;
+        vol = w.session!.totalVolume ?? 0;
+      } else if (w.healthData != null && w.healthData!.value is WorkoutHealthValue) {
+        final val = w.healthData!.value as WorkoutHealthValue;
+        cat = WorkoutUIUtils.getWorkoutCategory(val.workoutActivityType.name);
+        dist = val.totalDistance?.toDouble() ?? 0;
       }
+
+      if (cat == 'Endurance') sum += dist / 1000;
+      else sum += vol / 1000;
     }
     return sum;
   }
@@ -194,5 +216,15 @@ class ScoringEngine {
     if (difference <= 10) return 100.0;
     if (difference >= 50) return 0.0;
     return 100.0 - (difference - 10) / 40 * 100;
+  }
+
+  PerformanceScores getLatestScores() {
+    final box = Hive.box<PerformanceScores>(_scoresBoxName);
+    return box.get('current') ?? PerformanceScores.initial();
+  }
+
+  Future<void> _saveScores(PerformanceScores scores) async {
+    final box = Hive.box<PerformanceScores>(_scoresBoxName);
+    await box.put('current', scores);
   }
 }

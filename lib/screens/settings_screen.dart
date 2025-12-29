@@ -165,7 +165,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     VoidCallback? onTap,
     bool isDestructive = false,
   }) {
-    final color = isDestructive ? Colors.red : Theme.of(context).colorScheme.onSurface;
+    final textColor = isDestructive ? Colors.red : Theme.of(context).colorScheme.onSurface;
+    final iconColor = isDestructive ? Colors.red : Theme.of(context).colorScheme.secondary;
 
     return InkWell(
       onTap: onTap,
@@ -173,7 +174,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         child: Row(
           children: [
-            Icon(icon, color: color, size: 24),
+            Icon(icon, color: iconColor, size: 24),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -184,7 +185,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      color: color,
+                      color: textColor,
                     ),
                   ),
                   if (subtitle != null)

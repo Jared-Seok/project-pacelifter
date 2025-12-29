@@ -85,19 +85,19 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: const ColorScheme(
           brightness: Brightness.dark,
-          primary: Color(0xFF8F9779), // Khaki
-          onPrimary: Color(0xFFEEEEEE), // Text on Khaki
-          secondary: Color(0xFFD4E157), // Accent
-          onSecondary: Color(0xFF121212), // Text on Accent
-          tertiary: Color(0xFFD4E157), // Accent for tertiary
-          onTertiary: Color(0xFF121212),
-          surface: Color(0xFF121212), // Background
-          onSurface: Color(0xFFEEEEEE), // Text on background
+          primary: Color(0xFFFF9100), // Vivid Orange (Strength)
+          onPrimary: Colors.black,
+          secondary: Color(0xFFD4E157), // Neon Green (Hybrid Core)
+          onSecondary: Colors.black,
+          tertiary: Color(0xFF00BFA5), // Deep Teal (Endurance)
+          onTertiary: Colors.black,
+          surface: Color(0xFF121212),
+          onSurface: Color(0xFFEEEEEE),
           error: Colors.red,
           onError: Colors.white,
         ),
         progressIndicatorTheme: const ProgressIndicatorThemeData(
-          color: Color(0xFF8F9779), // 카키색으로 명시적 지정
+          color: Color(0xFFD4E157), // 하이브리드 대표 색상인 네온 그린으로 변경
         ),
         useMaterial3: true,
       ),

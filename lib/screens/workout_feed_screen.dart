@@ -43,8 +43,9 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
 
   Color _getCategoryColor(String category, BuildContext context) {
     switch (category) {
-      case 'Strength': return Theme.of(context).colorScheme.primary;
-      case 'Endurance': return Theme.of(context).colorScheme.secondary;
+      case 'Strength': return Theme.of(context).colorScheme.primary; // Orange
+      case 'Endurance': return Theme.of(context).colorScheme.tertiary; // Deep Teal
+      case 'Hybrid': return Theme.of(context).colorScheme.secondary; // Neon Green
       default: return Theme.of(context).colorScheme.secondary;
     }
   }

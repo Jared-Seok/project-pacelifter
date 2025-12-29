@@ -259,8 +259,8 @@ class _LoginScreenState extends State<LoginScreen>
                                   shaderCallback: (bounds) {
                                     return LinearGradient(
                                       colors: [
-                                        Theme.of(context).colorScheme.primary,
                                         Theme.of(context).colorScheme.secondary,
+                                        Theme.of(context).colorScheme.tertiary,
                                       ],
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,

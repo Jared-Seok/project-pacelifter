@@ -575,7 +575,10 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-
+                    if (workoutCategory == 'Strength' && _session != null) ...[
+                      _buildStrengthSummary(_session!),
+                      const Divider(height: 32),
+                    ],
                     const Text(
                       '운동 데이터',
                       style: TextStyle(
@@ -750,7 +753,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
               ),
               title: Text(record.exerciseName, style: const TextStyle(fontWeight: FontWeight.bold)),
               subtitle: Text(
-                '${record.sets.length} 세트 | 총 ${record.totalVolume >= 1000 ? (record.totalVolume / 1000).toStringAsFixed(2) + "t" : record.totalVolume.toStringAsFixed(0) + "kg"}',
+                '${record.sets.length} 세트 | 총 ${record.totalVolume >= 1000 ? (record.totalVolume / 1000).toStringAsFixed(2) + " t" : record.totalVolume.toStringAsFixed(0) + " kg"}',
                 style: const TextStyle(fontSize: 12, color: Colors.grey)
               ),
               children: [
@@ -865,6 +868,10 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   Widget _buildHeartRateChart() {
     final spots = <FlSpot>[];
     final workoutStartTime = widget.dataWrapper.dateFrom;
+    final workout = _workoutData?.value as WorkoutHealthValue?;
+    final workoutType = workout?.workoutActivityType.name ?? _session?.category ?? 'Unknown';
+    final workoutCategory = _session?.category ?? _getWorkoutCategory(workoutType);
+    final color = _getWorkoutColor(context, workoutCategory);
 
     // X축: 초 단위로 변경 (페이스 차트와 동기화)
     for (var data in _heartRateData) {
@@ -1048,13 +1055,13 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           LineChartBarData(
             spots: spots,
             isCurved: true,
-            color: Theme.of(context).colorScheme.primary,
+            color: color, // Use dynamic category color
             barWidth: 3,
             isStrokeCapRound: true,
-            dotData: FlDotData(show: false),
+            dotData: const FlDotData(show: false),
             belowBarData: BarAreaData(
               show: true,
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+              color: color.withValues(alpha: 0.2),
             ),
           ),
         ],
@@ -1122,6 +1129,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   }
 
   Widget _buildPaceChart() {
+    final workout = _workoutData?.value as WorkoutHealthValue?;
+    final workoutType = workout?.workoutActivityType.name ?? _session?.category ?? 'Unknown';
+    final workoutCategory = _session?.category ?? _getWorkoutCategory(workoutType);
+    final color = _getWorkoutColor(context, workoutCategory);
+
     // 1. 원본 페이스 데이터 추출
     final rawPaces = <double>[];
     for (var data in _paceData) {
@@ -1305,13 +1317,13 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           LineChartBarData(
             spots: spots,
             isCurved: true,
-            color: Theme.of(context).colorScheme.secondary,
+            color: color, // Use dynamic category color (Deep Teal for Endurance)
             barWidth: 3,
             isStrokeCapRound: true,
-            dotData: FlDotData(show: false),
+            dotData: const FlDotData(show: false),
             belowBarData: BarAreaData(
               show: true,
-              color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2),
+              color: color.withValues(alpha: 0.2),
             ),
           ),
         ],
@@ -1412,6 +1424,28 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           environmentType: _session?.environmentType, // 환경 타입 전달
         ),
       ),
+    );
+  }
+
+  Widget _buildStrengthSummary(WorkoutSession session) {
+    final vol = session.totalVolume ?? 0;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+        _buildSummaryStat('총 볼륨', vol >= 1000 ? '${(vol / 1000).toStringAsFixed(2)}t' : '${vol.toInt()}kg'),
+        _buildSummaryStat('총 세트', '${session.totalSets ?? 0}회'),
+        _buildSummaryStat('총 횟수', '${session.totalReps ?? 0}회'),
+      ],
+    );
+  }
+
+  Widget _buildSummaryStat(String label, String value) {
+    return Column(
+      children: [
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        const SizedBox(height: 4),
+        Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+      ],
     );
   }
 
@@ -1529,9 +1563,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   Color _getWorkoutColor(BuildContext context, String category) {
     switch (category) {
       case 'Strength':
-        return Theme.of(context).colorScheme.primary;
+        return Theme.of(context).colorScheme.primary; // Orange
       case 'Endurance':
-        return Theme.of(context).colorScheme.secondary;
+        return Theme.of(context).colorScheme.tertiary; // Deep Teal
+      case 'Hybrid':
+        return Theme.of(context).colorScheme.secondary; // Neon Green
       default:
         return Theme.of(context).colorScheme.secondary;
     }
