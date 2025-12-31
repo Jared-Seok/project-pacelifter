@@ -3,6 +3,13 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:health/health.dart';
 import '../models/sessions/route_point.dart';
+import '../models/templates/workout_template.dart';
+import '../models/templates/template_block.dart';
+import 'heart_rate_service.dart';
+import 'live_activity_service.dart';
+import 'workout_history_service.dart';
+import '../models/sessions/workout_session.dart';
+import 'package:uuid/uuid.dart';
 
 /// 운동 추적 서비스
 ///
@@ -33,6 +40,17 @@ class WorkoutTrackingService extends ChangeNotifier {
   Duration? _goalTime;
   Pace? _goalPace;
 
+  // 구조화된 운동 (템플릿) 상태
+  bool _isStructured = false;
+  WorkoutTemplate? _activeTemplate;
+  String _activeTemplateName = "Running";
+  List<TemplateBlock> _activeBlocks = [];
+  int _currentBlockIndex = 0;
+  double _blockDistanceAccumulator = 0; // 현재 블록 누적 거리
+  Duration _blockDurationAccumulator = Duration.zero; // 현재 블록 누적 시간
+  DateTime? _blockStartTime;
+  Duration? _lastBlockDuration; // 이전 블록 소요 시간 (Lap Time)
+
   // 스트림
   final _workoutStateController = StreamController<WorkoutState>.broadcast();
   Stream<WorkoutState> get workoutStateStream => _workoutStateController.stream;
@@ -40,6 +58,7 @@ class WorkoutTrackingService extends ChangeNotifier {
   // 서비스
   final Health _health = Health();
   StreamSubscription<Position>? _positionStream;
+  StreamSubscription<double>? _heartRateSubscription;
   Timer? _updateTimer;
 
   // 상수
@@ -50,7 +69,7 @@ class WorkoutTrackingService extends ChangeNotifier {
   // 1. 운동 시작
   // ==============================
 
-  Future<void> startWorkout() async {
+  Future<void> startWorkout({WorkoutTemplate? template}) async {
     if (_isTracking) return;
 
     // 1.1 권한 확인
@@ -68,7 +87,7 @@ class WorkoutTrackingService extends ChangeNotifier {
     _isTracking = true;
     _isPaused = false;
     _startTime = DateTime.now();
-    _stopTime = null; // 아직 운동이 중지되지 않음
+    _stopTime = null;
     _pausedTime = null;
     _totalPausedDuration = Duration.zero;
     _route.clear();
@@ -78,8 +97,45 @@ class WorkoutTrackingService extends ChangeNotifier {
     _paceHistory.clear();
     _latestHeartRate = null;
 
+    // 구조화된 템플릿 설정
+    if (template != null) {
+      _isStructured = true;
+      _activeTemplate = template;
+      _activeTemplateName = template.name;
+      _activeBlocks = template.phases.expand((p) => p.blocks).toList();
+      _currentBlockIndex = 0;
+      _blockDistanceAccumulator = 0;
+      _blockDurationAccumulator = Duration.zero;
+      _blockStartTime = DateTime.now();
+      _lastBlockDuration = null;
+    } else {
+      _isStructured = false;
+      _activeTemplate = null;
+      _activeTemplateName = "Free Run";
+      _activeBlocks = [];
+      _currentBlockIndex = 0;
+      _lastBlockDuration = null;
+    }
+
+    // Live Activity 강제 초기화 및 시작
+    final laService = LiveActivityService();
+    await laService.init(); // 초기화 보장
+    await laService.startActivity(
+      name: _activeTemplateName,
+      distanceKm: "0.00",
+      duration: "00:00:00",
+      pace: "--:--",
+      heartRate: null,
+    );
+
     // 1.3 GPS 추적 시작
     _startGPSTracking();
+
+    // 1.3.5 심박수 스트림 구독
+    _heartRateSubscription?.cancel();
+    _heartRateSubscription = HeartRateService().heartRateStream.listen((bpm) {
+      _latestHeartRate = bpm.toInt();
+    });
 
     // 1.4 실시간 업데이트 타이머 (1초마다)
     _startUpdateTimer();
@@ -129,6 +185,10 @@ class WorkoutTrackingService extends ChangeNotifier {
       // 노이즈 필터링: 비정상적으로 큰 거리는 무시
       if (distance < 100) {
         _totalDistance += distance;
+        
+        if (_isStructured) {
+          _blockDistanceAccumulator += distance;
+        }
 
         // 고도 상승분 계산 (Elevation Gain)
         double elevationDiff = position.altitude - lastPoint.altitude;
@@ -174,8 +234,65 @@ class WorkoutTrackingService extends ChangeNotifier {
     _updateTimer = Timer.periodic(Duration(seconds: 1), (timer) {
       if (_isTracking && !_isPaused) {
         _updateWorkoutState();
+        if (_isStructured) {
+          _checkBlockCompletion();
+        }
       }
     });
+  }
+
+  // ==============================
+  // 4.5 블록 진행 관리 (구조화된 운동)
+  // ==============================
+
+  void _checkBlockCompletion() {
+    if (_activeBlocks.isEmpty || _currentBlockIndex >= _activeBlocks.length) return;
+
+    final currentBlock = _activeBlocks[_currentBlockIndex];
+    bool shouldAdvance = false;
+
+    // 시간 업데이트
+    if (_blockStartTime != null) {
+      // 일시정지 고려: 단순히 시간 차이가 아니라, 실제 흐른 시간(activeDuration) 기반이어야 함.
+      // 여기서는 간소화를 위해 Timer가 1초마다 돌 때마다 1초씩 더하는 방식 or _blockDurationAccumulator를 별도로 관리
+      // _updateWorkoutState에서 계산된 값을 사용하면 좋음.
+      
+      // 임시: 타이머 주기로 1초씩 증가 (정확도를 위해 개선 필요)
+      _blockDurationAccumulator += const Duration(seconds: 1);
+    }
+
+    // 목표 체크
+    if (currentBlock.targetDistance != null && currentBlock.targetDistance! > 0) {
+      if (_blockDistanceAccumulator >= currentBlock.targetDistance!) {
+        shouldAdvance = true;
+      }
+    } else if (currentBlock.targetDuration != null && currentBlock.targetDuration! > 0) {
+      if (_blockDurationAccumulator.inSeconds >= currentBlock.targetDuration!) {
+        shouldAdvance = true;
+      }
+    }
+
+    if (shouldAdvance) {
+      advanceBlock();
+    }
+  }
+
+  void advanceBlock() {
+    if (_currentBlockIndex < _activeBlocks.length - 1) {
+      // 현재 블록 종료 시간 기록
+      _lastBlockDuration = _blockDurationAccumulator;
+      
+      _currentBlockIndex++;
+      _blockDistanceAccumulator = 0;
+      _blockDurationAccumulator = Duration.zero;
+      _blockStartTime = DateTime.now();
+      // TODO: Play sound/TTS for next block
+    } else {
+      // 마지막 블록 완료 -> 운동 종료? 아니면 쿨다운 계속?
+      // 일단은 마지막 블록 상태 유지 (Free run처럼)
+      // 또는 종료 알림
+    }
+    _updateWorkoutState();
   }
 
   // ==============================
@@ -215,20 +332,32 @@ class WorkoutTrackingService extends ChangeNotifier {
     }
 
     // 5.7 UI 업데이트
-    _workoutStateController.add(
-      WorkoutState(
-        isTracking: true,
-        isPaused: _isPaused,
-        duration: activeDuration,
-        distanceMeters: _totalDistance,
-        currentSpeedMs: currentSpeed,
-        averagePace: averagePace,
-        currentPace: currentPace,
-        calories: calories,
-        heartRate: _latestHeartRate,
-        routePointsCount: _route.length,
-        elevationGain: _totalElevationGain,
-      ),
+    final state = WorkoutState(
+      isTracking: true,
+      isPaused: _isPaused,
+      duration: activeDuration,
+      distanceMeters: _totalDistance,
+      currentSpeedMs: currentSpeed,
+      averagePace: averagePace,
+      currentPace: currentPace,
+      calories: calories,
+      heartRate: _latestHeartRate,
+      routePointsCount: _route.length,
+      elevationGain: _totalElevationGain,
+      isStructured: _isStructured,
+      currentBlockIndex: _currentBlockIndex,
+      lastBlockDuration: _lastBlockDuration,
+      currentBlockDuration: _blockDurationAccumulator,
+    );
+
+    _workoutStateController.add(state);
+
+    // Live Activity 업데이트
+    LiveActivityService().updateActivity(
+      distanceKm: state.distanceKm,
+      duration: state.durationFormatted,
+      pace: state.currentPace,
+      heartRate: state.heartRate,
     );
   }
 
@@ -357,6 +486,8 @@ class WorkoutTrackingService extends ChangeNotifier {
 
     _isTracking = false;
     _positionStream?.cancel();
+    _heartRateSubscription?.cancel();
+    _heartRateSubscription = null;
     _updateTimer?.cancel();
 
     // 11.3 최종 시간 계산
@@ -364,7 +495,7 @@ class WorkoutTrackingService extends ChangeNotifier {
     final activeDuration =
         _stopTime!.difference(_startTime!) - _totalPausedDuration;
 
-    // 11.4 최종 요약 생성
+    // 11.3 최종 요약 생성
     final summary = WorkoutSummary(
       startTime: _startTime!,
       endTime: endTime, // 완료 시간 (elapsed time)
@@ -381,8 +512,30 @@ class WorkoutTrackingService extends ChangeNotifier {
       paceData: List.from(_paceHistory),
     );
 
-    // 11.3 HealthKit에 저장
+    // 11.3.5 로컬 DB 저장 (WorkoutHistoryService 활용)
+    final workoutSession = WorkoutSession(
+      id: const Uuid().v4(),
+      templateId: _activeTemplate?.id ?? 'free_run',
+      templateName: _activeTemplateName,
+      category: _activeTemplate?.category ?? 'Endurance',
+      startTime: _startTime!,
+      endTime: endTime,
+      activeDuration: activeDuration.inSeconds,
+      totalDuration: endTime.difference(_startTime!).inSeconds,
+      totalDistance: _totalDistance,
+      calories: summary.calories,
+      averageHeartRate: summary.averageHeartRate,
+      elevationGain: _totalElevationGain,
+      environmentType: _activeTemplate?.environmentType,
+      exerciseRecords: [], // Endurance는 exerciseRecords가 비어있음
+    );
+    await WorkoutHistoryService().saveSession(workoutSession);
+
+    // 11.4 HealthKit에 저장
     await _saveToHealthKit(summary);
+
+    // Live Activity 종료
+    LiveActivityService().endActivity();
 
     return summary;
   }
@@ -490,6 +643,7 @@ class WorkoutTrackingService extends ChangeNotifier {
   @override
   void dispose() {
     _positionStream?.cancel();
+    _heartRateSubscription?.cancel();
     _updateTimer?.cancel();
     _workoutStateController.close();
     super.dispose();
@@ -539,6 +693,12 @@ class WorkoutState {
   final int? heartRate;
   final int routePointsCount;
   final double elevationGain;
+  
+  // 구조화된 운동 상태
+  final bool isStructured;
+  final int currentBlockIndex;
+  final Duration? lastBlockDuration;
+  final Duration currentBlockDuration; // 현재 블록 경과 시간
 
   WorkoutState({
     required this.isTracking,
@@ -552,6 +712,10 @@ class WorkoutState {
     this.heartRate,
     required this.routePointsCount,
     this.elevationGain = 0.0,
+    this.isStructured = false,
+    this.currentBlockIndex = 0,
+    this.lastBlockDuration,
+    this.currentBlockDuration = Duration.zero,
   });
 
   String get distanceKm => (distanceMeters / 1000).toStringAsFixed(2);

@@ -3,28 +3,35 @@ import 'package:provider/provider.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../models/sessions/route_point.dart';
+import '../models/templates/workout_template.dart';
+import '../models/templates/template_block.dart';
 import '../services/workout_tracking_service.dart';
 import '../services/heart_rate_service.dart';
 import '../widgets/heart_rate_monitor_widget.dart';
+import 'tracking/components/free_run_body.dart';
+import 'tracking/components/interval_tracking_body.dart';
+import 'tracking/components/steady_state_tracking_body.dart';
 import 'dart:async';
 
 /// 실시간 운동 추적 화면
-///
-/// 개선사항:
-/// - 3초 카운트다운 추가
-/// - 대시보드 톤 통일 (카키/연두색, SVG 아이콘)
-/// - 더 직관적인 UI
-class WorkoutTrackingScreen extends StatefulWidget {
-  const WorkoutTrackingScreen({super.key});
+class EnduranceTrackingScreen extends StatefulWidget {
+  final WorkoutTemplate? template; // 추가: 템플릿 정보
+
+  const EnduranceTrackingScreen({super.key, this.template});
 
   @override
-  State<WorkoutTrackingScreen> createState() => _WorkoutTrackingScreenState();
+  State<EnduranceTrackingScreen> createState() => _EnduranceTrackingScreenState();
 }
 
-class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> with SingleTickerProviderStateMixin {
+class _EnduranceTrackingScreenState extends State<EnduranceTrackingScreen> with SingleTickerProviderStateMixin {
   late WorkoutTrackingService _service;
   final HeartRateService _hrService = HeartRateService();
   WorkoutState? _currentState;
+
+  // 템플릿 진행 관련
+  List<TemplateBlock> _blocks = [];
+  int _currentBlockIndex = 0;
+  bool _isTemplateMode = false;
 
   // 카운트다운 관련
   bool _showCountdown = true;
@@ -36,6 +43,17 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> with Sing
   void initState() {
     super.initState();
     _service = Provider.of<WorkoutTrackingService>(context, listen: false);
+
+    // 템플릿 모드 확인
+    if (widget.template != null) {
+      final sub = widget.template!.subCategory?.toLowerCase() ?? '';
+      if (sub.contains('basic') || sub.contains('free')) {
+        _isTemplateMode = false; // Basic Run은 기존 Free Run UI 사용
+      } else {
+        _isTemplateMode = true;
+        _blocks = widget.template!.phases.expand((p) => p.blocks).toList();
+      }
+    }
 
     // 펄스 애니메이션 설정
     _pulseController = AnimationController(
@@ -54,6 +72,9 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> with Sing
       if (mounted) {
         setState(() {
           _currentState = state;
+          if (state.isStructured) {
+            _currentBlockIndex = state.currentBlockIndex;
+          }
         });
       }
     });
@@ -81,6 +102,7 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> with Sing
           _showCountdown = false;
           _pulseController.stop();
           _hrService.startMonitoring(); // 심박수 모니터링 시작
+          _service.startWorkout(template: widget.template); // 운동 시작 호출 추가
           timer.cancel();
         }
       });
@@ -116,7 +138,7 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> with Sing
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+            Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.3),
             Theme.of(context).colorScheme.surface,
           ],
         ),
@@ -131,7 +153,7 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> with Sing
               width: 100,
               height: 100,
               colorFilter: ColorFilter.mode(
-                Theme.of(context).colorScheme.secondary,
+                Theme.of(context).colorScheme.tertiary,
                 BlendMode.srcIn,
               ),
             ),
@@ -160,9 +182,9 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> with Sing
                     height: 150,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2),
+                      color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.2),
                       border: Border.all(
-                        color: Theme.of(context).colorScheme.secondary,
+                        color: Theme.of(context).colorScheme.tertiary,
                         width: 4,
                       ),
                     ),
@@ -172,7 +194,7 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> with Sing
                         style: TextStyle(
                           fontSize: 80,
                           fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.secondary,
+                          color: Theme.of(context).colorScheme.tertiary,
                         ),
                       ),
                     ),
@@ -196,125 +218,156 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> with Sing
     );
   }
 
-  /// 운동 중 추적 화면 (개선된 UI)
+  /// 운동 중 추적 화면 (고도화된 퍼포먼스 UI)
   Widget _buildTrackingScreen() {
     if (_currentState == null) return const SizedBox();
 
     return Column(
       children: [
-        // 상단: 상태 표시
-        _buildHeader(),
+        // 1. 상단 슬림 상태바
+        _buildSlimHeader(),
+        
+        // 2. 템플릿 진행 바 (템플릿 모드일 때만)
+        if (_isTemplateMode) _buildSessionProgressBar(),
 
-        // 메인: 핵심 지표
+        // 3. 메인 지표 영역
         Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                // 주요 지표: 거리 (대형)
-                _buildPrimaryMetric(
-                  value: _currentState!.distanceKm,
-                  unit: 'km',
-                  label: '거리',
-                ),
-                const SizedBox(height: 20),
-
-                // 시간과 페이스 (중요 지표 2개)
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildSecondaryMetric(
-                        label: '시간',
-                        value: _currentState!.durationFormatted,
-                        icon: Icons.timer,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildSecondaryMetric(
-                        label: '평균 페이스',
-                        value: _currentState!.averagePace,
-                        unit: '/km',
-                        icon: Icons.speed,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // 현재 페이스 (강조)
-                _buildCurrentPaceCard(),
-                const SizedBox(height: 24),
-
-                // 실시간 심박수 모니터 (Endurance 스타일에 맞게 배치)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    HeartRateMonitorWidget(),
-                  ],
-                ),
-                const SizedBox(height: 24),
-
-                // 칼로리 & 상승 고도
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildCompactMetric(
-                        label: '칼로리',
-                        value: _currentState!.caloriesFormatted,
-                        unit: 'kcal',
-                        icon: Icons.local_fire_department,
-                        color: Colors.orange,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildCompactMetric(
-                        label: '상승 고도',
-                        value: _currentState!.elevationGain.toStringAsFixed(0),
-                        unit: 'm',
-                        icon: Icons.terrain,
-                        color: Colors.cyan,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-
-                // GPS 포인트 정보 (텍스트로만 유지)
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.gps_fixed,
-                        size: 16,
-                        color: Theme.of(context).colorScheme.secondary,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'GPS: ${_currentState!.routePointsCount}개 포인트',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
+          child: _isTemplateMode 
+            ? _buildTemplateTrackingBody() 
+            : FreeRunBody(currentState: _currentState!),
         ),
 
-        // 하단: 컨트롤 버튼
+        // 4. 하단 컨트롤 버튼
         _buildControls(),
       ],
+    );
+  }
+
+  Widget _buildSessionProgressBar() {
+    return LinearProgressIndicator(
+      value: (_currentBlockIndex + 1) / _blocks.length,
+      backgroundColor: Colors.white10,
+      valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.tertiary),
+      minHeight: 4,
+    );
+  }
+
+  Widget _buildTemplateTrackingBody() {
+    final block = _blocks[_currentBlockIndex];
+    final subCategory = widget.template?.subCategory ?? '';
+
+    if (subCategory.contains('Interval') || subCategory.contains('Sprint')) {
+      return IntervalTrackingBody(
+        currentState: _currentState!,
+        currentBlock: block,
+        currentBlockIndex: _currentBlockIndex,
+        totalBlocks: _blocks.length,
+        onNextBlock: _service.advanceBlock,
+      );
+    } else if (subCategory.contains('LSD') || subCategory.contains('Tempo')) {
+      return SteadyStateTrackingBody(
+        currentState: _currentState!,
+        currentBlock: block,
+      );
+    } else {
+      // Fallback to Free Run style but with block info if possible, or simple interval
+      return IntervalTrackingBody(
+        currentState: _currentState!,
+        currentBlock: block,
+        currentBlockIndex: _currentBlockIndex,
+        totalBlocks: _blocks.length,
+        onNextBlock: _service.advanceBlock,
+      );
+    }
+  }
+
+  Widget _buildSlimHeader() {
+    final isPaused = _currentState?.isPaused ?? false;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      decoration: BoxDecoration(
+        color: isPaused ? Colors.orange.withValues(alpha: 0.1) : Colors.transparent,
+        border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.05))),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Total Distance & Heart Rate
+          Row(
+            children: [
+              HeartRateMonitorWidget(),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'TOTAL DIST',
+                    style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    _currentState?.distanceKmFormatted ?? '0.00 km',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          
+          // Elapsed Time
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                'ELAPSED TIME',
+                style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold, letterSpacing: 1),
+              ),
+              Text(
+                _currentState!.durationFormatted,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGridMetric(String label, String value, String unit) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold, letterSpacing: 1),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                value,
+                style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                unit,
+                style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -502,10 +555,10 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> with Sing
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+        color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Theme.of(context).colorScheme.primary,
+          color: Theme.of(context).colorScheme.tertiary,
           width: 2,
         ),
       ),
@@ -517,7 +570,7 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> with Sing
               Icon(
                 Icons.trending_up,
                 size: 20,
-                color: Theme.of(context).colorScheme.primary,
+                color: Theme.of(context).colorScheme.tertiary,
               ),
               const SizedBox(width: 8),
               Text(
@@ -525,7 +578,7 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> with Sing
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.primary,
+                  color: Theme.of(context).colorScheme.tertiary,
                 ),
               ),
             ],
@@ -540,7 +593,7 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> with Sing
                 style: TextStyle(
                   fontSize: 40,
                   fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.primary,
+                  color: Theme.of(context).colorScheme.tertiary,
                 ),
               ),
               Padding(
@@ -702,8 +755,8 @@ class _WorkoutTrackingScreenState extends State<WorkoutTrackingScreen> with Sing
                 style: ElevatedButton.styleFrom(
                   backgroundColor: isPaused
                       ? Theme.of(context).colorScheme.secondary
-                      : Theme.of(context).colorScheme.primary,
-                  foregroundColor: Colors.white,
+                      : Theme.of(context).colorScheme.tertiary,
+                  foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 18),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -835,196 +888,179 @@ class WorkoutSummaryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeColor = Theme.of(context).colorScheme.tertiary;
+
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        title: const Text('운동 완료'),
+        title: const Text('운동 완료 리포트'),
         backgroundColor: Theme.of(context).colorScheme.surface,
         foregroundColor: Theme.of(context).colorScheme.onSurface,
         automaticallyImplyLeading: false,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 완료 배지 (강조)
-            Container(
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2),
-                    Theme.of(context).colorScheme.secondary.withValues(alpha: 0.05),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.3),
-                  width: 2,
-                ),
-              ),
+            // 1. Hero Metric: Distance
+            Center(
               child: Column(
                 children: [
-                  // Runner 아이콘
-                  SvgPicture.asset(
-                    'assets/images/endurance/runner-icon.svg',
-                    width: 80,
-                    height: 80,
-                    colorFilter: ColorFilter.mode(
-                      Theme.of(context).colorScheme.secondary,
-                      BlendMode.srcIn,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
                   Text(
-                    '수고하셨습니다!',
-                    textAlign: TextAlign.center,
+                    'TOTAL DISTANCE',
                     style: TextStyle(
-                      fontSize: 28,
+                      fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.secondary,
+                      color: themeColor.withValues(alpha: 0.6),
+                      letterSpacing: 2,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.check_circle_rounded,
-                          size: 16,
-                          color: Theme.of(context).colorScheme.primary,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Text(
+                        summary.distanceKm,
+                        style: TextStyle(
+                          fontSize: 80,
+                          fontWeight: FontWeight.w900,
+                          color: themeColor,
+                          height: 1,
                         ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'HealthKit에 저장 완료',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'km',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: themeColor.withValues(alpha: 0.7),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 48),
 
-            // 운동 경로 지도 (완료 후 결과로 표시)
-            if (summary.routePoints.isNotEmpty) ...[
-              _buildResultMap(context, summary.routePoints),
-              const SizedBox(height: 24),
-            ],
-
-            // 거리
-            _buildSummaryCard(
-              context,
-              '거리',
-              summary.distanceKm,
-              'km',
-              Icons.straighten,
-            ),
-            const SizedBox(height: 16),
-
-            // 시간
-            _buildSummaryCard(
-              context,
-              '시간',
-              summary.durationFormatted,
-              '',
-              Icons.timer,
-            ),
-            const SizedBox(height: 16),
-
-            // 페이스
-            _buildSummaryCard(
-              context,
-              '평균 페이스',
-              summary.averagePace,
-              '/km',
-              Icons.speed,
-            ),
-            const SizedBox(height: 16),
-
-            // 칼로리
-            _buildSummaryCard(
-              context,
-              '칼로리',
-              summary.calories.toStringAsFixed(0),
-              'kcal',
-              Icons.local_fire_department,
-            ),
-            const SizedBox(height: 16),
-
-            // 심박수 (평균)
-            _buildSummaryCard(
-              context,
-              '평균 심박수',
-              summary.averageHeartRate?.toString() ?? '--',
-              'bpm',
-              Icons.favorite,
-            ),
-            const SizedBox(height: 32),
-
-            // 상세 정보
+            // 2. Metrics Grid (Row-Column)
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(12),
+                color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildDetailRow('시작 시간', _formatTime(summary.startTime)),
-                  const Divider(),
-                  _buildDetailRow('종료 시간', _formatTime(summary.endTime)),
-                  const Divider(),
-                  _buildDetailRow('GPS 포인트', '${summary.routePoints.length}개'),
-                  if (summary.pausedDuration.inSeconds > 0) ...[
-                    const Divider(),
-                    _buildDetailRow(
-                      '일시정지',
-                      _formatDuration(summary.pausedDuration),
-                    ),
-                  ],
+                  Row(
+                    children: [
+                      _buildSummaryGridItem('TIME', summary.durationFormatted, '', Icons.timer, themeColor),
+                      _buildSummaryGridItem('AVG PACE', summary.averagePace, '/km', Icons.speed, themeColor),
+                    ],
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Divider(color: Colors.white10),
+                  ),
+                  Row(
+                    children: [
+                      _buildSummaryGridItem('AVG HR', summary.averageHeartRate?.toString() ?? '--', 'bpm', Icons.favorite, themeColor),
+                      _buildSummaryGridItem('CALORIES', summary.calories.toStringAsFixed(0), 'kcal', Icons.local_fire_department, themeColor),
+                    ],
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Divider(color: Colors.white10),
+                  ),
+                  Row(
+                    children: [
+                      _buildSummaryGridItem('ELEVATION', summary.elevationGain.toStringAsFixed(0), 'm', Icons.terrain, themeColor),
+                      const Expanded(child: SizedBox()), // 여백 채우기
+                    ],
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: 32),
 
-            // 홈으로 버튼
+            // 3. Movement Route Map
+            if (summary.routePoints.isNotEmpty) ...[
+              const Text(
+                'MOVEMENT ROUTE',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2),
+              ),
+              const SizedBox(height: 12),
+              _buildResultMap(context, summary.routePoints),
+              const SizedBox(height: 32),
+            ],
+
+            // 4. Action Button
             ElevatedButton(
               onPressed: () {
                 Navigator.popUntil(context, (route) => route.isFirst);
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.secondary,
-                foregroundColor: Theme.of(context).colorScheme.onSecondary,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: Theme.of(context).colorScheme.secondary, // Hybrid Color for main action
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(vertical: 18),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30),
                 ),
+                elevation: 4,
               ),
               child: const Text(
-                '홈으로',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                'BACK TO HOME',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.2),
               ),
             ),
+            const SizedBox(height: 24),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryGridItem(String label, String value, String unit, IconData icon, Color color) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 14, color: Colors.grey),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                value,
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+              ),
+              if (unit.isNotEmpty) ...[
+                const SizedBox(width: 4),
+                Text(
+                  unit,
+                  style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -1047,7 +1083,7 @@ class WorkoutSummaryScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, size: 32, color: Theme.of(context).colorScheme.secondary),
+          Icon(icon, size: 32, color: Theme.of(context).colorScheme.tertiary),
           const SizedBox(width: 16),
           Expanded(
             child: Column(

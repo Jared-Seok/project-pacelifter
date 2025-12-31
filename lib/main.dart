@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:path_provider/path_provider.dart';
 import 'services/workout_tracking_service.dart';
 import 'services/template_service.dart';
 import 'screens/health_import_screen.dart';
@@ -22,17 +21,47 @@ import 'models/sessions/exercise_record.dart';
 import 'models/scoring/performance_scores.dart';
 
 void main() async {
+  // 1. Flutter 엔진 초기화
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Hive 초기화 (웹 vs 네이티브 분기 처리)
-  if (kIsWeb) {
+  try {
+    // 2. Hive 기본 초기화
     await Hive.initFlutter();
-  } else {
-    final appDocumentDir = await getApplicationDocumentsDirectory();
-    await Hive.initFlutter(appDocumentDir.path);
-  }
 
-  // TypeAdapter 등록
+    // 3. Adapter 등록
+    _registerHiveAdapters();
+
+    // 4. 필수 박스들을 우선적으로 열기 (UI가 바로 필요로 하는 것들)
+    // 이 작업이 완료되어야 하얀 화면을 방지하고 정상적인 데이터 접근이 가능함
+    await Future.wait([
+      Hive.openBox<WorkoutTemplate>('workout_templates'),
+      Hive.openBox<CustomPhasePreset>('custom_phase_presets'),
+      Hive.openBox<Exercise>('exercises'),
+      Hive.openBox<WorkoutSession>('user_workout_history'),
+      Hive.openBox<ExerciseRecord>('user_exercise_records'),
+      Hive.openBox<PerformanceScores>('user_scores'),
+    ]);
+
+    // 5. 템플릿 및 운동 데이터 로드
+    await TemplateService.loadAllTemplatesAndExercises();
+
+    runApp(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (context) => WorkoutTrackingService()),
+          ChangeNotifierProvider(create: (context) => StrengthRoutineProvider()),
+        ],
+        child: const MyApp(),
+      ),
+    );
+    
+  } catch (e) {
+    debugPrint('❌ Critical Initialization Error: $e');
+    runApp(MaterialApp(home: Scaffold(body: Center(child: Text('앱 초기화 오류: $e')))));
+  }
+}
+
+void _registerHiveAdapters() {
   Hive.registerAdapter(WorkoutTemplateAdapter());
   Hive.registerAdapter(TemplatePhaseAdapter());
   Hive.registerAdapter(TemplateBlockAdapter());
@@ -42,27 +71,6 @@ void main() async {
   Hive.registerAdapter(ExerciseRecordAdapter());
   Hive.registerAdapter(SetRecordAdapter());
   Hive.registerAdapter(PerformanceScoresAdapter());
-
-  // Hive Box 열기
-  await Hive.openBox<WorkoutTemplate>('workout_templates');
-  await Hive.openBox<CustomPhasePreset>('custom_phase_presets');
-  await Hive.openBox<Exercise>('exercises');
-  await Hive.openBox<WorkoutSession>('user_workout_history');
-  await Hive.openBox<ExerciseRecord>('user_exercise_records');
-  await Hive.openBox<PerformanceScores>('user_scores'); // 점수 저장
-
-  // 템플릿 및 운동 데이터 로드
-  await TemplateService.loadAllTemplatesAndExercises();
-
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (context) => WorkoutTrackingService()),
-        ChangeNotifierProvider(create: (context) => StrengthRoutineProvider()),
-      ],
-      child: const MyApp(),
-    ),
-  );
 }
 
 class MyApp extends StatelessWidget {
@@ -85,19 +93,24 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: const ColorScheme(
           brightness: Brightness.dark,
-          primary: Color(0xFFFF9100), // Vivid Orange (Strength)
+          primary: Color(0xFFFF9100),
           onPrimary: Colors.black,
-          secondary: Color(0xFFD4E157), // Neon Green (Hybrid Core)
+          secondary: Color(0xFFD4E157),
           onSecondary: Colors.black,
-          tertiary: Color(0xFF00BFA5), // Deep Teal (Endurance)
+          tertiary: Color(0xFF00BFA5),
           onTertiary: Colors.black,
           surface: Color(0xFF121212),
           onSurface: Color(0xFFEEEEEE),
           error: Colors.red,
           onError: Colors.white,
         ),
+        textSelectionTheme: const TextSelectionThemeData(
+          cursorColor: Color(0xFFD4E157),
+          selectionColor: Color(0x66D4E157),
+          selectionHandleColor: Color(0xFFD4E157),
+        ),
         progressIndicatorTheme: const ProgressIndicatorThemeData(
-          color: Color(0xFFD4E157), // 하이브리드 대표 색상인 네온 그린으로 변경
+          color: Color(0xFFD4E157),
         ),
         useMaterial3: true,
       ),
@@ -105,147 +118,6 @@ class MyApp extends StatelessWidget {
       routes: {
         '/add-workout': (context) => const AddWorkoutScreen(),
       },
-    );
-  }
-}
-
-class PaceLifterHome extends StatelessWidget {
-  const PaceLifterHome({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(
-        title: const Text('PaceLifter'),
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        foregroundColor: Theme.of(context).colorScheme.onSurface,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 24),
-            Icon(Icons.directions_run, size: 80, color: Theme.of(context).colorScheme.secondary),
-            const SizedBox(height: 16),
-            const Text(
-              'PaceLifter',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              '러닝 & 하이록스 트레이닝 앱',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: Colors.grey),
-            ),
-            const SizedBox(height: 48),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '주요 기능',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildFeatureItem(
-                      context,
-                      Icons.upload_file,
-                      'Apple Health 데이터 분석',
-                      '기존 운동 데이터를 불러와서 분석',
-                    ),
-                    _buildFeatureItem(
-                      context,
-                      Icons.gps_fixed,
-                      'GPS 러닝 트래킹',
-                      '실시간 위치 추적 및 페이스 분석',
-                    ),
-                    _buildFeatureItem(context, Icons.event, '대회 준비', '목표 레이스에 맞춘 훈련 계획'),
-                    _buildFeatureItem(
-                      context,
-                      Icons.insights,
-                      '퍼포먼스 분석',
-                      '데이터 기반 운동 인사이트',
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const HealthImportScreen(),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.upload_file),
-              label: const Text('Apple Health 데이터 불러오기'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.all(16),
-                textStyle: const TextStyle(fontSize: 16),
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Theme.of(context).colorScheme.onPrimary,
-              ),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('GPS 러닝 기능은 개발 중입니다')),
-                );
-              },
-              icon: const Icon(Icons.gps_fixed),
-              label: const Text('GPS 러닝 시작'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.all(16),
-                textStyle: const TextStyle(fontSize: 16),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFeatureItem(BuildContext context, IconData icon, String title, String description) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: Theme.of(context).colorScheme.primary, size: 24),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: const TextStyle(fontSize: 14, color: Colors.grey),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

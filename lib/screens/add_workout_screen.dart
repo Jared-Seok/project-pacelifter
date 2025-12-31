@@ -89,7 +89,7 @@ class _AddWorkoutScreenState extends State<AddWorkoutScreen> {
                   child: _buildCategoryButton(
                     'Endurance',
                     Icons.directions_run,
-                    Theme.of(context).colorScheme.secondary,
+                    Theme.of(context).colorScheme.tertiary,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -304,7 +304,7 @@ class _AddWorkoutScreenState extends State<AddWorkoutScreen> {
         style: ElevatedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 16),
           backgroundColor: _selectedCategory == 'Endurance'
-              ? Theme.of(context).colorScheme.secondary
+              ? Theme.of(context).colorScheme.tertiary
               : Theme.of(context).colorScheme.primary,
           foregroundColor: Colors.white,
         ),

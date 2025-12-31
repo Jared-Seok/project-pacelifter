@@ -12,7 +12,8 @@ import '../services/health_service.dart';
 import '../models/templates/workout_template.dart';
 import '../models/templates/template_block.dart';
 import '../models/templates/custom_phase_preset.dart';
-import 'workout_tracking_screen.dart';
+import 'endurance_tracking_screen.dart';
+import 'hybrid_tracking_screen.dart';
 import 'strength_tracking_screen.dart'; 
 import '../widgets/block_edit_dialog.dart';
 import '../widgets/interval_set_edit_dialog.dart';
@@ -85,6 +86,19 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
   void dispose() {
     _mapController?.dispose();
     super.dispose();
+  }
+
+  Color _getThemeColor() {
+    switch (_editableTemplate.category) {
+      case 'Strength':
+        return Theme.of(context).colorScheme.primary;
+      case 'Endurance':
+        return Theme.of(context).colorScheme.tertiary;
+      case 'Hybrid':
+        return Theme.of(context).colorScheme.secondary;
+      default:
+        return Theme.of(context).colorScheme.secondary;
+    }
   }
 
   bool _shouldShowMap() {
@@ -161,6 +175,8 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     // 운동 시작 전 건강 데이터 권한 확인 (심박수 등)
     await HealthService().requestAuthorization();
 
+    if (!mounted) return;
+
     if (widget.template.category == 'Strength') {
       Navigator.pushReplacement(
         context,
@@ -168,13 +184,22 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
           builder: (context) => StrengthTrackingScreen(template: widget.template),
         ),
       );
+    } else if (widget.template.category == 'Hybrid') {
+      // 하이브리드 트래킹 화면으로 이동
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => HybridTrackingScreen(template: widget.template),
+        ),
+      );
     } else {
-      await _workoutService.startWorkout();
+      // Endurance 트래킹 화면으로 이동
+      // _workoutService.startWorkout()은 EnduranceTrackingScreen에서 카운트다운 후 호출됨
       if (mounted) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => const WorkoutTrackingScreen(),
+            builder: (context) => EnduranceTrackingScreen(template: _editableTemplate),
           ),
         );
       }
@@ -749,6 +774,7 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
   }
 
   Widget _buildTemplateInfoSection() {
+    final themeColor = _getThemeColor();
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -767,7 +793,7 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
           _buildCategoryIcon(
             _editableTemplate.category,
             size: 48,
-            color: Theme.of(context).colorScheme.primary,
+            color: themeColor,
           ),
           const SizedBox(height: 12),
           Text(
@@ -869,7 +895,7 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
               width: 24,
               height: 24,
               colorFilter: ColorFilter.mode(
-                Theme.of(context).colorScheme.primary,
+                _getThemeColor(),
                 BlendMode.srcIn,
               ),
             ),
@@ -1033,6 +1059,8 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     final workBlock = item.blocks[0];
     final restBlock = item.blocks.length > 1 ? item.blocks[1] : null;
 
+    final themeColor = _getThemeColor();
+
     return Theme(
       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
@@ -1042,8 +1070,8 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
           child: Center(
             child: CircleAvatar(
               radius: avatarRadius,
-              backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
-              child: Icon(Icons.repeat, color: Theme.of(context).colorScheme.primary, size: iconSize),
+              backgroundColor: themeColor.withValues(alpha: 0.2),
+              child: Icon(Icons.repeat, color: themeColor, size: iconSize),
             ),
           ),
         ),
@@ -1135,6 +1163,8 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     final double verticalPadding = isStrength ? 18.0 : 6.0;
     final double actionIconSize = isStrength ? 28.0 : 18.0;
 
+    final themeColor = _getThemeColor();
+
     String? specificIconPath;
     if (block.type == 'strength' && block.exerciseId != null) {
       final exercise = TemplateService.getExerciseById(block.exerciseId!);
@@ -1155,17 +1185,17 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
                     width: iconSize,
                     height: iconSize,
                     colorFilter: ColorFilter.mode(
-                      Theme.of(context).colorScheme.primary,
+                      themeColor,
                       BlendMode.srcIn,
                     ),
                   )
                 : CircleAvatar(
                     radius: iconSectionWidth / 2.5, 
-                    backgroundColor: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2),
+                    backgroundColor: themeColor.withValues(alpha: 0.2),
                     child: _buildBlockIcon(
                       block,
                       size: iconSize * 0.6,
-                      color: Theme.of(context).colorScheme.secondary,
+                      color: themeColor,
                     ),
                   ),
             ),
@@ -1348,7 +1378,7 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
                         onPressed: () => setModalState(() => useKeyboard = !useKeyboard),
                       ),
                       CupertinoButton(
-                        child: const Text('설정', style: TextStyle(fontWeight: FontWeight.bold)),
+                        child: Text('설정', style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.secondary)),
                         onPressed: () {
                           if (useKeyboard) {
                             km = int.tryParse(kmController.text) ?? 0;
@@ -1403,7 +1433,7 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
                         onPressed: () => setModalState(() => useKeyboard = !useKeyboard),
                       ),
                       CupertinoButton(
-                        child: const Text('설정', style: TextStyle(fontWeight: FontWeight.bold)),
+                        child: Text('설정', style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.secondary)),
                         onPressed: () {
                           if (useKeyboard) {
                             min = int.tryParse(minController.text) ?? 0;
@@ -1457,7 +1487,7 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
                         onPressed: () => setModalState(() => useKeyboard = !useKeyboard),
                       ),
                       CupertinoButton(
-                        child: const Text('설정', style: TextStyle(fontWeight: FontWeight.bold)),
+                        child: Text('설정', style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.secondary)),
                         onPressed: () {
                           if (useKeyboard) {
                             h = int.tryParse(hController.text) ?? 0;

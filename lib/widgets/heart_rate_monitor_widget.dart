@@ -14,7 +14,7 @@ class HeartRateMonitorWidget extends StatelessWidget {
       builder: (context, snapshot) {
         final double bpm = snapshot.data ?? 0;
         final int zone = hrService.getHeartRateZone(bpm);
-        final Color zoneColor = _getZoneColor(zone);
+        final Color zoneColor = _getZoneColor(zone, context);
 
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -70,13 +70,13 @@ class HeartRateMonitorWidget extends StatelessWidget {
     );
   }
 
-  Color _getZoneColor(int zone) {
+  Color _getZoneColor(int zone, BuildContext context) {
     switch (zone) {
-      case 1: return Colors.blue;
-      case 2: return Colors.green;
-      case 3: return Colors.yellow;
-      case 4: return Colors.orange;
-      case 5: return Colors.red;
+      case 1: return Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.8); // Deep Teal
+      case 2: return Theme.of(context).colorScheme.tertiary; // Deep Teal
+      case 3: return Theme.of(context).colorScheme.secondary; // Neon Green
+      case 4: return Theme.of(context).colorScheme.primary.withValues(alpha: 0.8); // Orange
+      case 5: return Theme.of(context).colorScheme.primary; // Orange
       default: return Colors.grey;
     }
   }

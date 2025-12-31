@@ -99,6 +99,7 @@ class _LoginScreenState extends State<LoginScreen>
     });
 
     // 10초마다 phrase 변경
+    _motivationalPhrases.shuffle(); // 리스트 순서를 랜덤하게 섞음
     _startPhraseTimer();
   }
 
@@ -255,28 +256,15 @@ class _LoginScreenState extends State<LoginScreen>
                             builder: (context, child) {
                               return FadeTransition(
                                 opacity: _phraseFadeAnimation,
-                                child: ShaderMask(
-                                  shaderCallback: (bounds) {
-                                    return LinearGradient(
-                                      colors: [
-                                        Theme.of(context).colorScheme.secondary,
-                                        Theme.of(context).colorScheme.tertiary,
-                                      ],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ).createShader(bounds);
-                                  },
-                                  child: Text(
-                                    _motivationalPhrases[_currentPhraseIndex],
-                                    textAlign: TextAlign.center,
-                                    style: GoogleFonts.bebasNeue(
-                                      fontSize: 40,
-                                      fontStyle: FontStyle.italic,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors
-                                          .white, // Color needs to be white for ShaderMask to work correctly with gradient
-                                      height: 1.3,
-                                    ),
+                                child: Text(
+                                  _motivationalPhrases[_currentPhraseIndex],
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.bebasNeue(
+                                    fontSize: 40,
+                                    fontStyle: FontStyle.italic,
+                                    fontWeight: FontWeight.w500,
+                                    color: Theme.of(context).colorScheme.secondary,
+                                    height: 1.3,
                                   ),
                                 ),
                               );
@@ -319,14 +307,19 @@ class _LoginScreenState extends State<LoginScreen>
                               // 사용자 이름 입력 필드
                               TextField(
                                 controller: _usernameController,
+                                cursorColor: Theme.of(context).colorScheme.secondary,
+                                selectionControls: MaterialTextSelectionControls(),
                                 decoration: InputDecoration(
                                   labelText: '애슬릿 이름',
+                                  labelStyle: TextStyle(
+                                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                                  ),
                                   hintText: '이름을 입력하세요',
                                   prefixIcon: Icon(
                                     Icons.person,
                                     color: Theme.of(
                                       context,
-                                    ).colorScheme.primary,
+                                    ).colorScheme.secondary,
                                   ),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
@@ -344,7 +337,7 @@ class _LoginScreenState extends State<LoginScreen>
                                     borderSide: BorderSide(
                                       color: Theme.of(
                                         context,
-                                      ).colorScheme.primary,
+                                      ).colorScheme.secondary,
                                       width: 2,
                                     ),
                                   ),

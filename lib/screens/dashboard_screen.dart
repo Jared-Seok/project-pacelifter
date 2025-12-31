@@ -54,6 +54,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // 무한 스크롤 관련 변수
   String _currentVisibleMonth = '';
   final Map<String, GlobalKey> _monthKeyMap = {};
+  final Map<String, int> _monthIndexMap = {}; // 각 월의 첫 번째 아이템 인덱스 저장
   
   Map<String, WorkoutSession> _sessionMap = {};
   PerformanceScores? _scores;
@@ -139,34 +140,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _initialize() async {
-    await _checkFirstLoginAndSync();
-    await _loadRaces();
-    await _loadPerformanceScores();
-    setState(() {
-      _isLoading = false;
-    });
+    try {
+      await _checkFirstLoginAndSync();
+      await _loadRaces();
+      await _loadPerformanceScores();
+    } catch (e) {
+      debugPrint('❌ Error during dashboard initialization: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> _loadRaces() async {
-    final races = await _raceService.getRaces();
-    if (mounted) {
-      // Sort races by date, upcoming first
-      races.sort((a, b) => a.raceDate.compareTo(b.raceDate));
-      setState(() {
-        _races = races;
-      });
+    try {
+      final races = await _raceService.getRaces();
+      if (mounted) {
+        // Sort races by date, upcoming first
+        races.sort((a, b) => a.raceDate.compareTo(b.raceDate));
+        setState(() {
+          _races = races;
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading races: $e');
     }
   }
 
   Future<void> _loadPerformanceScores() async {
-    final scores = ScoringEngine().getLatestScores();
-    if (mounted) {
-      setState(() {
-        _scores = scores;
-      });
-    }
-    
     try {
+      final scores = ScoringEngine().getLatestScores();
+      if (mounted) {
+        setState(() {
+          _scores = scores;
+        });
+      }
+      
       final updatedScores = await ScoringEngine().calculateAndSaveScores();
       if (mounted) {
         setState(() {
@@ -174,21 +186,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
         });
       }
     } catch (e) {
-      // ignore
+      debugPrint('❌ Error loading performance scores: $e');
     }
   }
 
   Future<void> _checkFirstLoginAndSync() async {
-    final isFirstLogin = await _authService.isFirstLogin();
-    final isSyncCompleted = await _authService.isHealthSyncCompleted();
+    try {
+      final isFirstLogin = await _authService.isFirstLogin();
+      final isSyncCompleted = await _authService.isHealthSyncCompleted();
 
-    if (isFirstLogin && !isSyncCompleted && mounted) {
-      await Future.delayed(const Duration(milliseconds: 500));
-      if (mounted) {
-        _showHealthSyncDialog();
-      }
-    } else if (isSyncCompleted) {
+      if (isFirstLogin && !isSyncCompleted && mounted) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (mounted) {
+          _showHealthSyncDialog();
+        }
+      } 
+      
+      // sync 여부와 관계없이 로컬 데이터 및 동기화된 데이터를 로드함
       await _loadHealthData();
+    } catch (e) {
+      debugPrint('❌ Error checking login/sync: $e');
     }
   }
 
@@ -225,118 +242,101 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _syncHealthData() async {
-    setState(() {
-      _isLoading = true;
-    });
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
     try {
       final granted = await _healthService.requestAuthorization();
       if (granted) {
-        final workoutData = await _healthService.fetchWorkoutData();
+        // 동기화 시에는 90일치를 가져와서 넉넉하게 보여줌
+        final workoutData = await _healthService.fetchWorkoutData(days: 90);
         await _authService.setHealthSyncCompleted(true);
         if (mounted) {
-          setState(() {
-            _workoutData = workoutData;
-            _calculateStatistics();
-            _isLoading = false;
-          });
-          _loadSessions();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
                 content: Text('${workoutData.length}개의 운동 기록을 동기화했습니다!'),
                 backgroundColor: Colors.green),
           );
+          await _loadHealthData(); // 통합 데이터 다시 로드
         }
-      } else {
+      }
+    } catch (e) {
+      debugPrint('❌ Error syncing health data: $e');
+    } finally {
+      if (mounted) {
         setState(() {
           _isLoading = false;
         });
       }
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
 
   Future<void> _loadHealthData() async {
-    setState(() {
-      _isLoading = true;
-    });
-    
-    // 1. HealthKit 데이터 가져오기
-    final workoutData = await _healthService.fetchWorkoutData();
-    
-    // 2. 로컬 Hive 세션 가져오기
-    final sessions = WorkoutHistoryService().getAllSessions();
-    final sessionMap = <String, WorkoutSession>{};
-    for (var s in sessions) {
-      if (s.healthKitWorkoutId != null) {
-        sessionMap[s.healthKitWorkoutId!] = s;
+    try {
+      // 1. HealthKit 데이터 가져오기 (최근 90일치로 제한하여 성능 개선)
+      final workoutData = await _healthService.fetchWorkoutData(days: 90);
+      
+      // 2. 로컬 Hive 세션 가져오기
+      final sessions = WorkoutHistoryService().getAllSessions();
+      final sessionMap = <String, WorkoutSession>{};
+      for (var s in sessions) {
+        if (s.healthKitWorkoutId != null) {
+          sessionMap[s.healthKitWorkoutId!] = s;
+        }
       }
-    }
 
-    // 3. 통합 리스트 생성
-    final List<WorkoutDataWrapper> unified = [];
-    final Set<String> linkedSessionIds = {};
+      // 3. 통합 리스트 생성
+      final List<WorkoutDataWrapper> unified = [];
+      final Set<String> linkedSessionIds = {};
 
-    // 3-1. HealthKit 데이터 기반 매핑
-    for (var data in workoutData) {
-      final session = sessionMap[data.uuid];
-      if (session != null) {
-        linkedSessionIds.add(session.id);
+      // 3-1. HealthKit 데이터 기반 매핑
+      for (var data in workoutData) {
+        final session = sessionMap[data.uuid];
+        if (session != null) {
+          linkedSessionIds.add(session.id);
+        }
+        unified.add(WorkoutDataWrapper(healthData: data, session: session));
       }
-      unified.add(WorkoutDataWrapper(healthData: data, session: session));
-    }
 
-    // 3-2. 연결되지 않은 로컬 세션 추가 (주로 로컬 Strength 운동)
-    for (var s in sessions) {
-      if (!linkedSessionIds.contains(s.id)) {
-        unified.add(WorkoutDataWrapper(session: s));
+      // 3-2. 연결되지 않은 로컬 세션 추가
+      for (var s in sessions) {
+        if (!linkedSessionIds.contains(s.id)) {
+          unified.add(WorkoutDataWrapper(session: s));
+        }
       }
-    }
 
-    // 4. 날짜순 정렬 (최신순)
-    unified.sort((a, b) => b.dateFrom.compareTo(a.dateFrom));
+      // 4. 날짜순 정렬 (최신순)
+      unified.sort((a, b) => b.dateFrom.compareTo(a.dateFrom));
 
-    if (mounted) {
-      setState(() {
-        _unifiedWorkouts = unified;
-        _workoutData = workoutData; // 레거시 호환용
-        _loadSessions(); // 세션 맵 업데이트
-        _calculateStatistics();
-        _prepareMonthKeys();
-        _isLoading = false;
-      });
-    }
-  }
-  
-  void _loadSessions() {
-    final sessions = WorkoutHistoryService().getAllSessions();
-    final map = <String, WorkoutSession>{};
-    for (var session in sessions) {
-      if (session.healthKitWorkoutId != null) {
-        map[session.healthKitWorkoutId!] = session;
+      if (mounted) {
+        setState(() {
+          _unifiedWorkouts = unified;
+          _workoutData = workoutData;
+          _calculateStatistics();
+          _prepareMonthKeys();
+        });
       }
-    }
-    if (mounted) {
-      setState(() {
-        _sessionMap = map;
-      });
+    } catch (e) {
+      debugPrint('❌ Error loading health data: $e');
     }
   }
 
   void _prepareMonthKeys() {
     _monthKeyMap.clear();
+    _monthIndexMap.clear();
     if (_unifiedWorkouts.isEmpty) return;
 
-    // 각 월의 첫 번째 데이터에 대한 Key 생성
-    Set<String> processedMonths = {};
-    for (var data in _unifiedWorkouts) {
+    // 각 월의 첫 번째 데이터(해당 월의 가장 최신 기록)에 대한 Key 및 Index 생성
+    for (int i = 0; i < _unifiedWorkouts.length; i++) {
+      final data = _unifiedWorkouts[i];
       final date = data.dateFrom;
       final monthKey = '${date.year}년 ${date.month}월';
-      if (!processedMonths.contains(monthKey)) {
+      
+      if (!_monthKeyMap.containsKey(monthKey)) {
         _monthKeyMap[monthKey] = GlobalKey();
-        processedMonths.add(monthKey);
+        _monthIndexMap[monthKey] = i;
       }
     }
 
@@ -410,7 +410,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
+                    color: Theme.of(context).colorScheme.secondary, // Neon Green
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -511,6 +511,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Expanded(
                         child: TextButton(
                           onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
                           child: const Text('취소'),
                         ),
                       ),
@@ -522,6 +525,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             final targetMonth = '$selectedYear년 $selectedMonth월';
                             _scrollToMonth(targetMonth);
                           },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(context).colorScheme.secondary,
+                            foregroundColor: Theme.of(context).colorScheme.onSecondary,
+                          ),
                           child: const Text('이동'),
                         ),
                       ),
@@ -537,25 +544,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _scrollToMonth(String monthKey) {
-    final key = _monthKeyMap[monthKey];
-    if (key == null) {
-      return;
-    }
+    final targetIndex = _monthIndexMap[monthKey];
+    if (targetIndex == null) return;
 
-    // 짧은 지연 후 스크롤하여 레이아웃이 안정화되도록 함
-    Future.delayed(const Duration(milliseconds: 150), () {
-      if (!mounted) return;
-      final scrollContext = key.currentContext;
-      if (scrollContext != null && scrollContext.mounted) {
-        // ignore: use_build_context_synchronously
-        Scrollable.ensureVisible(
-          scrollContext,
-          duration: const Duration(milliseconds: 600),
-          curve: Curves.easeInOut,
-          alignment: 0.0, // 최상단에 위치
-        );
-      }
-    });
+    final key = _monthKeyMap[monthKey];
+    if (key == null) return;
+
+    // 1단계: 위젯이 현재 메모리에 있는지 확인 (가상화 대응)
+    final context = key.currentContext;
+    
+    if (context == null) {
+      // 위젯이 없으므로 대략적인 위치로 강제 점프 (평균 카드 높이 115px + 상단 영역 고려)
+      double estimatedOffset = 850 + (targetIndex * 115.0); 
+      _scrollController.jumpTo(estimatedOffset.clamp(0, _scrollController.position.maxScrollExtent));
+      
+      // 점프 후 위젯이 생성될 시간을 위해 약간 지연 후 정밀 스크롤
+      Future.delayed(const Duration(milliseconds: 100), () {
+        _preciseScroll(monthKey);
+      });
+    } else {
+      _preciseScroll(monthKey);
+    }
+  }
+
+  void _preciseScroll(String monthKey) {
+    final key = _monthKeyMap[monthKey];
+    final scrollContext = key?.currentContext;
+    
+    if (scrollContext != null && mounted) {
+      Scrollable.ensureVisible(
+        scrollContext,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+        alignment: 0.0, // 최상단에 배치
+      );
+    }
   }
 
   void _scrollToCurrentPeriod() {
@@ -1040,7 +1063,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: _currentRacePage == index
-                          ? Theme.of(context).colorScheme.primary
+                          ? Theme.of(context).colorScheme.secondary
                           : Colors.grey[300],
                     ),
                   ),
@@ -1055,9 +1078,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _navigateToRaceTrainingFeed(Race race) {
     final now = DateTime.now();
 
-    // 훈련 기간 동안의 운동 데이터 필터링
-    final trainingWorkouts = _workoutData.where((data) {
-      final date = data.dateFrom;
+    // 훈련 기간 동안의 운동 데이터 필터링 (통합 데이터 사용)
+    final trainingWorkouts = _unifiedWorkouts.where((wrapper) {
+      final date = wrapper.dateFrom;
       return date.isAfter(race.trainingStartDate.subtract(const Duration(seconds: 1))) &&
              date.isBefore(now.add(const Duration(seconds: 1)));
     }).toList();
@@ -1069,7 +1092,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => WorkoutFeedScreen(
-          unifiedWorkouts: trainingWorkouts.map((d) => WorkoutDataWrapper(healthData: d)).toList(),
+          unifiedWorkouts: trainingWorkouts,
           period: TimePeriod.month, // 기본값으로 month 사용
           dateRangeText: dateRangeText,
           raceName: race.name, // 레이스 이름 전달
@@ -1088,19 +1111,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ? (trainingDaysPassed / totalTrainingDays).clamp(0.0, 1.0)
         : 0.0;
 
-    // 훈련 기간 동안의 운동 횟수 계산
-    final trainingWorkouts = _workoutData.where((data) {
-      final date = data.dateFrom;
+    // 훈련 기간 동안의 운동 횟수 계산 (통합 데이터 사용)
+    final trainingWorkouts = _unifiedWorkouts.where((wrapper) {
+      final date = wrapper.dateFrom;
       return date.isAfter(race.trainingStartDate.subtract(const Duration(seconds: 1))) &&
              date.isBefore(now.add(const Duration(seconds: 1)));
     }).toList();
 
     int enduranceCount = 0;
     int strengthCount = 0;
-    for (final data in trainingWorkouts) {
-      final workout = data.value as WorkoutHealthValue;
-      final type = workout.workoutActivityType.name;
-      if (WorkoutUIUtils.getWorkoutCategory(type) == 'Strength') {
+    for (final wrapper in trainingWorkouts) {
+      String category = 'Unknown';
+      if (wrapper.session != null) {
+        category = wrapper.session!.category;
+      } else if (wrapper.healthData != null) {
+        final workout = wrapper.healthData!.value as WorkoutHealthValue;
+        category = WorkoutUIUtils.getWorkoutCategory(workout.workoutActivityType.name);
+      }
+      
+      if (category == 'Strength') {
         strengthCount++;
       } else {
         enduranceCount++;
@@ -1202,7 +1231,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   value: progress,
                   minHeight: 12,
                   borderRadius: BorderRadius.circular(6),
-                  backgroundColor: Colors.grey[200],
+                  backgroundColor: Colors.white10,
                   valueColor: AlwaysStoppedAnimation<Color>(
                       Theme.of(context).colorScheme.secondary),
                 ),
@@ -1443,7 +1472,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildWorkoutFeedSliver() {
-    if (_workoutData.isEmpty) {
+    if (_unifiedWorkouts.isEmpty) {
       return SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -1474,7 +1503,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     .onSurface
                                     .withValues(alpha: 0.7))),
                         const SizedBox(height: 8),
-                        const Text('헬스 앱과 동기화하여 운동 기록을 가져오세요',
+                        const Text('운동을 시작하거나 헬스 앱과 동기화하여 기록을 가져오세요',
                             style: TextStyle(fontSize: 12),
                             textAlign: TextAlign.center),
                       ],
@@ -1498,6 +1527,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
             currentMonth: _currentVisibleMonth,
             backgroundColor: Theme.of(context).colorScheme.surface,
             onMonthSelectorTap: _showMonthPicker,
+            onTitleTap: () {
+              _scrollController.animateTo(
+                0,
+                duration: const Duration(milliseconds: 600),
+                curve: Curves.easeInOut,
+              );
+            },
           ),
         ),
         // 운동 데이터 리스트
@@ -1591,11 +1627,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     return Column(
+      key: isFirstOfMonth ? _monthKeyMap[monthKey] : null,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (isFirstOfMonth && monthKey != _currentVisibleMonth)
           Container(
-            key: _monthKeyMap[monthKey],
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
             child: Text(
               monthKey,
@@ -1607,7 +1643,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
         Card(
-          key: isFirstOfMonth && monthKey == _currentVisibleMonth ? _monthKeyMap[monthKey] : null,
           margin: const EdgeInsets.only(bottom: 12),
           child: ListTile(
             onTap: () async {
@@ -1739,11 +1774,13 @@ class _StickyMonthHeaderDelegate extends SliverPersistentHeaderDelegate {
   final String currentMonth;
   final Color backgroundColor;
   final VoidCallback onMonthSelectorTap;
+  final VoidCallback onTitleTap; // 추가: 타이틀 터치 시 콜백
 
   _StickyMonthHeaderDelegate({
     required this.currentMonth,
     required this.backgroundColor,
     required this.onMonthSelectorTap,
+    required this.onTitleTap,
   });
 
   @override
@@ -1756,9 +1793,12 @@ class _StickyMonthHeaderDelegate extends SliverPersistentHeaderDelegate {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text(
-            '운동 피드',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          GestureDetector(
+            onTap: onTitleTap,
+            child: const Text(
+              '운동 피드',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
           ),
           const SizedBox(height: 6),
           Row(

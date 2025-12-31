@@ -445,6 +445,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   Widget build(BuildContext context) {
     final workout = _workoutData?.value as WorkoutHealthValue?;
     final workoutType = workout?.workoutActivityType.name ?? _session?.category ?? 'Unknown';
+    // 세션에 저장된 카테고리가 있다면 이를 최우선으로 사용
     final workoutCategory = _session?.category ?? _getWorkoutCategory(workoutType);
     final color = _getWorkoutColor(context, workoutCategory);
     final iconPath = _getWorkoutIconPath(workoutType);
@@ -1494,27 +1495,6 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         _formatDuration(activeDuration),
       ),
     );
-
-    // If we have pause information, show elapsed time and paused duration
-    if (pausedDuration != null && pausedDuration > Duration.zero) {
-      timeWidgets.add(const Divider(height: 24));
-      timeWidgets.add(
-        _buildInfoRow(
-          Icons.timelapse,
-          '경과 시간',
-          _formatDuration(elapsedTime ?? (activeDuration + pausedDuration)),
-        ),
-      );
-
-      timeWidgets.add(const Divider(height: 24));
-      timeWidgets.add(
-        _buildInfoRow(
-          Icons.pause_circle_outline,
-          '일시정지',
-          _formatDuration(pausedDuration),
-        ),
-      );
-    }
 
     return timeWidgets;
   }

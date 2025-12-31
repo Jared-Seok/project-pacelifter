@@ -1,5 +1,6 @@
 import 'package:hive/hive.dart';
 import 'package:pacelifter/models/sessions/workout_session.dart';
+import 'package:pacelifter/models/sessions/exercise_record.dart';
 import 'package:pacelifter/models/templates/workout_template.dart';
 import 'package:uuid/uuid.dart';
 
@@ -67,12 +68,40 @@ class WorkoutHistoryService {
     required DateTime endTime,
     required double totalDistance,
     required double calories,
-    // 필요한 다른 필드들...
   }) async {
     final box = Hive.box<WorkoutSession>(_sessionBoxName);
     
-    // 이미 존재하는지 확인 (HealthKit ID 또는 내부 ID로 조회)
+    // 이미 존재하는지 확인
     WorkoutSession? existingSession = getSessionByHealthKitId(healthKitId);
+
+    // 템플릿의 운동 정보를 기반으로 레코드 생성
+    final exerciseRecords = <ExerciseRecord>[];
+    int order = 0;
+    for (var phase in template.phases) {
+      for (var block in phase.blocks) {
+        if (block.type == 'strength') {
+          // exerciseId가 없더라도 이름이 있다면 레코드 생성 (기본 템플릿 대응)
+          exerciseRecords.add(ExerciseRecord(
+            id: const Uuid().v4(),
+            exerciseId: block.exerciseId ?? 'manual_${block.name}',
+            exerciseName: block.name,
+            sets: List.generate(block.sets ?? 3, (index) => SetRecord(
+              setNumber: index + 1,
+              weight: block.weight ?? 0,
+              repsTarget: block.reps ?? 10,
+              repsCompleted: block.reps ?? 10,
+            )),
+            order: order++,
+            timestamp: endTime,
+          ));
+        }
+      }
+    }
+
+    // 총 합계 계산
+    final totalVolume = exerciseRecords.fold<double>(0.0, (sum, r) => sum + r.totalVolume);
+    final totalSets = exerciseRecords.fold<int>(0, (sum, r) => sum + r.sets.length);
+    final totalReps = exerciseRecords.fold<int>(0, (sum, r) => sum + r.totalReps);
 
     if (existingSession != null) {
       // 업데이트
@@ -81,6 +110,10 @@ class WorkoutHistoryService {
         templateName: template.name,
         category: template.category,
         environmentType: template.environmentType,
+        exerciseRecords: exerciseRecords,
+        totalVolume: totalVolume,
+        totalSets: totalSets,
+        totalReps: totalReps,
       );
       await box.put(updatedSession.id, updatedSession);
     } else {
@@ -98,6 +131,10 @@ class WorkoutHistoryService {
         calories: calories,
         healthKitWorkoutId: healthKitId,
         environmentType: template.environmentType,
+        exerciseRecords: exerciseRecords,
+        totalVolume: totalVolume,
+        totalSets: totalSets,
+        totalReps: totalReps,
       );
       await box.put(newSession.id, newSession);
     }

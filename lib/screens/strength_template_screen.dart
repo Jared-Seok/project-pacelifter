@@ -505,6 +505,15 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen>
                 );
               },
             ),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      StrengthRoutinePreviewScreen(template: routine),
+                ),
+              );
+            },
             onLongPress: () async {
               final confirm = await showDialog<bool>(
                 context: context,

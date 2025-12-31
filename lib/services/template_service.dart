@@ -14,6 +14,15 @@ class TemplateService {
   /// 모든 템플릿과 운동 데이터를 Assets에서 로드하여 Hive에 저장
   static Future<void> loadAllTemplatesAndExercises() async {
     try {
+      final templateBox = Hive.box<WorkoutTemplate>(_templatesBoxName);
+      final exerciseBox = Hive.box<Exercise>(_exercisesBoxName);
+
+      // 이미 데이터가 충분히 있다면 로드 과정을 생략하여 구동 속도 개선
+      if (templateBox.length >= 20 && exerciseBox.length >= 50) {
+        print('✅ Templates and exercises already loaded. Skipping initialization.');
+        return;
+      }
+
       // 운동 라이브러리를 먼저 로드
       await _loadExercisesLibrary();
 
@@ -22,7 +31,7 @@ class TemplateService {
       await _loadStrengthTemplates();
       await _loadHybridTemplates();
       
-      // 프리셋 박스 확인 (데이터 로드는 필요 없음, Hive가 관리)
+      // 프리셋 박스 확인
       if (!Hive.isBoxOpen(_presetsBoxName)) {
         await Hive.openBox<CustomPhasePreset>(_presetsBoxName);
       }
@@ -30,7 +39,7 @@ class TemplateService {
       print('✅ All templates and exercises loaded successfully');
     } catch (e) {
       print('❌ Error loading templates and exercises: $e');
-      rethrow;
+      // 치명적인 에러가 아니면 계속 진행할 수 있도록 rethrow 대신 로그만 출력
     }
   }
 
@@ -38,8 +47,8 @@ class TemplateService {
   static Future<void> _loadExercisesLibrary() async {
     final box = Hive.box<Exercise>(_exercisesBoxName);
     
-    // 기존 운동 데이터 초기화 (중복 및 구버전 데이터 제거)
-    await box.clear();
+    // 데이터가 이미 있으면 중복 로드 방지
+    if (box.length > 50) return;
 
     // 기본 운동 데이터 파일 목록
     final libraryFiles = [
@@ -68,21 +77,16 @@ class TemplateService {
       print('✅ Loaded ${box.length} exercises from all libraries');
     } catch (e) {
       print('❌ Error loading exercises library: $e');
-      rethrow;
     }
   }
 
-  /// Endurance 템플릿 로드 (9개)
+  /// Endurance 템플릿 로드
   static Future<void> _loadEnduranceTemplates() async {
     final box = Hive.box<WorkoutTemplate>(_templatesBoxName);
     
-    // 강제 초기화: 기존의 모든 기본 템플릿(isCustom: false) 삭제
-    // 이렇게 하면 JSON 구조가 바뀐 템플릿들이 중복되거나 옛날 데이터를 유지하는 문제를 방지합니다.
-    final keysToDelete = box.keys.where((key) {
-      final t = box.get(key);
-      return t != null && !t.isCustom;
-    }).toList();
-    await box.deleteAll(keysToDelete);
+    // 이미 Endurance 템플릿이 로드되어 있는지 확인 (기본 12개)
+    final enduranceCount = box.values.where((t) => t.category == 'Endurance' && !t.isCustom).length;
+    if (enduranceCount >= 12) return;
 
     final templateFiles = [
       'indoor_lsd.json',
@@ -106,8 +110,13 @@ class TemplateService {
     );
   }
 
-  /// Strength 템플릿 로드 (8개)
+  /// Strength 템플릿 로드
   static Future<void> _loadStrengthTemplates() async {
+    final box = Hive.box<WorkoutTemplate>(_templatesBoxName);
+    
+    final count = box.values.where((t) => t.category == 'Strength' && !t.isCustom).length;
+    if (count >= 11) return;
+
     final templateFiles = [
       'push_day.json',
       'pull_day.json',
@@ -129,8 +138,13 @@ class TemplateService {
     );
   }
 
-  /// Hybrid 템플릿 로드 (6개)
+  /// Hybrid 템플릿 로드
   static Future<void> _loadHybridTemplates() async {
+    final box = Hive.box<WorkoutTemplate>(_templatesBoxName);
+    
+    final count = box.values.where((t) => t.category == 'Hybrid' && !t.isCustom).length;
+    if (count >= 6) return;
+
     final templateFiles = [
       'hyrox_simulation.json',
       'crossfit_metcon.json',

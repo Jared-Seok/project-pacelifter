@@ -155,45 +155,48 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('프로필 설정'),
-        leading: _currentPage > 0 
-          ? IconButton(icon: const Icon(Icons.arrow_back), onPressed: _previousPage)
-          : null,
-        automaticallyImplyLeading: false,
-      ),
-      body: Column(
-        children: [
-          AnimatedBuilder(
-            animation: _progressAnimation,
-            builder: (context, child) {
-              return LinearProgressIndicator(
-                value: _progressAnimation.value,
-                minHeight: 8,
-                backgroundColor: Colors.white10,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  Theme.of(context).colorScheme.secondary,
-                ),
-              );
-            },
-          ),
-          Expanded(
-            child: PageView(
-              controller: _pageController,
-              physics: const NeverScrollableScrollPhysics(),
-              children: [
-                _buildStep1(), // 기본 정보 (성별, 키, 체중, 생년월일)
-                _buildStep2(), // 러닝 구력/레벨
-                _buildStep3(), // 웨이트 구력/레벨
-                _buildStep4(), // 인바디
-                _buildStep5(), // 러닝 기록
-                _buildStep6(), // 맨몸 운동
-                _buildStep7(), // 3RM
-              ],
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('프로필 설정'),
+          leading: _currentPage > 0 
+            ? IconButton(icon: const Icon(Icons.arrow_back), onPressed: _previousPage)
+            : null,
+          automaticallyImplyLeading: false,
+        ),
+        body: Column(
+          children: [
+            AnimatedBuilder(
+              animation: _progressAnimation,
+              builder: (context, child) {
+                return LinearProgressIndicator(
+                  value: _progressAnimation.value,
+                  minHeight: 8,
+                  backgroundColor: Colors.white10,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Theme.of(context).colorScheme.secondary,
+                  ),
+                );
+              },
             ),
-          ),
-        ],
+            Expanded(
+              child: PageView(
+                controller: _pageController,
+                physics: const NeverScrollableScrollPhysics(),
+                children: [
+                  _buildStep1(), // 기본 정보 (성별, 키, 체중, 생년월일)
+                  _buildStep2(), // 러닝 구력/레벨
+                  _buildStep3(), // 웨이트 구력/레벨
+                  _buildStep4(), // 인바디
+                  _buildStep5(), // 러닝 기록
+                  _buildStep6(), // 맨몸 운동
+                  _buildStep7(), // 3RM
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -245,7 +248,14 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
           const SizedBox(height: 8),
           TextField(
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(hintText: '예: 175', border: OutlineInputBorder()),
+            cursorColor: Theme.of(context).colorScheme.secondary,
+            decoration: InputDecoration(
+              hintText: '예: 175', 
+              border: const OutlineInputBorder(),
+              focusedBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: Theme.of(context).colorScheme.secondary, width: 2),
+              ),
+            ),
             onChanged: (val) => setState(() => _userProfile = _userProfile.copyWith(height: double.tryParse(val))),
           ),
           
@@ -254,7 +264,14 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
           const SizedBox(height: 8),
           TextField(
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(hintText: '예: 70', border: OutlineInputBorder()),
+            cursorColor: Theme.of(context).colorScheme.secondary,
+            decoration: InputDecoration(
+              hintText: '예: 70', 
+              border: const OutlineInputBorder(),
+              focusedBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: Theme.of(context).colorScheme.secondary, width: 2),
+              ),
+            ),
             onChanged: (val) => setState(() => _userProfile = _userProfile.copyWith(weight: double.tryParse(val))),
           ),
 
@@ -277,6 +294,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
 
   // 2단계: 러닝 구력 및 레벨
   Widget _buildStep2() {
+    final enduranceColor = Theme.of(context).colorScheme.tertiary;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Column(
@@ -291,7 +309,15 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
           const SizedBox(height: 8),
           TextField(
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(hintText: '예: 1.5', border: OutlineInputBorder(), suffixText: '년'),
+            cursorColor: enduranceColor,
+            decoration: InputDecoration(
+              hintText: '예: 1.5', 
+              border: const OutlineInputBorder(), 
+              suffixText: '년',
+              focusedBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: enduranceColor, width: 2),
+              ),
+            ),
             onChanged: (val) => setState(() => _userProfile = _userProfile.copyWith(runningExperience: double.tryParse(val))),
           ),
 
@@ -301,6 +327,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
           _buildLevelSelector(
             current: _userProfile.runningLevel,
             onSelect: (val) => setState(() => _userProfile = _userProfile.copyWith(runningLevel: val)),
+            activeColor: enduranceColor,
           ),
 
           const SizedBox(height: 48),
@@ -309,7 +336,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
             child: ElevatedButton(
               onPressed: (_userProfile.runningExperience != null && _userProfile.runningLevel != null) ? _nextPage : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.secondary,
+                backgroundColor: enduranceColor,
                 foregroundColor: Colors.black,
               ),
               child: const Text('다음', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -327,6 +354,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
 
   // 3단계: 웨이트 구력 및 레벨
   Widget _buildStep3() {
+    final strengthColor = Theme.of(context).colorScheme.primary;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Column(
@@ -341,7 +369,15 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
           const SizedBox(height: 8),
           TextField(
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(hintText: '예: 2', border: OutlineInputBorder(), suffixText: '년'),
+            cursorColor: strengthColor,
+            decoration: InputDecoration(
+              hintText: '예: 2', 
+              border: const OutlineInputBorder(), 
+              suffixText: '년',
+              focusedBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: strengthColor, width: 2),
+              ),
+            ),
             onChanged: (val) => setState(() => _userProfile = _userProfile.copyWith(strengthExperience: double.tryParse(val))),
           ),
 
@@ -351,6 +387,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
           _buildLevelSelector(
             current: _userProfile.strengthLevel,
             onSelect: (val) => setState(() => _userProfile = _userProfile.copyWith(strengthLevel: val)),
+            activeColor: strengthColor,
           ),
 
           const SizedBox(height: 48),
@@ -359,7 +396,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
             child: ElevatedButton(
               onPressed: (_userProfile.strengthExperience != null && _userProfile.strengthLevel != null) ? _nextPage : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.secondary,
+                backgroundColor: strengthColor,
                 foregroundColor: Colors.black,
               ),
               child: const Text('다음', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -375,27 +412,28 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     );
   }
 
-  Widget _buildLevelSelector({String? current, required Function(String) onSelect}) {
+  Widget _buildLevelSelector({String? current, required Function(String) onSelect, Color? activeColor}) {
+    final color = activeColor ?? Theme.of(context).colorScheme.secondary;
     return Column(
       children: [
-        _levelTile('beginner', '초급', '기본기를 익히고 있는 단계', current, onSelect),
+        _levelTile('beginner', '초급', '기본기를 익히고 있는 단계', current, onSelect, color),
         const SizedBox(height: 12),
-        _levelTile('intermediate', '중급', '숙련된 자세로 꾸준히 운동 중', current, onSelect),
+        _levelTile('intermediate', '중급', '숙련된 자세로 꾸준히 운동 중', current, onSelect, color),
         const SizedBox(height: 12),
-        _levelTile('advanced', '고급', '고강도 훈련 및 정교한 루틴 수행', current, onSelect),
+        _levelTile('advanced', '고급', '고강도 훈련 및 정교한 루틴 수행', current, onSelect, color),
       ],
     );
   }
 
-  Widget _levelTile(String id, String title, String desc, String? current, Function(String) onSelect) {
+  Widget _levelTile(String id, String title, String desc, String? current, Function(String) onSelect, Color activeColor) {
     final isSelected = current == id;
     return InkWell(
       onTap: () => onSelect(id),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected ? Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1) : Colors.transparent,
-          border: Border.all(color: isSelected ? Theme.of(context).colorScheme.secondary : Colors.grey[800]!),
+          color: isSelected ? activeColor.withValues(alpha: 0.1) : Colors.transparent,
+          border: Border.all(color: isSelected ? activeColor : Colors.grey[800]!),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -404,12 +442,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isSelected ? Theme.of(context).colorScheme.secondary : Colors.white)),
+                  Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isSelected ? activeColor : Colors.white)),
                   Text(desc, style: TextStyle(fontSize: 12, color: Colors.grey[400])),
                 ],
               ),
             ),
-            if (isSelected) Icon(Icons.check_circle, color: Theme.of(context).colorScheme.secondary),
+            if (isSelected) Icon(Icons.check_circle, color: activeColor),
           ],
         ),
       ),
@@ -426,33 +464,37 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
 
   // 5단계: 러닝 기록 (선택)
   Widget _buildStep5() {
+    final enduranceColor = Theme.of(context).colorScheme.tertiary;
     return _buildSelectionStep('러닝 최고 기록 (선택)', '러닝 퍼포먼스 분석에 사용됩니다.', [
-      _buildTimeField('Full (42.195km)', (val) => _userProfile = _userProfile.copyWith(fullMarathonTime: _parseDuration(val))),
-      _buildTimeField('Half (21.097km)', (val) => _userProfile = _userProfile.copyWith(halfMarathonTime: _parseDuration(val))),
-      _buildTimeField('10K', (val) => _userProfile = _userProfile.copyWith(tenKmTime: _parseDuration(val))),
-      _buildTimeField('5K', (val) => _userProfile = _userProfile.copyWith(fiveKmTime: _parseDuration(val))),
-    ]);
+      _buildTimeField('Full (42.195km)', (val) => _userProfile = _userProfile.copyWith(fullMarathonTime: _parseDuration(val)), activeColor: enduranceColor),
+      _buildTimeField('Half (21.097km)', (val) => _userProfile = _userProfile.copyWith(halfMarathonTime: _parseDuration(val)), activeColor: enduranceColor),
+      _buildTimeField('10K', (val) => _userProfile = _userProfile.copyWith(tenKmTime: _parseDuration(val)), activeColor: enduranceColor),
+      _buildTimeField('5K', (val) => _userProfile = _userProfile.copyWith(fiveKmTime: _parseDuration(val)), activeColor: enduranceColor),
+    ], activeColor: enduranceColor);
   }
 
   // 6단계: 맨몸 운동 (선택)
   Widget _buildStep6() {
+    final strengthColor = Theme.of(context).colorScheme.primary;
     return _buildSelectionStep('맨몸 운동 능력 (선택)', '수행 가능한 최대 횟수를 입력해주세요.', [
-      _buildNumericField('턱걸이 (최대)', (val) => _userProfile = _userProfile.copyWith(maxPullUps: int.tryParse(val))),
-      _buildNumericField('푸쉬업 (최대)', (val) => _userProfile = _userProfile.copyWith(maxPushUps: int.tryParse(val))),
-    ]);
+      _buildNumericField('턱걸이 (최대)', (val) => _userProfile = _userProfile.copyWith(maxPullUps: int.tryParse(val)), activeColor: strengthColor),
+      _buildNumericField('푸쉬업 (최대)', (val) => _userProfile = _userProfile.copyWith(maxPushUps: int.tryParse(val)), activeColor: strengthColor),
+    ], activeColor: strengthColor);
   }
 
   // 7단계: 3RM (선택)
   Widget _buildStep7() {
+    final strengthColor = Theme.of(context).colorScheme.primary;
     return _buildSelectionStep('3대 운동 3RM (선택)', '3회 반복 가능한 최대 무게를 입력해주세요.', [
-      _buildNumericField('스쿼트 (kg)', (val) => _userProfile = _userProfile.copyWith(squat3RM: double.tryParse(val))),
-      _buildNumericField('벤치프레스 (kg)', (val) => _userProfile = _userProfile.copyWith(benchPress3RM: double.tryParse(val))),
-      _buildNumericField('데드리프트 (kg)', (val) => _userProfile = _userProfile.copyWith(deadlift3RM: double.tryParse(val))),
-    ], isLast: true);
+      _buildNumericField('스쿼트 (kg)', (val) => _userProfile = _userProfile.copyWith(squat3RM: double.tryParse(val)), activeColor: strengthColor),
+      _buildNumericField('벤치프레스 (kg)', (val) => _userProfile = _userProfile.copyWith(benchPress3RM: double.tryParse(val)), activeColor: strengthColor),
+      _buildNumericField('데드리프트 (kg)', (val) => _userProfile = _userProfile.copyWith(deadlift3RM: double.tryParse(val)), activeColor: strengthColor),
+    ], isLast: true, activeColor: strengthColor);
   }
 
   // 공통 선택사항 빌더
-  Widget _buildSelectionStep(String title, String desc, List<Widget> fields, {bool isLast = false}) {
+  Widget _buildSelectionStep(String title, String desc, List<Widget> fields, {bool isLast = false, Color? activeColor}) {
+    final color = activeColor ?? Theme.of(context).colorScheme.secondary;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Column(
@@ -468,7 +510,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
             width: double.infinity, height: 56,
             child: ElevatedButton(
               onPressed: isLast ? _finishSetup : _nextPage,
-              style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.secondary, foregroundColor: Colors.black),
+              style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: Colors.black),
               child: Text(isLast ? '완료' : '다음', style: const TextStyle(fontWeight: FontWeight.bold)),
             ),
           ),
@@ -482,7 +524,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     );
   }
 
-  Widget _buildNumericField(String label, Function(String) onChanged) {
+  Widget _buildNumericField(String label, Function(String) onChanged, {Color? activeColor}) {
+    final focusColor = activeColor ?? Theme.of(context).colorScheme.secondary;
     return Padding(
       padding: const EdgeInsets.only(bottom: 24.0),
       child: Column(
@@ -492,7 +535,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
           const SizedBox(height: 8),
           TextField(
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(border: OutlineInputBorder()),
+            cursorColor: focusColor,
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              focusedBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: focusColor, width: 2),
+              ),
+            ),
             onChanged: onChanged,
           ),
         ],
@@ -500,7 +549,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     );
   }
 
-  Widget _buildTimeField(String label, Function(String) onChanged) {
+  Widget _buildTimeField(String label, Function(String) onChanged, {Color? activeColor}) {
+    final focusColor = activeColor ?? Theme.of(context).colorScheme.secondary;
+    final controller = TextEditingController();
+    
     return Padding(
       padding: const EdgeInsets.only(bottom: 24.0),
       child: Column(
@@ -509,9 +561,38 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
           Text(label, style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 8),
           TextField(
+            controller: controller,
             keyboardType: TextInputType.datetime,
-            decoration: const InputDecoration(hintText: 'HH:MM:SS', border: OutlineInputBorder()),
-            onChanged: onChanged,
+            cursorColor: focusColor,
+            decoration: InputDecoration(
+              hintText: 'HH:MM:SS',
+              border: const OutlineInputBorder(),
+              focusedBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: focusColor, width: 2),
+              ),
+            ),
+            onChanged: (val) {
+              // MM:SS validation logic
+              final parts = val.split(':');
+              bool isValid = true;
+              if (parts.length >= 2) {
+                final mins = int.tryParse(parts[1]);
+                if (mins != null && mins >= 60) isValid = false;
+              }
+              if (parts.length >= 3) {
+                final secs = int.tryParse(parts[2]);
+                if (secs != null && secs >= 60) isValid = false;
+              }
+
+              if (!isValid) {
+                // Remove last character if invalid
+                final cleanVal = val.substring(0, val.length - 1);
+                controller.text = cleanVal;
+                controller.selection = TextSelection.fromPosition(TextPosition(offset: cleanVal.length));
+                return;
+              }
+              onChanged(val);
+            },
           ),
         ],
       ),

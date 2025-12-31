@@ -111,7 +111,7 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     Expanded(child: _buildStatItem(context, '총 운동', '${widget.unifiedWorkouts.length}회', null, svgPath: 'assets/images/pllogo.svg', iconSize: 36, color: Theme.of(context).colorScheme.secondary)),
-                    Expanded(child: _buildStatItem(context, 'Endurance', '$enduranceCount회', null, svgPath: 'assets/images/endurance/runner-icon.svg', color: Theme.of(context).colorScheme.secondary)),
+                    Expanded(child: _buildStatItem(context, 'Endurance', '$enduranceCount회', null, svgPath: 'assets/images/endurance/runner-icon.svg', color: Theme.of(context).colorScheme.tertiary)),
                     Expanded(child: _buildStatItem(context, 'Strength', '$strengthCount회', null, svgPath: 'assets/images/strength/lifter-icon.svg', color: Theme.of(context).colorScheme.primary)),
                     if (totalDistance > 0 || totalTime > Duration.zero)
                       Expanded(child: _buildToggleableStatItem(context, totalDistance, totalTime)),
@@ -159,7 +159,7 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
   }
 
   Widget _buildToggleableStatItem(BuildContext context, double totalDistance, Duration totalTime) {
-    final displayColor = Theme.of(context).colorScheme.primary;
+    final displayColor = Theme.of(context).colorScheme.secondary;
     const size = 32.0;
 
     String formatDuration(Duration duration) {

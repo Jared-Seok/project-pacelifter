@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:health/health.dart';
 
 class HealthService {
@@ -82,10 +83,11 @@ class HealthService {
   }
 
   /// 운동 데이터 가져오기
-  Future<List<HealthDataPoint>> fetchWorkoutData() async {
+  Future<List<HealthDataPoint>> fetchWorkoutData({int days = 30}) async {
     final now = DateTime.now();
-    // 가능한 모든 데이터를 가져오기 (10년 전까지)
-    final startDate = now.subtract(const Duration(days: 365 * 10));
+    // 지정된 일수 전부터 데이터를 가져오기 (기본 30일)
+    // 대시보드에서는 최근 데이터만 필요하므로 범위를 좁혀 성능 개선
+    final startDate = now.subtract(Duration(days: days));
 
     bool granted = await requestAuthorization();
     if (granted) {
@@ -97,11 +99,12 @@ class HealthService {
           endTime: now,
         );
 
-        // 중복 데이터 제거 (필요 시)
+        // 중복 데이터 제거
         healthData = health.removeDuplicates(healthData);
 
         return healthData;
       } catch (e) {
+        debugPrint('❌ Error fetching workout data: $e');
         return [];
       }
     } else {

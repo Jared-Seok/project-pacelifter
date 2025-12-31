@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:health/health.dart';
 import '../services/health_service.dart';
-import '../models/health_workout.dart'; // 모델은 통계 계산을 위해 유지
+import '../services/workout_history_service.dart';
+import '../models/sessions/workout_session.dart';
+import '../models/health_workout.dart';
+import 'package:uuid/uuid.dart';
 
 class HealthImportScreen extends StatefulWidget {
   const HealthImportScreen({super.key});
@@ -57,6 +60,30 @@ class _HealthImportScreenState extends State<HealthImportScreen> {
         // 통계 계산
         _calculateStatistics(workouts);
 
+        // ----------------------------------------------------
+        // [추가] Hive DB에 영구 저장 로직
+        // ----------------------------------------------------
+        final historyService = WorkoutHistoryService();
+        for (var workout in workouts) {
+          // 중복 체크 로직이 있으면 좋으나, 현재는 간단히 생성 및 저장
+          // 시작 시간과 타입을 조합하여 간단한 중복 체크 (또는 그냥 저장)
+          final session = WorkoutSession(
+            id: const Uuid().v4(),
+            templateId: 'health_kit_import',
+            category: workout.workoutType.contains('RUNNING') ? 'Endurance' : 'Other',
+            templateName: workout.workoutType,
+            startTime: workout.startDate,
+            endTime: workout.endDate,
+            activeDuration: workout.duration.inSeconds,
+            totalDuration: workout.duration.inSeconds,
+            totalDistance: workout.distance ?? 0,
+            calories: workout.totalEnergyBurned ?? 0,
+            exerciseRecords: [],
+          );
+          await historyService.saveSession(session);
+        }
+        // ----------------------------------------------------
+
         setState(() {
           _workouts = workouts;
           _state = AppState.dataReady;
@@ -110,7 +137,8 @@ class _HealthImportScreenState extends State<HealthImportScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('건강 데이터 연동'),
-        backgroundColor: Colors.blue,
+        backgroundColor: Theme.of(context).colorScheme.secondary,
+        foregroundColor: Theme.of(context).colorScheme.onSecondary,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -143,7 +171,7 @@ class _HealthImportScreenState extends State<HealthImportScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.info_outline, color: Colors.blue[700]),
+                Icon(Icons.info_outline, color: Theme.of(context).colorScheme.secondary),
                 const SizedBox(width: 8),
                 const Text(
                   'Apple Health 데이터 연동하기',
@@ -171,6 +199,8 @@ class _HealthImportScreenState extends State<HealthImportScreen> {
       icon: const Icon(Icons.sync),
       label: const Text('건강 앱 데이터 동기화'),
       style: ElevatedButton.styleFrom(
+        backgroundColor: Theme.of(context).colorScheme.secondary,
+        foregroundColor: Theme.of(context).colorScheme.onSecondary,
         padding: const EdgeInsets.all(16),
         textStyle: const TextStyle(fontSize: 16),
       ),
@@ -251,7 +281,7 @@ class _HealthImportScreenState extends State<HealthImportScreen> {
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         children: [
-          Icon(icon, size: 24, color: Colors.blue[700]),
+          Icon(icon, size: 24, color: Theme.of(context).colorScheme.secondary),
           const SizedBox(width: 12),
           Text(label, style: const TextStyle(fontSize: 14)),
           const Spacer(),
@@ -316,7 +346,7 @@ class _HealthImportScreenState extends State<HealthImportScreen> {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4.0),
       child: ListTile(
-        leading: Icon(_getWorkoutIcon(workout.workoutType), color: Colors.blue[700]),
+        leading: Icon(_getWorkoutIcon(workout.workoutType), color: Theme.of(context).colorScheme.secondary),
         title: Text(_formatWorkoutType(workout.workoutType)),
         subtitle: Text('${_formatDate(workout.startDate)} • ${workout.duration.inMinutes} 분'),
         trailing: (workout.distance != null)
@@ -356,23 +386,24 @@ class WorkoutListScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text('전체 운동 기록 (${workouts.length}개)'),
-        backgroundColor: Colors.blue,
+        backgroundColor: Theme.of(context).colorScheme.secondary,
+        foregroundColor: Theme.of(context).colorScheme.onSecondary,
       ),
       body: ListView.builder(
         itemCount: sortedWorkouts.length,
         itemBuilder: (context, index) {
           final workout = sortedWorkouts[index];
-          return _buildWorkoutCard(workout);
+          return _buildWorkoutCard(context, workout);
         },
       ),
     );
   }
 
-  Widget _buildWorkoutCard(HealthWorkout workout) {
+  Widget _buildWorkoutCard(BuildContext context, HealthWorkout workout) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
       child: ListTile(
-        leading: Icon(_getWorkoutIcon(workout.workoutType), color: Colors.blue[700]),
+        leading: Icon(_getWorkoutIcon(workout.workoutType), color: Theme.of(context).colorScheme.secondary),
         title: Text(_formatWorkoutType(workout.workoutType)),
         subtitle: Text('${_formatDateTime(workout.startDate)} • ${workout.duration.inMinutes} 분'),
         trailing: (workout.distance != null)

@@ -53,8 +53,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     });
 
     try {
-      // 1. Fetch all workout data from HealthKit
-      final healthData = await _healthService.fetchWorkoutData();
+      // 1. Fetch workout data from HealthKit (last 1 year for calendar)
+      final healthData = await _healthService.fetchWorkoutData(days: 365);
       
       // 2. Fetch all local sessions
       final sessions = _historyService.getAllSessions();

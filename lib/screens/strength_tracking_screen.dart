@@ -209,7 +209,13 @@ class _StrengthTrackingScreenState extends State<StrengthTrackingScreen> {
     ScoringEngine().calculateAndSaveScores();
 
     if (mounted) {
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      // 결과 화면으로 이동 (직접 팝업하지 않고 요약 화면 노출)
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => StrengthWorkoutSummaryScreen(session: session),
+        ),
+      );
     }
   }
 
@@ -224,44 +230,41 @@ class _StrengthTrackingScreenState extends State<StrengthTrackingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(
-        title: Text(widget.template.name, style: const TextStyle(fontSize: 16)),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: () => Navigator.pop(context),
-          )
-        ],
-      ),
-      body: Column(
-        children: [
-          _buildTotalTimeBanner(),
-          _buildProgressIndicator(),
-          Expanded(
-            child: _buildMainContent(),
-          ),
-          _buildBottomAction(),
-        ],
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildSlimHeader(),
+            _buildProgressIndicator(),
+            Expanded(
+              child: _buildMainContent(),
+            ),
+            _buildBottomAction(),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildTotalTimeBanner() {
+  Widget _buildSlimHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      width: double.infinity,
-      color: Theme.of(context).colorScheme.surfaceContainer,
-      child: Column(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.05))),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text('전체 운동 시간', style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          Text(
-            _formatDuration(_elapsed),
-            style: const TextStyle(fontSize: 42, fontWeight: FontWeight.w900, fontFamily: 'monospace', letterSpacing: 2),
-          ),
-          const SizedBox(height: 12),
           HeartRateMonitorWidget(),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              const Text('TOTAL TIME', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+              Text(
+                _formatDuration(_elapsed),
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, fontFamily: 'monospace'),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -301,41 +304,58 @@ class _StrengthTrackingScreenState extends State<StrengthTrackingScreen> {
     final sets = _workoutPlan[currentBlock.id]!;
     final currentSet = sets[_currentSetIndex];
 
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildExerciseHeader(exercise, currentBlock),
-            const SizedBox(height: 24),
-            
-            // 세트 타이머 (Active 일 때 크게 표시)
-            if (_status == WorkoutStatus.active) ...[
-              const Text('세트 진행 시간', style: TextStyle(fontSize: 14, color: Colors.blueAccent, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text(
-                _formatDurationShort(_setElapsed),
-                style: const TextStyle(fontSize: 72, fontWeight: FontWeight.bold, fontFamily: 'monospace', color: Colors.white),
-              ),
-            ] else ...[
-              Text('SET ${_currentSetIndex + 1} / ${sets.length}', 
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.grey)),
-              const SizedBox(height: 12),
-              const Text('준비 되셨나요?', style: TextStyle(fontSize: 16, color: Colors.white70)),
-            ],
-            
-            const SizedBox(height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // 1. 현재 운동 정보 (상단 고정)
+          Text(
+            'SET ${_currentSetIndex + 1} OF ${sets.length}',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary, letterSpacing: 1.5),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            exercise?.nameKo ?? currentBlock.name.split(' (')[0],
+            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 48),
+          
+          // 2. 메인 수치 (세트 진행 중 vs 준비 중)
+          if (_status == WorkoutStatus.active)
+            Column(
               children: [
-                _buildInfoBit('${currentSet.weight?.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '') ?? 0}', 'KG'),
-                Container(width: 1, height: 60, color: Colors.grey[800], margin: const EdgeInsets.symmetric(horizontal: 32)),
-                _buildInfoBit('${currentSet.repsTarget ?? 0}', 'REPS'),
+                const Text('SET TIMER', style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)),
+                Text(
+                  _formatDurationShort(_setElapsed),
+                  style: TextStyle(fontSize: 100, fontWeight: FontWeight.w900, fontFamily: 'monospace', color: Theme.of(context).colorScheme.primary),
+                ),
+              ],
+            )
+          else
+            Column(
+              children: [
+                const Text('GOAL', style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text('${currentSet.weight?.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '') ?? 0}', 
+                      style: const TextStyle(fontSize: 80, fontWeight: FontWeight.w900)),
+                    const SizedBox(width: 8),
+                    const Text('KG', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  ],
+                ),
+                Text('x ${currentSet.repsTarget ?? 0} REPS', 
+                  style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.grey)),
               ],
             ),
-          ],
-        ),
+          
+          const SizedBox(height: 64),
+        ],
       ),
     );
   }
@@ -378,7 +398,7 @@ class _StrengthTrackingScreenState extends State<StrengthTrackingScreen> {
           const SizedBox(height: 24),
           const Divider(indent: 40, endIndent: 40),
           const SizedBox(height: 16),
-          const Text('다음 세트 편집', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blueAccent)),
+          Text('다음 세트 편집', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
           const SizedBox(height: 12),
           _buildExerciseHeader(exercise, nextBlock, small: true),
           const SizedBox(height: 16),
@@ -536,7 +556,7 @@ class _StrengthTrackingScreenState extends State<StrengthTrackingScreen> {
       case WorkoutStatus.ready: label = "세트 시작"; onPressed = _startSet; break;
       case WorkoutStatus.active: label = "세트 완료"; onPressed = _completeSet; color = Colors.green; break;
       case WorkoutStatus.rest: label = "휴식 건너뛰기"; onPressed = () => setState(() { _restTimer?.cancel(); _goToNextSet(); }); color = Colors.orange; break;
-      case WorkoutStatus.finished: label = "기록 저장 및 종료"; onPressed = _finishWorkout; color = Colors.blue; break;
+      case WorkoutStatus.finished: label = "기록 저장 및 종료"; onPressed = _finishWorkout; color = Theme.of(context).colorScheme.primary; break;
     }
 
     return Container(
@@ -572,5 +592,180 @@ class _StrengthTrackingScreenState extends State<StrengthTrackingScreen> {
     int min = seconds ~/ 60;
     int sec = seconds % 60;
     return "$min:${sec.toString().padLeft(2, '0')}";
+  }
+}
+
+/// 근력 운동 완료 요약 화면
+class StrengthWorkoutSummaryScreen extends StatelessWidget {
+  final WorkoutSession session;
+
+  const StrengthWorkoutSummaryScreen({super.key, required this.session});
+
+  @override
+  Widget build(BuildContext context) {
+    final themeColor = Theme.of(context).colorScheme.primary;
+    final totalVol = session.totalVolume ?? 0;
+
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      appBar: AppBar(
+        title: const Text('근력 운동 완료 리포트'),
+        automaticallyImplyLeading: false,
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 1. Hero Metric: Total Volume
+            Center(
+              child: Column(
+                children: [
+                  Text(
+                    'TOTAL VOLUME',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: themeColor.withValues(alpha: 0.6),
+                      letterSpacing: 2,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Text(
+                        totalVol >= 1000 
+                          ? (totalVol / 1000).toStringAsFixed(2) 
+                          : totalVol.toStringAsFixed(0),
+                        style: TextStyle(
+                          fontSize: 80,
+                          fontWeight: FontWeight.w900,
+                          color: themeColor,
+                          height: 1,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        totalVol >= 1000 ? 't' : 'kg',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: themeColor.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 48),
+
+            // 2. Stats Grid
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      _buildStatItem('TOTAL SETS', '${session.totalSets ?? 0}', '회', Icons.repeat, themeColor),
+                      _buildStatItem('TOTAL REPS', '${session.totalReps ?? 0}', '회', Icons.fitness_center, themeColor),
+                    ],
+                  ),
+                  const Padding(padding: EdgeInsets.symmetric(vertical: 20), child: Divider(color: Colors.white10)),
+                  Row(
+                    children: [
+                      _buildStatItem('WORKOUT TIME', _formatDuration(Duration(seconds: session.activeDuration)), '', Icons.timer, themeColor),
+                      _buildStatItem('AVG HEART RATE', '${session.averageHeartRate ?? "--"}', 'bpm', Icons.favorite, themeColor),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 32),
+
+            // 3. Exercise List
+            const Text(
+              'EXERCISE DETAILS',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2),
+            ),
+            const SizedBox(height: 12),
+            ...session.exerciseRecords?.map((r) => _buildExerciseRow(r, themeColor)) ?? [],
+            
+            const SizedBox(height: 40),
+
+            // 4. Action Button
+            ElevatedButton(
+              onPressed: () => Navigator.popUntil(context, (route) => route.isFirst),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.secondary,
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+              ),
+              child: const Text('BACK TO HOME', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+            ),
+            const SizedBox(height: 32),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatItem(String label, String value, String unit, IconData icon, Color color) {
+    return Expanded(
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 12, color: Colors.grey),
+              const SizedBox(width: 4),
+              Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+              if (unit.isNotEmpty) Text(unit, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExerciseRow(ExerciseRecord record, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(child: Text(record.exerciseName, style: const TextStyle(fontWeight: FontWeight.w600))),
+          Text(
+            '${record.sets.length} sets',
+            style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDuration(Duration d) {
+    final m = d.inMinutes;
+    final s = d.inSeconds.remainder(60);
+    return "$m:$s";
   }
 }
