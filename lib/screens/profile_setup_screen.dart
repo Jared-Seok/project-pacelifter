@@ -466,11 +466,150 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
   Widget _buildStep5() {
     final enduranceColor = Theme.of(context).colorScheme.tertiary;
     return _buildSelectionStep('러닝 최고 기록 (선택)', '러닝 퍼포먼스 분석에 사용됩니다.', [
-      _buildTimeField('Full (42.195km)', (val) => _userProfile = _userProfile.copyWith(fullMarathonTime: _parseDuration(val)), activeColor: enduranceColor),
-      _buildTimeField('Half (21.097km)', (val) => _userProfile = _userProfile.copyWith(halfMarathonTime: _parseDuration(val)), activeColor: enduranceColor),
-      _buildTimeField('10K', (val) => _userProfile = _userProfile.copyWith(tenKmTime: _parseDuration(val)), activeColor: enduranceColor),
-      _buildTimeField('5K', (val) => _userProfile = _userProfile.copyWith(fiveKmTime: _parseDuration(val)), activeColor: enduranceColor),
+      _buildTimeDialField(
+        'Full (42.195km)',
+        _userProfile.fullMarathonTime,
+        (duration) => setState(() => _userProfile = _userProfile.copyWith(fullMarathonTime: duration)),
+        maxHours: 4,
+        activeColor: enduranceColor,
+      ),
+      _buildTimeDialField(
+        'Half (21.097km)',
+        _userProfile.halfMarathonTime,
+        (duration) => setState(() => _userProfile = _userProfile.copyWith(halfMarathonTime: duration)),
+        maxHours: 3,
+        activeColor: enduranceColor,
+      ),
+      _buildTimeDialField(
+        '10K',
+        _userProfile.tenKmTime,
+        (duration) => setState(() => _userProfile = _userProfile.copyWith(tenKmTime: duration)),
+        maxHours: 1,
+        activeColor: enduranceColor,
+      ),
+      _buildTimeDialField(
+        '5K',
+        _userProfile.fiveKmTime,
+        (duration) => setState(() => _userProfile = _userProfile.copyWith(fiveKmTime: duration)),
+        maxHours: 0, // 0 means no hour dial
+        activeColor: enduranceColor,
+      ),
     ], activeColor: enduranceColor);
+  }
+
+  Widget _buildTimeDialField(String label, Duration? value, Function(Duration) onChanged, {required int maxHours, Color? activeColor}) {
+    final focusColor = activeColor ?? Theme.of(context).colorScheme.secondary;
+    final displayValue = value != null 
+        ? (maxHours > 0 
+            ? "${value.inHours}:${(value.inMinutes % 60).toString().padLeft(2, '0')}:${(value.inSeconds % 60).toString().padLeft(2, '0')}"
+            : "${value.inMinutes}:${(value.inSeconds % 60).toString().padLeft(2, '0')}")
+        : '기록 선택';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 8),
+          InkWell(
+            onTap: () => _showTimePickerDial(label, value, maxHours, onChanged),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              decoration: BoxDecoration(
+                border: Border.all(color: value != null ? focusColor : Colors.grey[700]!, width: value != null ? 2 : 1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(displayValue, style: TextStyle(
+                    color: value != null ? Colors.white : Colors.grey,
+                    fontSize: 16,
+                    fontWeight: value != null ? FontWeight.bold : FontWeight.normal,
+                  )),
+                  Icon(Icons.access_time, size: 18, color: value != null ? focusColor : Colors.grey),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showTimePickerDial(String title, Duration? initialValue, int maxHours, Function(Duration) onSelected) {
+    int h = initialValue?.inHours ?? (maxHours > 0 ? (maxHours ~/ 2) : 0);
+    int m = (initialValue?.inMinutes ?? 0) % 60;
+    int s = (initialValue?.inSeconds ?? 0) % 60;
+
+    // Ensure h is within range
+    if (h > maxHours && maxHours > 0) h = maxHours;
+
+    showCupertinoModalPopup(
+      context: context,
+      builder: (context) => Container(
+        height: 300,
+        color: const Color(0xFF1C1C1E),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: const BoxDecoration(
+                border: Border(bottom: BorderSide(color: Colors.white10)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소', style: TextStyle(color: Colors.grey))),
+                  Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16, decoration: TextDecoration.none)),
+                  TextButton(
+                    onPressed: () {
+                      onSelected(Duration(hours: h, minutes: m, seconds: s));
+                      Navigator.pop(context);
+                    },
+                    child: Text('확인', style: TextStyle(color: Theme.of(context).colorScheme.tertiary, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (maxHours > 0) ...[
+                    _buildPicker(maxHours + 1, h, '시간', (val) => h = val),
+                  ],
+                  _buildPicker(60, m, '분', (val) => m = val),
+                  _buildPicker(60, s, '초', (val) => s = val),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPicker(int count, int initialItem, String unit, Function(int) onChanged) {
+    return Expanded(
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          CupertinoPicker(
+            itemExtent: 40,
+            scrollController: FixedExtentScrollController(initialItem: initialItem),
+            onSelectedItemChanged: onChanged,
+            children: List.generate(count, (i) => Center(child: Text('$i', style: const TextStyle(color: Colors.white, fontSize: 20)))),
+          ),
+          Positioned(
+            right: 10,
+            child: Text(unit, style: const TextStyle(color: Colors.grey, fontSize: 12, decoration: TextDecoration.none)),
+          ),
+        ],
+      ),
+    );
   }
 
   // 6단계: 맨몸 운동 (선택)

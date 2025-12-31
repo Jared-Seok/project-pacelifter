@@ -60,7 +60,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
   Future<void> _initializeData() async {
     // Fetch linked session
-    _fetchLinkedSession();
+    await _fetchLinkedSession();
 
     if (_workoutData == null) {
       if (mounted) {
@@ -85,8 +85,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     _fetchPaceData();
   }
 
-  void _fetchLinkedSession() {
-    final session = WorkoutHistoryService().getSessionByHealthKitId(widget.dataWrapper.uuid);
+  Future<void> _fetchLinkedSession() async {
+    final session = await WorkoutHistoryService().getSessionByHealthKitId(widget.dataWrapper.uuid);
     if (mounted) {
       setState(() {
         _session = session;

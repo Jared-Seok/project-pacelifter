@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:live_activities/live_activities.dart';
 import 'package:flutter/foundation.dart';
 
@@ -13,8 +14,8 @@ class LiveActivityService {
   bool _isInitialized = false;
   
   // ⚠️ 중요: 이 값은 Xcode > Runner > Signing & Capabilities > App Groups에 등록한 값과 정확히 일치해야 합니다.
-  // 사용자의 Bundle ID가 com.admin.pacelifter 라면 group.com.admin.pacelifter 가 일반적입니다.
-  static const String _appGroupId = "group.com.admin.pacelifter";
+  // 사용자의 Bundle ID가 com.jared.pacelifter 라면 group.com.jared.pacelifter 가 일반적입니다.
+  static const String _appGroupId = "group.com.jared.pacelifter";
   static const String _workoutActivityId = "workout_tracking";
 
   /// 초기화 (App Group 연결)
@@ -22,7 +23,11 @@ class LiveActivityService {
     if (!Platform.isIOS || _isInitialized) return;
     try {
       print('🚀 LiveActivityService: Initializing with Group ID: $_appGroupId');
-      await _liveActivitiesPlugin.init(appGroupId: _appGroupId);
+      // Add a 5 second timeout to prevent native hang from blocking the app
+      await _liveActivitiesPlugin.init(appGroupId: _appGroupId).timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => throw TimeoutException('LiveActivity initialization timed out'),
+      );
       _isInitialized = true;
       print('✅ LiveActivityService: Initialization Successful');
     } catch (e) {
@@ -62,7 +67,7 @@ class LiveActivityService {
 
       print('🚀 LiveActivityService: Creating Activity with data: $activityData');
       _latestActivityId = await _liveActivitiesPlugin.createActivity(
-        _workoutActivityId, 
+        _workoutActivityId,
         activityData,
         removeWhenAppIsKilled: true,
       );

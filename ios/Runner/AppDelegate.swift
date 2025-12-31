@@ -146,39 +146,40 @@ class HealthKitBridge {
     GMSServices.provideAPIKey(googleMapsApiKey)
 
     // Setup Method Channel for HealthKit Bridge
-    let controller = window?.rootViewController as! FlutterViewController
-    let healthKitChannel = FlutterMethodChannel(
-      name: "com.jared.pacelifter/healthkit",
-      binaryMessenger: controller.binaryMessenger
-    )
+    if let controller = window?.rootViewController as? FlutterViewController {
+        let healthKitChannel = FlutterMethodChannel(
+          name: "com.jared.pacelifter/healthkit",
+          binaryMessenger: controller.binaryMessenger
+        )
 
-    healthKitChannel.setMethodCallHandler { [weak self] (call, result) in
-      guard let self = self else { return }
+        healthKitChannel.setMethodCallHandler { [weak self] (call, result) in
+          guard let self = self else { return }
 
-      switch call.method {
-      case "getWorkoutDuration":
-        guard let args = call.arguments as? [String: Any],
-              let uuid = args["uuid"] as? String else {
-          result(FlutterError(code: "INVALID_ARGS",
-                            message: "Missing or invalid uuid argument",
-                            details: nil))
-          return
+          switch call.method {
+          case "getWorkoutDuration":
+            guard let args = call.arguments as? [String: Any],
+                  let uuid = args["uuid"] as? String else {
+              result(FlutterError(code: "INVALID_ARGS",
+                                message: "Missing or invalid uuid argument",
+                                details: nil))
+              return
+            }
+            self.healthKitBridge.getWorkoutDuration(uuid: uuid, result: result)
+
+          case "getWorkoutDetails":
+            guard let args = call.arguments as? [String: Any],
+                  let uuid = args["uuid"] as? String else {
+              result(FlutterError(code: "INVALID_ARGS",
+                                message: "Missing or invalid uuid argument",
+                                details: nil))
+              return
+            }
+            self.healthKitBridge.getWorkoutDetails(uuid: uuid, result: result)
+
+          default:
+            result(FlutterMethodNotImplemented)
+          }
         }
-        self.healthKitBridge.getWorkoutDuration(uuid: uuid, result: result)
-
-      case "getWorkoutDetails":
-        guard let args = call.arguments as? [String: Any],
-              let uuid = args["uuid"] as? String else {
-          result(FlutterError(code: "INVALID_ARGS",
-                            message: "Missing or invalid uuid argument",
-                            details: nil))
-          return
-        }
-        self.healthKitBridge.getWorkoutDetails(uuid: uuid, result: result)
-
-      default:
-        result(FlutterMethodNotImplemented)
-      }
     }
 
     GeneratedPluginRegistrant.register(with: self)

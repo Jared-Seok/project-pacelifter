@@ -63,7 +63,7 @@ class ScoringEngine {
   /// 로컬 세션과 HealthKit 데이터를 중복 없이 통합
   Future<List<WorkoutDataWrapper>> _getUnifiedWorkouts({int days = 365}) async {
     // A. 로컬 세션 로드 (Full Sync 시 모든 과거 데이터가 여기 저장됨)
-    final localSessions = _historyService.getRecentSessions(days: days);
+    final localSessions = await _historyService.getRecentSessions(days: days);
     
     // B. HealthKit 데이터 로드 (최근 데이터만 보완적으로 가져옴)
     final healthData = await _healthService.fetchWorkoutData(days: 30);
@@ -213,13 +213,32 @@ class ScoringEngine {
     return 100.0 - (difference - 10) / 40 * 100;
   }
 
-  PerformanceScores getLatestScores() {
-    final box = Hive.box<PerformanceScores>(_scoresBoxName);
-    return box.get('current') ?? PerformanceScores.initial();
+  Future<PerformanceScores> getLatestScores() async {
+    final box = await _getScoresBox();
+    if (box is Box<PerformanceScores>) {
+      return box.get('current') ?? PerformanceScores.initial();
+    } else {
+      return await (box as LazyBox<PerformanceScores>).get('current') ?? PerformanceScores.initial();
+    }
   }
 
   Future<void> _saveScores(PerformanceScores scores) async {
-    final box = Hive.box<PerformanceScores>(_scoresBoxName);
-    await box.put('current', scores);
+    final box = await _getScoresBox();
+    if (box is Box<PerformanceScores>) {
+      await box.put('current', scores);
+    } else {
+      await (box as LazyBox<PerformanceScores>).put('current', scores);
+    }
+  }
+
+  Future<BoxBase<PerformanceScores>> _getScoresBox() async {
+    if (Hive.isBoxOpen(_scoresBoxName)) {
+      try {
+        return Hive.box<PerformanceScores>(_scoresBoxName);
+      } catch (_) {
+        return Hive.lazyBox<PerformanceScores>(_scoresBoxName);
+      }
+    }
+    return await Hive.openBox<PerformanceScores>(_scoresBoxName);
   }
 }

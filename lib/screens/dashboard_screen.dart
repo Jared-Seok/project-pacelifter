@@ -68,9 +68,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _initialize();
     
     // 로컬 운동 기록 변경 감지 및 자동 새로고침
-    _historySubscription = Hive.box<WorkoutSession>('user_workout_history').watch().listen((event) {
-      _loadHealthData();
-    });
+    _setupHistorySubscription();
+  }
+
+  void _setupHistorySubscription() {
+    try {
+      // 10년치 대용량 데이터이므로 LazyBox로 열려있음
+      if (Hive.isBoxOpen('user_workout_history')) {
+        BoxBase<WorkoutSession> box;
+        try {
+          box = Hive.box<WorkoutSession>('user_workout_history');
+        } catch (_) {
+          box = Hive.lazyBox<WorkoutSession>('user_workout_history');
+        }
+        
+        _historySubscription = box.watch().listen((event) {
+          if (mounted) {
+            _loadHealthData();
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('⚠️ DashboardScreen: Failed to setup history subscription: $e');
+    }
   }
 
   @override
@@ -171,7 +191,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _loadPerformanceScores() async {
     try {
-      final scores = ScoringEngine().getLatestScores();
+      final scores = await ScoringEngine().getLatestScores();
       if (mounted) {
         setState(() {
           _scores = scores;
@@ -195,16 +215,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final isSyncCompleted = await _authService.isHealthSyncCompleted();
 
       if (isFirstLogin && !isSyncCompleted && mounted) {
-        await Future.delayed(const Duration(milliseconds: 500));
-        if (mounted) {
-          _showHealthSyncDialog();
+        await Future.delayed(const Duration(milliseconds: 800));
+        if (mounted && context.mounted) {
+          // PostFrameCallback을 사용하여 UI가 완전히 안정된 후 호출
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && context.mounted) {
+              _showHealthSyncDialog();
+            }
+          });
         }
       } 
       
       // sync 여부와 관계없이 로컬 데이터 및 동기화된 데이터를 로드함
       await _loadHealthData();
     } catch (e) {
-      debugPrint('❌ Error checking login/sync: $e');
+      debugPrint('❌ DashboardScreen: Error checking login/sync: $e');
     }
   }
 
@@ -263,7 +288,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final workoutData = await _healthService.fetchWorkoutData(days: 90);
       
       // 2. 로컬 Hive 세션 가져오기
-      final sessions = WorkoutHistoryService().getAllSessions();
+      final sessions = await WorkoutHistoryService().getAllSessions();
       final sessionMap = <String, WorkoutSession>{};
       for (var s in sessions) {
         if (s.healthKitWorkoutId != null) {
@@ -609,12 +634,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  void _calculateStatistics() {
-    final now = DateTime.now();
-    DateTime startDate;
-    DateTime endDate;
+  Future<void> _calculateStatistics() async {
+    try {
+      final scores = await ScoringEngine().getLatestScores();
+      if (!mounted) return;
+      
+      setState(() {
+        _scores = scores;
+      });
 
-    switch (_selectedPeriod) {
+      final now = DateTime.now();
+      DateTime startDate;
+      DateTime endDate;
+
+      switch (_selectedPeriod) {
       case TimePeriod.week:
         // 월요일부터 일요일까지
         // DateTime.weekday: 1 = Monday, 7 = Sunday
@@ -696,6 +729,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } else {
       _strengthPercentage = 50.0;
       _endurancePercentage = 50.0;
+    }
+    } catch (e) {
+      debugPrint('❌ Error calculating statistics: $e');
     }
   }
 
@@ -1862,7 +1898,7 @@ class _SyncProgressModalState extends State<_SyncProgressModal> {
       // Save to local cache to ensure persistence
       int savedCount = 0;
       for (var data in allWorkouts) {
-        final existing = historyService.getSessionByHealthKitId(data.uuid);
+        final existing = await historyService.getSessionByHealthKitId(data.uuid);
         if (existing == null) {
           final workoutData = data.value is WorkoutHealthValue ? data.value as WorkoutHealthValue : null;
           final workoutTypeName = workoutData?.workoutActivityType.name ?? 'Other';
@@ -1920,23 +1956,27 @@ class _SyncProgressModalState extends State<_SyncProgressModal> {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (_status == 'fetching') ...[
-              const CircularProgressIndicator(),
-              const SizedBox(height: 24),
+              const SizedBox(
+                width: 60,
+                height: 60,
+                child: CircularProgressIndicator(strokeWidth: 5),
+              ),
+              const SizedBox(height: 32),
               const Text('과거 데이터 동기화 중...', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
               const SizedBox(height: 12),
               Text('과거 10년의 모든 운동 기록을\n안전하게 가져오고 있습니다.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[400])),
             ] else if (_status == 'analyzing') ...[
               SizedBox(
-                width: 80, height: 80,
+                width: 100, height: 100,
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    CircularProgressIndicator(value: _progress, strokeWidth: 6),
-                    Text('${(_progress * 100).toInt()}%', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    CircularProgressIndicator(value: _progress, strokeWidth: 8, backgroundColor: Colors.white10),
+                    Text('${(_progress * 100).toInt()}%', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
               const Text('애슬릿 분석 진행 중', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
               const SizedBox(height: 12),
               Text('총 $_foundCount개의 기록을 기반으로\n종합 퍼포먼스를 산출하고 있습니다.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[400])),

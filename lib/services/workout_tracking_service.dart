@@ -141,7 +141,7 @@ class WorkoutTrackingService extends ChangeNotifier {
     _startUpdateTimer();
 
     // 1.5 백그라운드 추적 설정
-    _enableBackgroundTracking();
+    await _enableBackgroundTracking();
   }
 
   // ==============================
@@ -593,7 +593,7 @@ class WorkoutTrackingService extends ChangeNotifier {
   // 13. 백그라운드 추적
   // ==============================
 
-  void _enableBackgroundTracking() {
+  Future<void> _enableBackgroundTracking() async {
     // iOS: Background Modes - Location updates 필요
   }
 

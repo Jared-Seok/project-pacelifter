@@ -484,8 +484,6 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                               : null;
                           final imagePath = exercise?.imagePath;
 
-                          final bool isLast = index == provider.blocks.length - 1;
-
                           return Stack(
                             children: [
                               Container(

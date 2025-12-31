@@ -57,12 +57,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
       final healthData = await _healthService.fetchWorkoutData(days: 365);
       
       // 2. Fetch all local sessions
-      final sessions = _historyService.getAllSessions();
+      final sessions = await _historyService.getAllSessions();
       
       // 3. Create a map of sessions by healthKitWorkoutId for easy lookup
       final sessionMap = <String, WorkoutSession>{};
       for (var session in sessions) {
-        if (session.healthKitWorkoutId != null) {
+        if (session.healthKitWorkoutId != null && session.healthKitWorkoutId!.isNotEmpty) {
           sessionMap[session.healthKitWorkoutId!] = session;
         }
       }
@@ -119,7 +119,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
-  _MonthStats _calculateMonthStats() {
+  Future<_MonthStats> _calculateMonthStats() async {
     int endurance = 0;
     int strength = 0;
     int hybrid = 0;
@@ -237,83 +237,91 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Widget _buildSummarySection() {
-    final stats = _calculateMonthStats();
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      padding: const EdgeInsets.all(20.0),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(16.0),
-      ),
-      child: Row(
-        children: [
-          // Left: Pie Chart
-          SizedBox(
-            width: 130,
-            height: 130,
-            child: PieChart(
-              PieChartData(
-                startDegreeOffset: 270,
-                sectionsSpace: 0,
-                centerSpaceRadius: 35,
-                sections: [
-                  if (stats.enduranceDays > 0)
-                    PieChartSectionData(
-                      color: colorScheme.tertiary, // Deep Teal
-                      value: stats.enduranceDays.toDouble(),
-                      title: '',
-                      radius: 20,
-                      borderSide: const BorderSide(color: Colors.white, width: 0.75),
-                    ),
-                  if (stats.strengthDays > 0)
-                    PieChartSectionData(
-                      color: colorScheme.primary, // Orange
-                      value: stats.strengthDays.toDouble(),
-                      title: '',
-                      radius: 20,
-                      borderSide: const BorderSide(color: Colors.white, width: 0.75),
-                    ),
-                  if (stats.hybridDays > 0)
-                    PieChartSectionData(
-                      color: colorScheme.secondary, // Neon Green
-                      value: stats.hybridDays.toDouble(),
-                      title: '',
-                      radius: 20,
-                      borderSide: const BorderSide(color: Colors.white, width: 0.75),
-                    ),
-                  // Rest days (background)
-                  PieChartSectionData(
-                    color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                    value: stats.restDays.toDouble(),
-                    title: '',
-                    radius: 20,
-                    borderSide: const BorderSide(color: Colors.white, width: 0.75),
+    return FutureBuilder<_MonthStats>(
+      future: _calculateMonthStats(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const SizedBox(height: 170, child: Center(child: CircularProgressIndicator()));
+        }
+        final stats = snapshot.data!;
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          padding: const EdgeInsets.all(20.0),
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(16.0),
+          ),
+          child: Row(
+            children: [
+              // Left: Pie Chart
+              SizedBox(
+                width: 130,
+                height: 130,
+                child: PieChart(
+                  PieChartData(
+                    startDegreeOffset: 270,
+                    sectionsSpace: 0,
+                    centerSpaceRadius: 35,
+                    sections: [
+                      if (stats.enduranceDays > 0)
+                        PieChartSectionData(
+                          color: colorScheme.tertiary, // Deep Teal
+                          value: stats.enduranceDays.toDouble(),
+                          title: '',
+                          radius: 20,
+                          borderSide: const BorderSide(color: Colors.white, width: 0.75),
+                        ),
+                      if (stats.strengthDays > 0)
+                        PieChartSectionData(
+                          color: colorScheme.primary, // Orange
+                          value: stats.strengthDays.toDouble(),
+                          title: '',
+                          radius: 20,
+                          borderSide: const BorderSide(color: Colors.white, width: 0.75),
+                        ),
+                      if (stats.hybridDays > 0)
+                        PieChartSectionData(
+                          color: colorScheme.secondary, // Neon Green
+                          value: stats.hybridDays.toDouble(),
+                          title: '',
+                          radius: 20,
+                          borderSide: const BorderSide(color: Colors.white, width: 0.75),
+                        ),
+                      // Rest days (background)
+                      PieChartSectionData(
+                        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                        value: stats.restDays.toDouble(),
+                        title: '',
+                        radius: 20,
+                        borderSide: const BorderSide(color: Colors.white, width: 0.75),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
+              const SizedBox(width: 24),
+              // Right: Stats
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildStatRow('Endurance', stats.enduranceDays, colorScheme.tertiary),
+                    const SizedBox(height: 6),
+                    _buildStatRow('Strength', stats.strengthDays, colorScheme.primary),
+                    const SizedBox(height: 6),
+                    _buildStatRow('Hybrid', stats.hybridDays, colorScheme.secondary),
+                    const SizedBox(height: 6),
+                    _buildStatRow('Rest Day', stats.restDays, colorScheme.onSurface.withValues(alpha: 0.5), isRest: true),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 24),
-          // Right: Stats
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildStatRow('Endurance', stats.enduranceDays, colorScheme.tertiary),
-                const SizedBox(height: 6),
-                _buildStatRow('Strength', stats.strengthDays, colorScheme.primary),
-                const SizedBox(height: 6),
-                _buildStatRow('Hybrid', stats.hybridDays, colorScheme.secondary),
-                const SizedBox(height: 6),
-                _buildStatRow('Rest Day', stats.restDays, colorScheme.onSurface.withValues(alpha: 0.5), isRest: true),
-              ],
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
