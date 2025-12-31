@@ -501,34 +501,31 @@ class _CalendarScreenState extends State<CalendarScreen> {
     String type = "RUNNING";
     String? environmentType;
 
-    if (wrapper.session != null) {
-      title = wrapper.session!.templateName;
-      category = wrapper.session!.category;
+    final session = wrapper.session;
+    if (session != null && session.templateId.isNotEmpty && session.templateId != 'health_kit_import') {
+      title = session.templateName;
+      category = session.category;
       type = category == 'Strength' ? 'TRADITIONAL_STRENGTH_TRAINING' : 'RUNNING';
-      environmentType = wrapper.session!.environmentType;
-      
-      if (category == 'Endurance' && wrapper.session!.totalDistance != null) {
-        subtitle = "${(wrapper.session!.totalDistance! / 1000).toStringAsFixed(2)}K 러닝";
-      } else if (category == 'Strength') {
-        subtitle = "근력 트레이닝";
-      }
-    } else if (wrapper.healthData != null) {
-      final workout = wrapper.healthData!.value as WorkoutHealthValue;
-      type = workout.workoutActivityType.name;
+      environmentType = session.environmentType;
+    } else {
+      final workoutType = (wrapper.healthData?.value as WorkoutHealthValue?)?.workoutActivityType.name ?? 
+                         (session?.category == 'Strength' ? 'TRADITIONAL_STRENGTH_TRAINING' : 'RUNNING');
+      type = workoutType;
       category = WorkoutUIUtils.getWorkoutCategory(type);
-      title = _formatWorkoutType(type);
-      
-      final distance = workout.totalDistance ?? 0;
-      if (distance > 0) {
-        subtitle = "${(distance / 1000).toStringAsFixed(2)}K 러닝";
-      } else {
-        subtitle = category == 'Strength' ? "근력 트레이닝" : "유산소 운동";
-      }
+      title = WorkoutUIUtils.formatWorkoutType(type);
+    }
+
+    if (category == 'Endurance') {
+      final dist = (session?.totalDistance ?? (wrapper.healthData?.value as WorkoutHealthValue?)?.totalDistance ?? 0).toDouble();
+      if (dist > 0) subtitle = "${(dist / 1000).toStringAsFixed(2)}K 러닝";
+      else subtitle = "유산소 운동";
+    } else {
+      subtitle = "근력 트레이닝";
     }
 
     final Color categoryColor = category == 'Strength' 
         ? Theme.of(context).colorScheme.primary 
-        : Theme.of(context).colorScheme.tertiary; // Deep Teal for Endurance
+        : Theme.of(context).colorScheme.tertiary; 
 
     final Color backgroundColor;
     final Color iconColor;
@@ -536,7 +533,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final upperType = type.toUpperCase();
     if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
       backgroundColor = Theme.of(context).colorScheme.primary.withValues(alpha: 0.2);
-      iconColor = Theme.of(context).colorScheme.secondary;
+      iconColor = Theme.of(context).colorScheme.primary; // User requested primary for Core
     } else {
       backgroundColor = categoryColor.withValues(alpha: 0.2);
       iconColor = categoryColor;
@@ -544,9 +541,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     // 세부 운동 아이콘이 있는지 확인 (배경 제거 로직용)
     bool hasSpecificIcon = false;
-    final session = wrapper.session;
-    if (session != null && session.templateId != null) {
-      final template = TemplateService.getTemplateById(session.templateId!);
+    if (session != null && session.templateId.isNotEmpty) {
+      final template = TemplateService.getTemplateById(session.templateId);
       if (template != null && template.phases.isNotEmpty) {
         final firstBlock = template.phases.first.blocks.isNotEmpty ? template.phases.first.blocks.first : null;
         if (firstBlock != null && firstBlock.exerciseId != null) {
@@ -578,15 +574,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       },
       trailing: const Icon(Icons.chevron_right),
     );
-  }
-
-  String _formatWorkoutType(String type) {
-    final upperType = type.toUpperCase();
-    if (upperType.contains('TRADITIONAL_STRENGTH_TRAINING')) return 'Strength 트레이닝';
-    if (upperType.contains('CORE_TRAINING')) return 'Core 트레이닝';
-    if (upperType.contains('RUNNING')) return 'Running';
-    
-    return type.replaceAll('WORKOUT_ACTIVITY_TYPE_', '').replaceAll('_', ' ');
   }
 
   void _navigateToDetail(WorkoutDataWrapper wrapper) {

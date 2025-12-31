@@ -39,18 +39,32 @@ class WorkoutUIUtils {
     double size = 24,
   }) {
     String iconPath = getWorkoutIconPath(type);
+    final upperType = type.toUpperCase();
     
-    // 세부 운동 아이콘 처리
-    if (session != null && session.exerciseRecords != null && session.exerciseRecords!.isNotEmpty) {
-      // 첫 번째 운동의 아이콘 확인 로직 등 추가 가능
+    // Core/Functional은 Strength 계열 색상으로 고정 (사용자 요청)
+    Color iconColor = color;
+    if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
+      iconColor = Theme.of(context).colorScheme.primary;
     }
 
     return SvgPicture.asset(
       iconPath,
       width: size,
       height: size,
-      colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+      colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
     );
+  }
+
+  /// 운동 타입 이름 포맷팅
+  static String formatWorkoutType(String type) {
+    final upper = type.toUpperCase();
+    if (upper.contains('TRADITIONAL_STRENGTH_TRAINING') || upper.contains('STRENGTH_TRAINING')) {
+      return 'STRENGTH TRAINING';
+    }
+    if (upper.contains('CORE_TRAINING')) {
+      return 'CORE TRAINING';
+    }
+    return upper.replaceAll('WORKOUT_ACTIVITY_TYPE_', '').replaceAll('_', ' ');
   }
 
   /// 화면 상단에 세련된 알림 표시 (Top Toast)

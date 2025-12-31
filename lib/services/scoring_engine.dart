@@ -61,22 +61,17 @@ class ScoringEngine {
   }
 
   /// 로컬 세션과 HealthKit 데이터를 중복 없이 통합
-  Future<List<WorkoutDataWrapper>> _getUnifiedWorkouts({int days = 180}) async {
-    final now = DateTime.now();
-    final startDate = now.subtract(Duration(days: days));
-
-    // A. 로컬 세션 로드
+  Future<List<WorkoutDataWrapper>> _getUnifiedWorkouts({int days = 365}) async {
+    // A. 로컬 세션 로드 (Full Sync 시 모든 과거 데이터가 여기 저장됨)
     final localSessions = _historyService.getRecentSessions(days: days);
     
-    // B. HealthKit 데이터 로드
-    final healthData = await _healthService.getHealthDataFromTypes(
-      startDate, now, [HealthDataType.WORKOUT]
-    );
+    // B. HealthKit 데이터 로드 (최근 데이터만 보완적으로 가져옴)
+    final healthData = await _healthService.fetchWorkoutData(days: 30);
 
     final List<WorkoutDataWrapper> unified = [];
     final Set<String> linkedHealthIds = {};
 
-    // 1. 로컬 세션 기반으로 매핑 (연동된 Health ID 수집)
+    // 1. 로컬 세션 기반으로 매핑
     for (var session in localSessions) {
       if (session.healthKitWorkoutId != null) {
         linkedHealthIds.add(session.healthKitWorkoutId!);
@@ -84,7 +79,7 @@ class ScoringEngine {
       unified.add(WorkoutDataWrapper(session: session));
     }
 
-    // 2. 연동되지 않은 순수 HealthKit 데이터 추가
+    // 2. 연동되지 않은 HealthKit 데이터 추가 (최근 30일 내 누락분)
     for (var data in healthData) {
       if (!linkedHealthIds.contains(data.uuid)) {
         unified.add(WorkoutDataWrapper(healthData: data));

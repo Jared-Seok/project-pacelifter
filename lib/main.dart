@@ -24,40 +24,47 @@ void main() async {
   // 1. Flutter 엔진 초기화
   WidgetsFlutterBinding.ensureInitialized();
 
+  // 2. 기초 초기화만 수행 (초고속)
   try {
-    // 2. Hive 기본 초기화
     await Hive.initFlutter();
-
-    // 3. Adapter 등록
     _registerHiveAdapters();
-
-    // 4. 필수 박스들을 우선적으로 열기 (UI가 바로 필요로 하는 것들)
-    // 이 작업이 완료되어야 하얀 화면을 방지하고 정상적인 데이터 접근이 가능함
-    await Future.wait([
-      Hive.openBox<WorkoutTemplate>('workout_templates'),
-      Hive.openBox<CustomPhasePreset>('custom_phase_presets'),
-      Hive.openBox<Exercise>('exercises'),
-      Hive.openBox<WorkoutSession>('user_workout_history'),
-      Hive.openBox<ExerciseRecord>('user_exercise_records'),
-      Hive.openBox<PerformanceScores>('user_scores'),
-    ]);
-
-    // 5. 템플릿 및 운동 데이터 로드
-    await TemplateService.loadAllTemplatesAndExercises();
-
-    runApp(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider(create: (context) => WorkoutTrackingService()),
-          ChangeNotifierProvider(create: (context) => StrengthRoutineProvider()),
-        ],
-        child: const MyApp(),
-      ),
-    );
-    
   } catch (e) {
-    debugPrint('❌ Critical Initialization Error: $e');
-    runApp(MaterialApp(home: Scaffold(body: Center(child: Text('앱 초기화 오류: $e')))));
+    debugPrint('❌ Basic Init Error: $e');
+  }
+
+  // 3. 앱 즉시 실행 (Dart VM 연결 보장)
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => WorkoutTrackingService()),
+        ChangeNotifierProvider(create: (context) => StrengthRoutineProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
+}
+
+// 초기화 전용 클래스 (SplashScreen 등에서 사용)
+class AppInitializer {
+  static Future<void> init() async {
+    try {
+      // 4. 필수 박스 열기 (여기서 발생하는 지연은 UI 로딩 바로 표시됨)
+      await Future.wait([
+        Hive.openBox<WorkoutTemplate>('workout_templates'),
+        Hive.openBox<CustomPhasePreset>('custom_phase_presets'),
+        Hive.openBox<Exercise>('exercises'),
+        Hive.openBox<WorkoutSession>('user_workout_history'),
+        Hive.openBox<ExerciseRecord>('user_exercise_records'),
+        Hive.openBox<PerformanceScores>('user_scores'),
+      ]);
+
+      // 5. 템플릿 및 운동 데이터 로드
+      await TemplateService.loadAllTemplatesAndExercises();
+      debugPrint('✅ App Data Initialized');
+    } catch (e) {
+      debugPrint('❌ Initialization Error: $e');
+      rethrow;
+    }
   }
 }
 

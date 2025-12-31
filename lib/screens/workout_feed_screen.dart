@@ -208,14 +208,20 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
     final color = _getCategoryColor(workoutCategory, context);
     final upperType = type.toUpperCase();
 
-    String displayName = session?.templateName ?? (type == 'TRADITIONAL_STRENGTH_TRAINING' ? 'STRENGTH TRAINING' : (type == 'CORE_TRAINING' ? 'CORE TRAINING' : (upperType.contains('RUNNING') ? 'RUNNING' : type)));
+    // 표시 이름 결정
+    String displayName;
+    if (session != null && session.templateId.isNotEmpty && session.templateId != 'health_kit_import') {
+      displayName = session.templateName;
+    } else {
+      displayName = WorkoutUIUtils.formatWorkoutType(type);
+    }
 
     final Color backgroundColor;
     final Color iconColor;
 
     if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
       backgroundColor = Theme.of(context).colorScheme.primary.withValues(alpha: 0.2);
-      iconColor = Theme.of(context).colorScheme.secondary;
+      iconColor = Theme.of(context).colorScheme.primary;
     } else {
       backgroundColor = color.withValues(alpha: 0.2);
       iconColor = color;
@@ -244,7 +250,7 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(DateFormat('yyyy-MM-dd HH:mm').format(wrapper.dateFrom)),
-            if (session != null)
+            if (session != null && session.templateId.isNotEmpty && session.templateId != 'health_kit_import')
               Padding(
                 padding: const EdgeInsets.only(top: 6.0),
                 child: Container(

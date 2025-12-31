@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pacelifter/main.dart';
 import 'package:pacelifter/services/auth_service.dart';
 import 'package:pacelifter/screens/login_screen.dart';
 import 'package:pacelifter/screens/main_navigation.dart';
@@ -55,24 +56,32 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _checkAuthAndNavigate() async {
-    // 최소 2초간 스플래시 화면 표시
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      // 1. 데이터 초기화 시작 (박스 오픈, 템플릿 로드 등)
+      await AppInitializer.init();
+      
+      // 최소 2초간 스플래시 화면 표시 보장
+      await Future.delayed(const Duration(seconds: 1));
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    // 로그인 상태 확인
-    final isLoggedIn = await _authService.isLoggedIn();
+      // 2. 로그인 상태 확인
+      final isLoggedIn = await _authService.isLoggedIn();
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    // 로그인 여부에 따라 화면 전환
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (context) => isLoggedIn
-            ? const MainNavigation()
-            : const LoginScreen(),
-      ),
-    );
+      // 3. 화면 전환
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => isLoggedIn
+              ? const MainNavigation()
+              : const LoginScreen(),
+        ),
+      );
+    } catch (e) {
+      debugPrint('❌ SplashScreen Init Error: $e');
+      // 에러 시 사용자에게 알림 (필요시 에러 화면으로 이동)
+    }
   }
 
   @override

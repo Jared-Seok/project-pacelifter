@@ -23,6 +23,7 @@ import 'package:pacelifter/services/scoring_engine.dart';
 import 'package:pacelifter/models/scoring/performance_scores.dart';
 import 'package:pacelifter/models/workout_data_wrapper.dart';
 import 'package:pacelifter/utils/workout_ui_utils.dart';
+import 'package:uuid/uuid.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -39,7 +40,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   late PageController _racePageController;
   final ScrollController _scrollController = ScrollController();
   List<WorkoutDataWrapper> _unifiedWorkouts = [];
-  List<HealthDataPoint> _workoutData = []; // Deprecating usage but keeping for potential internal references
   List<Race> _races = [];
   bool _isLoading = true;
   TimePeriod _selectedPeriod = TimePeriod.week;
@@ -56,7 +56,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final Map<String, GlobalKey> _monthKeyMap = {};
   final Map<String, int> _monthIndexMap = {}; // 각 월의 첫 번째 아이템 인덱스 저장
   
-  Map<String, WorkoutSession> _sessionMap = {};
   PerformanceScores? _scores;
   StreamSubscription? _historySubscription;
 
@@ -214,68 +213,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
         context: context,
         barrierDismissible: false,
         builder: (context) => AlertDialog(
+              backgroundColor: const Color(0xFF1C1C1E),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               title: Row(children: [
                 Icon(Icons.health_and_safety,
                     color: Theme.of(context).colorScheme.secondary),
                 const SizedBox(width: 12),
-                const Text('운동 데이터 동기화'),
+                const Text('전체 데이터 동기화'),
               ]),
-              content: const SingleChildScrollView(
-                  child: Text('PaceLifter와 건강 앱을 연동하여 운동 데이터를 동기화하시겠습니까?')),
+              content: const Text('PaceLifter가 과거의 모든 운동 기록을 가져와 정밀 퍼포먼스 분석을 시작합니다.\n\n데이터 양에 따라 수십 초가 소요될 수 있습니다.'),
               actions: [
                 TextButton(
-                    onPressed: () async {
-                      Navigator.of(context).pop();
-                      await _authService.clearFirstLoginFlag();
-                      await _authService.setHealthSyncCompleted(false);
-                    },
-                    child: const Text('나중에')),
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text('나중에', style: TextStyle(color: Colors.grey[400]))),
                 ElevatedButton(
-                    onPressed: () async {
+                    onPressed: () {
                       Navigator.of(context).pop();
-                      await _authService.clearFirstLoginFlag();
-                      _syncHealthData();
+                      _startFullSyncProcess();
                     },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.secondary,
+                      foregroundColor: Colors.black,
+                    ),
                     child: const Text('동기화 시작')),
               ],
             ));
   }
 
+  void _startFullSyncProcess() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _SyncProgressModal(
+        onComplete: () async {
+          await _loadHealthData();
+          await _loadPerformanceScores();
+        },
+      ),
+    );
+  }
+
   Future<void> _syncHealthData() async {
-    if (mounted) {
-      setState(() {
-        _isLoading = true;
-      });
-    }
-    try {
-      final granted = await _healthService.requestAuthorization();
-      if (granted) {
-        // 동기화 시에는 90일치를 가져와서 넉넉하게 보여줌
-        final workoutData = await _healthService.fetchWorkoutData(days: 90);
-        await _authService.setHealthSyncCompleted(true);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text('${workoutData.length}개의 운동 기록을 동기화했습니다!'),
-                backgroundColor: Colors.green),
-          );
-          await _loadHealthData(); // 통합 데이터 다시 로드
-        }
-      }
-    } catch (e) {
-      debugPrint('❌ Error syncing health data: $e');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
+    _startFullSyncProcess();
   }
 
   Future<void> _loadHealthData() async {
     try {
-      // 1. HealthKit 데이터 가져오기 (최근 90일치로 제한하여 성능 개선)
+      // 1. HealthKit 데이터 가져오기 (최근 90일치 - 일상적 로드는 빠르게)
       final workoutData = await _healthService.fetchWorkoutData(days: 90);
       
       // 2. 로컬 Hive 세션 가져오기
@@ -313,7 +297,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (mounted) {
         setState(() {
           _unifiedWorkouts = unified;
-          _workoutData = workoutData;
           _calculateStatistics();
           _prepareMonthKeys();
         });
@@ -787,7 +770,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Navigator.of(context).pushNamed('/add-workout').then((result) {
                     if (result == true) {
                       // 운동이 추가되면 데이터 새로고침
-                      _syncHealthData();
+                      _loadHealthData();
                     }
                   });
                 },
@@ -1266,7 +1249,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               : null,
                           onSaved: (value) => raceName = value!),
                       const SizedBox(height: 16),
-                      Row(children: [
+                      Row(children: [ 
                         Expanded(
                             child: Text(raceDate == null
                                 ? '레이스 날짜 선택'
@@ -1288,7 +1271,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             })
                       ]),
                       const SizedBox(height: 16),
-                      Row(children: [
+                      Row(children: [ 
                         Expanded(
                             child: Text(trainingStartDate == null
                                 ? '훈련 시작일 선택'
@@ -1588,18 +1571,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     // 표시 이름 결정
     String displayName;
-    if (session != null) {
+    if (session != null && session.templateId.isNotEmpty && session.templateId != 'health_kit_import') {
       displayName = session.templateName;
     } else {
-      if (type == 'TRADITIONAL_STRENGTH_TRAINING') {
-        displayName = 'STRENGTH TRAINING';
-      } else if (type == 'CORE_TRAINING') {
-        displayName = 'CORE TRAINING';
-      } else if (upperType.contains('RUNNING')) {
-        displayName = 'RUNNING';
-      } else {
-        displayName = type;
-      }
+      displayName = WorkoutUIUtils.formatWorkoutType(type);
     }
 
     final Color backgroundColor;
@@ -1607,7 +1582,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
       backgroundColor = Theme.of(context).colorScheme.primary.withValues(alpha: 0.2);
-      iconColor = Theme.of(context).colorScheme.secondary;
+      iconColor = Theme.of(context).colorScheme.primary;
     } else {
       backgroundColor = color.withValues(alpha: 0.2);
       iconColor = color;
@@ -1679,7 +1654,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   DateFormat('yyyy-MM-dd').format(date),
                   style: TextStyle(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.8)),
                 ),
-                if (session != null)
+                if (session != null && session.templateId.isNotEmpty && session.templateId != 'health_kit_import')
                   Padding(
                     padding: const EdgeInsets.only(top: 6.0),
                     child: Container(
@@ -1844,5 +1819,151 @@ class _StickyMonthHeaderDelegate extends SliverPersistentHeaderDelegate {
   @override
   bool shouldRebuild(covariant _StickyMonthHeaderDelegate oldDelegate) {
     return currentMonth != oldDelegate.currentMonth;
+  }
+}
+
+class _SyncProgressModal extends StatefulWidget {
+  final VoidCallback onComplete;
+
+  const _SyncProgressModal({required this.onComplete});
+
+  @override
+  State<_SyncProgressModal> createState() => _SyncProgressModalState();
+}
+
+class _SyncProgressModalState extends State<_SyncProgressModal> {
+  String _status = 'fetching'; // fetching, analyzing, completed
+  int _foundCount = 0;
+  double _progress = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _runSync();
+  }
+
+  Future<void> _runSync() async {
+    final healthService = HealthService();
+    final historyService = WorkoutHistoryService();
+    final scoringEngine = ScoringEngine();
+
+    try {
+      // Step 1: Fetching (10 years)
+      setState(() => _status = 'fetching');
+      final allWorkouts = await healthService.fetchWorkoutData(days: 3650);
+      
+      if (!mounted) return;
+      setState(() {
+        _foundCount = allWorkouts.length;
+        _status = 'analyzing';
+      });
+
+      // Step 2: Saving & Analyzing
+      // Save to local cache to ensure persistence
+      int savedCount = 0;
+      for (var data in allWorkouts) {
+        final existing = historyService.getSessionByHealthKitId(data.uuid);
+        if (existing == null) {
+          final workoutData = data.value is WorkoutHealthValue ? data.value as WorkoutHealthValue : null;
+          final workoutTypeName = workoutData?.workoutActivityType.name ?? 'Other';
+          final formattedName = WorkoutUIUtils.formatWorkoutType(workoutTypeName);
+          
+          final session = WorkoutSession(
+            id: const Uuid().v4(),
+            templateId: '', // 기본 임포트는 템플릿 지정 없음
+            category: WorkoutUIUtils.getWorkoutCategory(workoutTypeName),
+            templateName: formattedName,
+            startTime: data.dateFrom,
+            endTime: data.dateTo,
+            activeDuration: data.dateTo.difference(data.dateFrom).inSeconds,
+            totalDuration: data.dateTo.difference(data.dateFrom).inSeconds,
+            totalDistance: (workoutData?.totalDistance ?? 0).toDouble(),
+            calories: (workoutData?.totalEnergyBurned ?? 0).toDouble(),
+            healthKitWorkoutId: data.uuid,
+            exerciseRecords: [],
+          );
+          await historyService.saveSession(session);
+          savedCount++;
+        }
+        
+        // Update progress UI slowly
+        if (savedCount % 10 == 0 || savedCount == allWorkouts.length) {
+          setState(() {
+            _progress = (allWorkouts.indexOf(data) + 1) / allWorkouts.length;
+          });
+        }
+      }
+
+      // Step 3: Global Athletic Analysis
+      await scoringEngine.calculateAndSaveScores();
+
+      if (!mounted) return;
+      setState(() {
+        _status = 'completed';
+      });
+      
+      widget.onComplete();
+    } catch (e) {
+      debugPrint('❌ Sync Process Error: $e');
+      if (mounted) Navigator.pop(context);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: const Color(0xFF1C1C1E),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_status == 'fetching') ...[
+              const CircularProgressIndicator(),
+              const SizedBox(height: 24),
+              const Text('과거 데이터 동기화 중...', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+              const SizedBox(height: 12),
+              Text('과거 10년의 모든 운동 기록을\n안전하게 가져오고 있습니다.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[400])),
+            ] else if (_status == 'analyzing') ...[
+              SizedBox(
+                width: 80, height: 80,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CircularProgressIndicator(value: _progress, strokeWidth: 6),
+                    Text('${(_progress * 100).toInt()}%', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text('애슬릿 분석 진행 중', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+              const SizedBox(height: 12),
+              Text('총 $_foundCount개의 기록을 기반으로\n종합 퍼포먼스를 산출하고 있습니다.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[400])),
+            ] else ...[
+              const Icon(Icons.check_circle_outline, color: Color(0xFFD4E157), size: 64),
+              const SizedBox(height: 24),
+              const Text('동기화 및 분석 완료!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+              const SizedBox(height: 12),
+              Text('이제 모든 과거 기록이 대시보드와\n캘린더에 완벽하게 반영되었습니다.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[400])),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFD4E157),
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('시작하기', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }
