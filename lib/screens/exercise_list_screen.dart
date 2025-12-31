@@ -496,10 +496,8 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                                   color: Theme.of(context).colorScheme.surface,
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
-                                    color: isLast 
-                                      ? Theme.of(context).colorScheme.secondary
-                                      : Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
-                                    width: isLast ? 3.0 : 2.0,
+                                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
+                                    width: 2.5,
                                   ),
                                 ),
                                 child: Center(
@@ -509,7 +507,7 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                                       imagePath ?? 'assets/images/strength/lifter-icon.svg',
                                       fit: BoxFit.contain,
                                       colorFilter: ColorFilter.mode(
-                                        isLast ? Theme.of(context).colorScheme.secondary : Theme.of(context).colorScheme.primary,
+                                        Theme.of(context).colorScheme.primary,
                                         BlendMode.srcIn,
                                       ),
                                     ),
@@ -568,8 +566,8 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                         ElevatedButton(
                           onPressed: hasSelection ? _startCustomRoutine : null,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).colorScheme.primary,
-                            foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                            backgroundColor: Theme.of(context).colorScheme.secondary,
+                            foregroundColor: Theme.of(context).colorScheme.onSecondary,
                             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),

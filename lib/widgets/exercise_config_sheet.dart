@@ -147,12 +147,18 @@ class _ExerciseConfigSheetState extends State<ExerciseConfigSheet> {
                                         }
                                       });
                                     },
-                                    selectedColor: Theme.of(context).colorScheme.primaryContainer,
+                                    selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                                    side: BorderSide(
+                                      color: isSelected 
+                                          ? Theme.of(context).colorScheme.primary 
+                                          : Colors.grey.shade700,
+                                    ),
                                     labelStyle: TextStyle(
                                       color: isSelected 
-                                          ? Theme.of(context).colorScheme.onPrimaryContainer 
+                                          ? Theme.of(context).colorScheme.primary
                                           : Theme.of(context).colorScheme.onSurface,
                                       fontSize: 12,
+                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                                     ),
                                   );
                                 }).toList(),
@@ -179,12 +185,18 @@ class _ExerciseConfigSheetState extends State<ExerciseConfigSheet> {
                                   }
                                 });
                               },
-                              selectedColor: Theme.of(context).colorScheme.primaryContainer,
+                              selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                              side: BorderSide(
+                                color: isSelected 
+                                    ? Theme.of(context).colorScheme.primary 
+                                    : Colors.grey.shade700,
+                              ),
                               labelStyle: TextStyle(
                                 color: isSelected 
-                                    ? Theme.of(context).colorScheme.onPrimaryContainer 
+                                    ? Theme.of(context).colorScheme.primary
                                     : Theme.of(context).colorScheme.onSurface,
                                 fontSize: 12,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                               ),
                             );
                           }).toList(),
