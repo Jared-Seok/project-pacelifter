@@ -105,8 +105,19 @@ class PerformanceAnalysisScreen extends StatelessWidget {
                   child: RadarChart(
                     RadarChartData(
                       dataSets: [
+                        // 가이드라인 (스케일 고정용)
                         RadarDataSet(
-                          fillColor: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2),
+                          fillColor: Colors.transparent,
+                          borderColor: Colors.transparent,
+                          entryRadius: 0,
+                          dataEntries: [
+                            const RadarEntry(value: 100),
+                            const RadarEntry(value: 100),
+                            const RadarEntry(value: 100),
+                          ],
+                        ),
+                        RadarDataSet(
+                          fillColor: Theme.of(context).colorScheme.secondary.withOpacity(0.2),
                           borderColor: Theme.of(context).colorScheme.secondary,
                           entryRadius: 3,
                           dataEntries: [
@@ -125,9 +136,9 @@ class PerformanceAnalysisScreen extends StatelessWidget {
                           default: return const RadarChartTitle(text: '');
                         }
                       },
-                      tickCount: 1,
+                      tickCount: 4, // 25, 50, 75, 100
                       ticksTextStyle: const TextStyle(color: Colors.transparent),
-                      gridBorderData: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                      gridBorderData: BorderSide(color: Colors.white.withOpacity(0.15)),
                     ),
                   ),
                 ),
