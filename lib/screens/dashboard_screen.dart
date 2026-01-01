@@ -863,8 +863,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Row(
                   children: [
                     SizedBox(
-                      width: 120,
-                      height: 120,
+                      width: 144,
+                      height: 144,
                       child: RadarChart(
                         RadarChartData(
                           dataSets: [

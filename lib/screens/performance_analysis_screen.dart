@@ -66,7 +66,7 @@ class PerformanceAnalysisScreen extends StatelessWidget {
 
   Widget _buildSliverAppBar(BuildContext context) {
     return SliverAppBar(
-      expandedHeight: 320,
+      expandedHeight: 420,
       pinned: true,
       stretch: true,
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -100,8 +100,8 @@ class PerformanceAnalysisScreen extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.only(top: 40.0),
                 child: SizedBox(
-                  width: 200,
-                  height: 200,
+                  width: 305,
+                  height: 305,
                   child: RadarChart(
                     RadarChartData(
                       dataSets: [
