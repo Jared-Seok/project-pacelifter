@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import '../models/sessions/route_point.dart';
 import '../models/templates/workout_template.dart';
 import '../models/templates/template_block.dart';
 import '../services/workout_tracking_service.dart';

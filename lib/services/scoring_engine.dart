@@ -138,8 +138,9 @@ class ScoringEngine {
     double score = 0;
     if (baselineFreq > 0) {
       final ratio = weeklyFreq / baselineFreq;
-      if (ratio >= 1.2) score = 90 + (ratio - 1.2) * 10;
-      else if (ratio >= 1.0) score = 80 + (ratio - 1.0) * 50;
+      if (ratio >= 1.2) {
+        score = 90 + (ratio - 1.2) * 10;
+      } else if (ratio >= 1.0) score = 80 + (ratio - 1.0) * 50;
       else if (ratio >= 0.5) score = 40 + (ratio - 0.5) * 80;
       else score = ratio * 80;
     } else {
@@ -174,8 +175,9 @@ class ScoringEngine {
     double loadScore = 70;
     if (chronicLoad > 0) {
       acwr = acuteLoad / (chronicLoad / 4);
-      if (acwr >= 0.8 && acwr <= 1.3) loadScore = 100;
-      else if (acwr > 1.5) loadScore = 40;
+      if (acwr >= 0.8 && acwr <= 1.3) {
+        loadScore = 100;
+      } else if (acwr > 1.5) loadScore = 40;
       else loadScore = (acwr / 0.8) * 100;
     }
 
@@ -200,8 +202,11 @@ class ScoringEngine {
         dist = val.totalDistance?.toDouble() ?? 0;
       }
 
-      if (cat == 'Endurance') sum += dist / 1000;
-      else sum += vol / 1000;
+      if (cat == 'Endurance') {
+        sum += dist / 1000;
+      } else {
+        sum += vol / 1000;
+      }
     }
     return sum;
   }

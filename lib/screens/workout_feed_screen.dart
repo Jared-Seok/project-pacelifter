@@ -228,8 +228,8 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
     }
 
     bool hasSpecificIcon = false;
-    if (session != null && session.templateId != null) {
-      final template = TemplateService.getTemplateById(session.templateId!);
+    if (session != null) {
+      final template = TemplateService.getTemplateById(session.templateId);
       if (template?.imagePath != null) hasSpecificIcon = true;
     }
 

@@ -140,7 +140,7 @@ class _ExerciseConfigSheetState extends State<ExerciseConfigSheet> {
                                     selected: isSelected,
                                     onSelected: (selected) {
                                       setState(() {
-                                        final categoryPrefix = fullVariant.split(': ')[0] + ': ';
+                                        final categoryPrefix = '${fullVariant.split(': ')[0]}: ';
                                         _selectedVariations.removeWhere((v) => v.startsWith(categoryPrefix));
                                         if (selected) {
                                           _selectedVariations.add(fullVariant);

@@ -491,8 +491,11 @@ class _AthleteScreenState extends State<AthleteScreen> with SingleTickerProvider
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
           TextButton(onPressed: () {
-            if (type == 'running') _saveProfile(_userProfile?.copyWith(runningExperience: double.tryParse(exp.text), runningLevel: lv));
-            else _saveProfile(_userProfile?.copyWith(strengthExperience: double.tryParse(exp.text), strengthLevel: lv));
+            if (type == 'running') {
+              _saveProfile(_userProfile?.copyWith(runningExperience: double.tryParse(exp.text), runningLevel: lv));
+            } else {
+              _saveProfile(_userProfile?.copyWith(strengthExperience: double.tryParse(exp.text), strengthLevel: lv));
+            }
             Navigator.pop(context);
           }, child: const Text('저장'))
         ],
@@ -512,14 +515,16 @@ class _AthleteScreenState extends State<AthleteScreen> with SingleTickerProvider
 
   void _editRunningRecord(String type) {
     Duration? cur;
-    if (type == 'fullMarathon') cur = _userProfile?.fullMarathonTime;
-    else if (type == 'halfMarathon') cur = _userProfile?.halfMarathonTime;
+    if (type == 'fullMarathon') {
+      cur = _userProfile?.fullMarathonTime;
+    } else if (type == 'halfMarathon') cur = _userProfile?.halfMarathonTime;
     else if (type == '10K') cur = _userProfile?.tenKmTime;
     else cur = _userProfile?.fiveKmTime;
     _showTimeInputDialog(title: '최고 기록 입력', currentTime: cur, onSave: (d) {
       UserProfile? up;
-      if (type == 'fullMarathon') up = _userProfile?.copyWith(fullMarathonTime: d);
-      else if (type == 'halfMarathon') up = _userProfile?.copyWith(halfMarathonTime: d);
+      if (type == 'fullMarathon') {
+        up = _userProfile?.copyWith(fullMarathonTime: d);
+      } else if (type == 'halfMarathon') up = _userProfile?.copyWith(halfMarathonTime: d);
       else if (type == '10K') up = _userProfile?.copyWith(tenKmTime: d);
       else up = _userProfile?.copyWith(fiveKmTime: d);
       if (up != null) _saveProfile(up);
@@ -529,8 +534,11 @@ class _AthleteScreenState extends State<AthleteScreen> with SingleTickerProvider
   void _editBodyweightExercise(String type) {
     final c = TextEditingController(text: (type == 'pullUps' ? _userProfile?.maxPullUps : _userProfile?.maxPushUps)?.toString() ?? '');
     _showNumericInputDialog(title: '최대 횟수 입력', hint: '회', controller: c, isInteger: true, onSave: (v) {
-      if (type == 'pullUps') _saveProfile(_userProfile?.copyWith(maxPullUps: int.tryParse(v)));
-      else _saveProfile(_userProfile?.copyWith(maxPushUps: int.tryParse(v)));
+      if (type == 'pullUps') {
+        _saveProfile(_userProfile?.copyWith(maxPullUps: int.tryParse(v)));
+      } else {
+        _saveProfile(_userProfile?.copyWith(maxPushUps: int.tryParse(v)));
+      }
     });
   }
 
@@ -538,8 +546,9 @@ class _AthleteScreenState extends State<AthleteScreen> with SingleTickerProvider
     final c = TextEditingController(text: (type == 'squat' ? _userProfile?.squat3RM : type == 'benchPress' ? _userProfile?.benchPress3RM : _userProfile?.deadlift3RM)?.toStringAsFixed(1) ?? '');
     _showNumericInputDialog(title: '3RM 중량 입력', hint: 'kg', controller: c, onSave: (v) {
       final w = double.tryParse(v);
-      if (type == 'squat') _saveProfile(_userProfile?.copyWith(squat3RM: w));
-      else if (type == 'benchPress') _saveProfile(_userProfile?.copyWith(benchPress3RM: w));
+      if (type == 'squat') {
+        _saveProfile(_userProfile?.copyWith(squat3RM: w));
+      } else if (type == 'benchPress') _saveProfile(_userProfile?.copyWith(benchPress3RM: w));
       else _saveProfile(_userProfile?.copyWith(deadlift3RM: w));
     });
   }

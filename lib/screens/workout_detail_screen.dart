@@ -754,7 +754,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
               ),
               title: Text(record.exerciseName, style: const TextStyle(fontWeight: FontWeight.bold)),
               subtitle: Text(
-                '${record.sets.length} 세트 | 총 ${record.totalVolume >= 1000 ? (record.totalVolume / 1000).toStringAsFixed(2) + " t" : record.totalVolume.toStringAsFixed(0) + " kg"}',
+                '${record.sets.length} 세트 | 총 ${record.totalVolume >= 1000 ? "${(record.totalVolume / 1000).toStringAsFixed(2)} t" : "${record.totalVolume.toStringAsFixed(0)} kg"}',
                 style: const TextStyle(fontSize: 12, color: Colors.grey)
               ),
               children: [

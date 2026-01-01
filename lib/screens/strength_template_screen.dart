@@ -6,7 +6,6 @@ import '../providers/strength_routine_provider.dart';
 import 'exercise_list_screen.dart';
 import '../models/templates/workout_template.dart';
 import '../models/templates/template_phase.dart';
-import '../models/templates/template_block.dart';
 import '../models/exercises/exercise.dart';
 import '../services/template_service.dart';
 import '../widgets/exercise_config_sheet.dart';

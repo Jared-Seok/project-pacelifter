@@ -1,17 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:uuid/uuid.dart';
 import '../models/templates/workout_template.dart';
 import '../models/templates/template_block.dart';
-import '../models/sessions/workout_session.dart';
-import '../models/sessions/exercise_record.dart';
 import '../services/workout_tracking_service.dart';
 import '../services/heart_rate_service.dart';
 import '../widgets/heart_rate_monitor_widget.dart';
-import '../services/workout_history_service.dart';
-import '../services/scoring_engine.dart';
 
 /// 하이브리드 전용 통합 트래킹 화면
 /// 블록 타입(Endurance/Strength)에 따라 UI가 동적으로 전환됨

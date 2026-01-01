@@ -1,4 +1,3 @@
-import 'package:intl/intl.dart';
 
 /// 사용자 프로필 정보를 담는 모델
 class UserProfile {

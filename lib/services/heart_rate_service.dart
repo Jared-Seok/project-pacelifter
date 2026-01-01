@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:health/health.dart';
 import 'package:flutter/foundation.dart';
 import 'profile_service.dart';
-import '../models/user_profile.dart';
 
 /// 실시간 심박수 모니터링 및 분석 서비스
 class HeartRateService {

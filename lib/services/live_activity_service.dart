@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:async';
 import 'package:live_activities/live_activities.dart';
-import 'package:flutter/foundation.dart';
 
 /// 실시간 현황(Live Activities - iOS) 및 알림 트래킹(Android) 서비스
 class LiveActivityService {
