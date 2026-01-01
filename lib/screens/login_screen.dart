@@ -225,7 +225,7 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                               const SizedBox(height: 12),
                               Text(
-                                'Discipline Conquers All',
+                                'DISCIPLINE CONQUERS ALL',
                                 style: GoogleFonts.oswald(
                                   fontSize: 21,
                                   fontWeight: FontWeight.bold,

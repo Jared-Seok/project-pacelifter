@@ -66,38 +66,100 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
-      body: Center(
-        child: AnimatedBuilder(
-          animation: _animationController,
-          builder: (context, child) {
-            return FadeTransition(
-              opacity: _fadeAnimation,
-              child: ScaleTransition(
-                scale: _scaleAnimation,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SvgPicture.asset(
-                      'assets/images/pllogo.svg',
-                      width: 180,
-                      height: 180,
-                      colorFilter: const ColorFilter.mode(Color(0xFFD4E157), BlendMode.srcIn),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment.center,
+            radius: 1.2,
+            colors: [
+              Color(0xFF2C2C2E), // 약간 밝은 다크 그레이
+              Color(0xFF000000), // 완전 블랙
+            ],
+          ),
+        ),
+        child: Stack(
+          fit: StackFit.expand, // Stack이 부모 크기를 가득 채우도록 강제
+          children: [
+            // 중앙 로고 및 타이틀
+            Center(
+              child: AnimatedBuilder(
+                animation: _animationController,
+                builder: (context, child) {
+                  return FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: ScaleTransition(
+                      scale: _scaleAnimation,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SvgPicture.asset(
+                            'assets/images/pllogo.svg',
+                            width: 180,
+                            height: 180,
+                            colorFilter: const ColorFilter.mode(Color(0xFFD4E157), BlendMode.srcIn),
+                          ),
+                          const SizedBox(height: 24),
+                          Text(
+                            'PaceLifter',
+                            style: GoogleFonts.anton(
+                              fontSize: 48,
+                              letterSpacing: 2.0,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFFD4E157),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 24),
+                  );
+                },
+              ),
+            ),
+            // 하단 슬로건
+            Positioned(
+              bottom: 60,
+              left: 0,
+              right: 0,
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: Column(
+                  children: [
                     Text(
-                      'PaceLifter',
-                      style: GoogleFonts.anton(
-                        fontSize: 42,
+                      'DISCIPLINE CONQUERS ALL',
+                      style: GoogleFonts.oswald(
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: const Color(0xFFD4E157),
+                        fontStyle: FontStyle.italic,
+                        color: Colors.white.withOpacity(0.8),
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    RichText(
+                      text: TextSpan(
+                        style: GoogleFonts.oswald(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          fontStyle: FontStyle.italic,
+                          letterSpacing: 1.5,
+                        ),
+                        children: [
+                          TextSpan(
+                            text: 'WELCOME, ',
+                            style: TextStyle(color: Colors.white.withOpacity(0.7)),
+                          ),
+                          const TextSpan(
+                            text: 'HYBRID ATHLETE',
+                            style: TextStyle(color: Color(0xFFD4E157)),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
-            );
-          },
+            ),
+          ],
         ),
       ),
     );
