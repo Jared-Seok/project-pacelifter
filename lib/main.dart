@@ -154,6 +154,9 @@ class _MyAppState extends State<MyApp> {
           surface: Color(0xFF121212),
         ),
         useMaterial3: true,
+        progressIndicatorTheme: const ProgressIndicatorThemeData(
+          color: Color(0xFFD4E157), // Neon Green (Highlight)
+        ),
       ),
       // 초기화 전에는 Splash, 후에는 Router 표시
       home: _initialized 
