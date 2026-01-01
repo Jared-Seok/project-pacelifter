@@ -78,6 +78,10 @@ class WorkoutSessionAdapter extends TypeAdapter<WorkoutSession> {
       ..write(obj.calories)
       ..writeByte(13)
       ..write(obj.environmentType)
+      ..writeByte(24)
+      ..write(obj.routePoints)
+      ..writeByte(25)
+      ..write(obj.elevationGain)
       ..writeByte(14)
       ..write(obj.exerciseRecords)
       ..writeByte(15)
@@ -97,11 +101,7 @@ class WorkoutSessionAdapter extends TypeAdapter<WorkoutSession> {
       ..writeByte(22)
       ..write(obj.healthKitWorkoutId)
       ..writeByte(23)
-      ..write(obj.isCompleted)
-      ..writeByte(24)
-      ..write(obj.routePoints)
-      ..writeByte(25)
-      ..write(obj.elevationGain);
+      ..write(obj.isCompleted);
   }
 
   @override

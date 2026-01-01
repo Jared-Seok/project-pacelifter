@@ -8,7 +8,7 @@ part of 'custom_phase_preset.dart';
 
 class CustomPhasePresetAdapter extends TypeAdapter<CustomPhasePreset> {
   @override
-  final int typeId = 7;
+  final int typeId = 8;
 
   @override
   CustomPhasePreset read(BinaryReader reader) {

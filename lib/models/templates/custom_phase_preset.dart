@@ -4,7 +4,7 @@ import 'template_block.dart';
 part 'custom_phase_preset.g.dart';
 
 /// 사용자 정의 페이즈 프리셋 (예: 나만의 인터벌, 나만의 LSD 등)
-@HiveType(typeId: 7)
+@HiveType(typeId: 8)
 class CustomPhasePreset extends HiveObject {
   @HiveField(0)
   final String id;

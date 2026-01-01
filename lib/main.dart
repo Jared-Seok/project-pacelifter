@@ -19,6 +19,7 @@ import 'models/templates/custom_phase_preset.dart';
 import 'models/exercises/exercise.dart';
 import 'models/sessions/workout_session.dart';
 import 'models/sessions/exercise_record.dart';
+import 'models/sessions/route_point.dart';
 import 'models/scoring/performance_scores.dart';
 
 void main() {
@@ -108,11 +109,14 @@ class AppInitializer {
       if (!Hive.isAdapterRegistered(0)) Hive.registerAdapter(WorkoutTemplateAdapter());
       if (!Hive.isAdapterRegistered(1)) Hive.registerAdapter(TemplatePhaseAdapter());
       if (!Hive.isAdapterRegistered(2)) Hive.registerAdapter(TemplateBlockAdapter());
-      if (!Hive.isAdapterRegistered(3)) Hive.registerAdapter(CustomPhasePresetAdapter());
-      if (!Hive.isAdapterRegistered(10)) Hive.registerAdapter(ExerciseAdapter());
+      // CustomPhasePreset is now typeId: 8
+      if (!Hive.isAdapterRegistered(8)) Hive.registerAdapter(CustomPhasePresetAdapter());
+      // Exercise is typeId: 3
+      if (!Hive.isAdapterRegistered(3)) Hive.registerAdapter(ExerciseAdapter());
       if (!Hive.isAdapterRegistered(4)) Hive.registerAdapter(WorkoutSessionAdapter());
       if (!Hive.isAdapterRegistered(5)) Hive.registerAdapter(ExerciseRecordAdapter());
       if (!Hive.isAdapterRegistered(6)) Hive.registerAdapter(SetRecordAdapter());
+      if (!Hive.isAdapterRegistered(7)) Hive.registerAdapter(RoutePointAdapter());
       
       // PerformanceScores has typeId 40
       if (!Hive.isAdapterRegistered(40)) Hive.registerAdapter(PerformanceScoresAdapter());

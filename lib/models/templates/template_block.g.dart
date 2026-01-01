@@ -72,12 +72,12 @@ class TemplateBlockAdapter extends TypeAdapter<TemplateBlock> {
       ..write(obj.weightType)
       ..writeByte(14)
       ..write(obj.restSeconds)
+      ..writeByte(17)
+      ..write(obj.selectedVariations)
       ..writeByte(15)
       ..write(obj.order)
       ..writeByte(16)
-      ..write(obj.notes)
-      ..writeByte(17)
-      ..write(obj.selectedVariations);
+      ..write(obj.notes);
   }
 
   @override
