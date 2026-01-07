@@ -38,15 +38,24 @@ class HealthService {
   // 모든 타입 (읽기 + 쓰기)
   static final allTypes = {...readTypes, ...writeTypes}.toList();
 
+  static const String _authRequestedKey = 'health_authorization_requested';
+
   /// 건강 데이터 접근 권한 요청 (읽기 + 쓰기)
-  Future<bool> requestAuthorization() async {
+  Future<bool> requestAuthorization({bool force = false}) async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final alreadyRequested = prefs.getBool(_authRequestedKey) ?? false;
+
+      // 이미 요청한 적이 있고 강제가 아니라면 헬스킷 팝업 방지를 위해 true 반환 (패치 시도)
+      if (alreadyRequested && !force) {
+        debugPrint('ℹ️ [HealthService] Authorization already requested once. Skipping intrusive prompt.');
+        // hasPermissions으로 가볍게 체크만 시도 (팝업 안 뜸)
+        return true;
+      }
+
       // 읽기 + 쓰기 권한 모두 요청
       List<HealthDataAccess> permissions = allTypes.map((type) {
-        // 쓰기 가능한 타입은 READ_WRITE, 나머지는 READ
-        if (writeTypes.contains(type)) {
-          return HealthDataAccess.READ_WRITE;
-        }
+        if (writeTypes.contains(type)) return HealthDataAccess.READ_WRITE;
         return HealthDataAccess.READ;
       }).toList();
 
@@ -61,13 +70,16 @@ class HealthService {
           permissions: permissions,
         ).timeout(
           const Duration(seconds: 30),
-          onTimeout: () {
-            debugPrint('⚠️ [HealthService] Authorization request timed out');
-            return false;
-          },
+          onTimeout: () => false,
         );
+        
+        if (requested) {
+          await prefs.setBool(_authRequestedKey, true);
+        }
         return requested;
       }
+      
+      await prefs.setBool(_authRequestedKey, true);
       return true;
     } catch (e) {
       debugPrint('❌ [HealthService] Authorization Error: $e');

@@ -213,20 +213,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       final isFirstLogin = await _authService.isFirstLogin();
       final isSyncCompleted = await _authService.isHealthSyncCompleted();
+      debugPrint('🔍 [Dashboard] isFirstLogin: $isFirstLogin, isSyncCompleted: $isSyncCompleted');
 
       if (isFirstLogin && !isSyncCompleted && mounted) {
+        debugPrint('ℹ️ [Dashboard] Showing health sync dialog for the first time');
         await Future.delayed(const Duration(milliseconds: 800));
         if (mounted && context.mounted) {
-          // PostFrameCallback을 사용하여 UI가 완전히 안정된 후 호출
-          WidgetsBinding.instance.addPostFrameCallback((_) {
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
             if (mounted && context.mounted) {
               _showHealthSyncDialog();
+              // 다이얼로그를 한 번 보여줬으면 더 이상 '첫 로그인의 동기화 안내'는 띄우지 않도록 즉시 플래그 제거
+              await _authService.clearFirstLoginFlag();
+              debugPrint('✅ [Dashboard] First login flag cleared');
             }
           });
         }
-      } 
+      } else {
+        debugPrint('ℹ️ [Dashboard] Skipping sync dialog: Skip conditions met');
+      }
       
-      // sync 여부와 관계없이 로컬 데이터 및 동기화된 데이터를 로드함
       await _loadHealthData();
     } catch (e) {
       debugPrint('❌ DashboardScreen: Error checking login/sync: $e');
@@ -2071,6 +2076,7 @@ class _SyncProgressModalState extends State<_SyncProgressModal> {
       });
       
       if (!_isCancelled) {
+        await AuthService().setHealthSyncCompleted(true);
         widget.onComplete();
       }
     } catch (e) {

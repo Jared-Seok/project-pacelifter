@@ -264,7 +264,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       final timeDiff = point.dateFrom.difference(lastTime).inSeconds;
       if (timeDiff >= 2) { // 2초 이상의 간격이 있을 때만 포인트 생성
         final speedMs = accumulatedDist / timeDiff;
-        if (speedMs > 0.5 && speedMs < 10.0) { // 정상 범위 속도만 포함 (2:00/km ~ 30:00/km)
+        if (speedMs > 0.1 && speedMs < 12.0) { // 정상 범위 속도만 포함 (걷기~전력질주)
           pacePoints.add(HealthDataPoint(
             uuid: '${point.uuid}_calc',
             value: NumericHealthValue(numericValue: speedMs),
@@ -1067,58 +1067,49 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     final workoutCategory = _session?.category ?? WorkoutUIUtils.getWorkoutCategory(workoutType);
     final color = WorkoutUIUtils.getWorkoutColor(context, workoutCategory);
 
-    // 1. 원본 페이스 데이터 추출
-    final rawPaces = <double>[];
+    // 1. 유효한 페이스 데이터 추출 및 포인트 쌍(Pair) 생성
+    final validPoints = <HealthDataPoint>[];
+    final validPaces = <double>[];
+    
     for (var data in _paceData) {
       final speedMs = (data.value as NumericHealthValue).numericValue.toDouble();
-      if (speedMs > 0) {
+      if (speedMs > 0.1) { // 0.1 m/s (약 166분/km) 이상이면 유효한 걷기/러닝으로 간주
         final pace = 1000 / (speedMs * 60);
-        if (pace < 20) {
-          rawPaces.add(pace);
+        if (pace < 30) { // 30분/km 이내의 기록만 포함
+          validPoints.add(data);
+          validPaces.add(pace);
         }
       }
     }
 
-    if (rawPaces.isEmpty) {
+    if (validPaces.isEmpty) {
       return const Center(child: Text('유효한 페이스 데이터가 없습니다.'));
     }
 
-    // 2. 이동 평균(Moving Average) 스무딩 적용 (window size = 3)
+    // 2. 이동 평균(Moving Average) 스무딩 적용
     final smoothedPaces = <double>[];
-    if (rawPaces.length < 3) {
-      smoothedPaces.addAll(rawPaces);
+    if (validPaces.length < 3) {
+      smoothedPaces.addAll(validPaces);
     } else {
-      // 첫 번째 포인트
-      smoothedPaces.add((rawPaces[0] + rawPaces[1]) / 2);
-      // 중간 포인트들
-      for (int i = 1; i < rawPaces.length - 1; i++) {
-        final average = (rawPaces[i - 1] + rawPaces[i] + rawPaces[i + 1]) / 3;
-        smoothedPaces.add(average);
+      smoothedPaces.add((validPaces[0] + validPaces[1]) / 2);
+      for (int i = 1; i < validPaces.length - 1; i++) {
+        smoothedPaces.add((validPaces[i - 1] + validPaces[i] + validPaces[i + 1]) / 3);
       }
-      // 마지막 포인트
-      smoothedPaces.add((rawPaces[rawPaces.length - 2] + rawPaces[rawPaces.length - 1]) / 2);
+      smoothedPaces.add((validPaces[validPaces.length - 2] + validPaces[validPaces.length - 1]) / 2);
     }
 
-    // 3. 활동 시간 계산 (X축 범위 결정)
+    // 3. X축 범위 결정 (전체 경과 시간 기준)
     final workoutStartTime = widget.dataWrapper.dateFrom;
-    final activeDurationSeconds = _nativeActiveDuration?.inSeconds.toDouble() ??
-        widget.dataWrapper.dateTo.difference(workoutStartTime).inSeconds.toDouble();
-    final maxXSeconds = activeDurationSeconds == 0 ? 1.0 : activeDurationSeconds;
+    final workoutEndTime = widget.dataWrapper.dateTo;
+    final totalDurationSeconds = workoutEndTime.difference(workoutStartTime).inSeconds.toDouble();
+    final maxXSeconds = totalDurationSeconds == 0 ? 1.0 : totalDurationSeconds;
 
-    // 4. 스무딩된 데이터를 FlSpot으로 변환 (활동 시간 내의 데이터만 포함)
+    // 4. 스무딩된 데이터를 FlSpot으로 변환
     final spots = <FlSpot>[];
-
     for (int i = 0; i < smoothedPaces.length; i++) {
-      // 원본 데이터의 타임스탬프를 사용
-      final originalDataPoint = _paceData[i];
-      final elapsedSeconds = originalDataPoint.dateFrom
-          .difference(workoutStartTime)
-          .inSeconds
-          .toDouble();
-
-      // 활동 시간 범위 내의 데이터만 포함 (일시정지 구간 제외)
+      final elapsedSeconds = validPoints[i].dateFrom.difference(workoutStartTime).inSeconds.toDouble();
+      // 활동 시간이 아닌 전체 시간 범위 내의 데이터 포함
       if (elapsedSeconds <= maxXSeconds) {
-        // Y축 반전을 위해 음수 값 사용
         spots.add(FlSpot(elapsedSeconds, -smoothedPaces[i]));
       }
     }
@@ -1127,16 +1118,29 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       return const Center(child: Text('유효한 페이스 데이터가 없습니다.'));
     }
 
-    // Y축 범위 계산
-    final minPace = spots.map((e) => e.y).reduce(min);
-    final maxPace = spots.map((e) => e.y).reduce(max);
+    // Y축 및 X축 범위 계산 (음수이므로 min/max 혼동 주의)
+    final allY = spots.map((e) => e.y).toList();
+    final allX = spots.map((e) => e.x).toList();
+    final minY = allY.reduce(min);
+    final maxY = allY.reduce(max);
+    final minX = allX.reduce(min);
+    final maxXFromSpots = allX.reduce(max);
+    
+    // 차트의 최종 X축 범위: 운동 전체 시간 혹은 샘플 중 늦은 시간을 선택
+    final chartMaxX = max(maxXSeconds, maxXFromSpots);
+    
+    // Y축 버퍼 추가 (20%)
+    final rangeY = (maxY - minY).abs();
+    final bufferY = rangeY < 0.1 ? 1.0 : rangeY * 0.2;
+
+    debugPrint('📊 [PACE CHART] Stats -> Spots: ${spots.length}, minX: $minX, maxX: $chartMaxX, minY: $minY, maxY: $maxY');
 
     return LineChart(
       LineChartData(
-        minX: 0,
-        maxX: maxXSeconds,
-        minY: minPace - (minPace.abs() * 0.1),
-        maxY: maxPace + (maxPace.abs() * 0.1),
+        minX: min(0.0, minX),
+        maxX: chartMaxX,
+        minY: minY - bufferY,
+        maxY: maxY + bufferY,
         gridData: FlGridData(
           show: true,
           drawVerticalLine: true,
@@ -1181,7 +1185,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 45,
-              interval: max(0.5, ((maxPace.abs() - minPace.abs()).abs() / 4).clamp(0.5, 2.0)),
+              interval: max(0.5, ((maxY - minY).abs() / 4).clamp(0.5, 2.0)),
               getTitlesWidget: (value, meta) {
                 final absValue = value.abs();
                 final minutes = absValue.floor();
@@ -1249,11 +1253,19 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         lineBarsData: [
           LineChartBarData(
             spots: spots,
-            isCurved: true,
-            color: color, // Use dynamic category color (Deep Teal for Endurance)
+            isCurved: spots.length >= 5, // 샘플이 너무 적으면 직선으로 표시
+            color: color,
             barWidth: 3,
             isStrokeCapRound: true,
-            dotData: const FlDotData(show: false),
+            dotData: FlDotData(
+              show: spots.length < 10, // 샘플이 적으면 포인트(점) 표시하여 가시성 확보
+              getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
+                radius: 3,
+                color: color,
+                strokeWidth: 1,
+                strokeColor: Colors.white,
+              ),
+            ),
             belowBarData: BarAreaData(
               show: true,
               color: color.withValues(alpha: 0.2),

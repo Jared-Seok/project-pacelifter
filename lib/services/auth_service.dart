@@ -55,7 +55,7 @@ class AuthService {
   /// 첫 로그인 플래그 제거 (동기화 팝업 표시 후 호출)
   Future<void> clearFirstLoginFlag() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_keyFirstLogin);
+    await prefs.setBool(_keyFirstLogin, false);
   }
 
   /// 헬스 데이터 동기화 완료 여부 확인
