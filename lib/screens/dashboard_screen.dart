@@ -1685,7 +1685,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       workoutCategory = WorkoutUIUtils.getWorkoutCategory(type);
     } else if (session != null) {
       workoutCategory = session.category;
-      type = session.category == 'Strength' ? 'TRADITIONAL_STRENGTH_TRAINING' : 'OTHER';
+      // 템플릿 이름에 RUNNING이 포함되어 있으면 RUNNING으로 매핑
+      if (session.templateName.toUpperCase().contains('RUN')) {
+        type = 'RUNNING';
+      } else {
+        type = session.category == 'Strength' ? 'TRADITIONAL_STRENGTH_TRAINING' : 'OTHER';
+      }
     }
 
     final color = _getCategoryColor(workoutCategory);
@@ -1693,7 +1698,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     // 표시 이름 결정
     String displayName;
-    if (session != null && session.templateId.isNotEmpty && session.templateId != 'health_kit_import') {
+    if (session != null && session.templateName.isNotEmpty) {
+      // 템플릿 아이디가 없더라도 저장된 이름을 우선 사용 (동기화 기록 대응)
       displayName = session.templateName;
     } else {
       displayName = WorkoutUIUtils.formatWorkoutType(type);
@@ -2005,21 +2011,30 @@ class _SyncProgressModalState extends State<_SyncProgressModal> {
         
         if (existing == null) {
           final workoutData = data.value is WorkoutHealthValue ? data.value as WorkoutHealthValue : null;
-          final workoutTypeName = workoutData?.workoutActivityType.name ?? 'Other';
-          final formattedName = WorkoutUIUtils.formatWorkoutType(workoutTypeName);
+          String workoutTypeName = workoutData?.workoutActivityType.name ?? 'Other';
+          
+          // HKWorkoutActivityType 'Other'라 하더라도 소스 이름이나 메타데이터에 'Run'이 있으면 보정
+          if (workoutTypeName == 'Other' && (data.sourceName.toUpperCase().contains('RUN') || data.sourceName.toUpperCase().contains('NIKE'))) {
+            workoutTypeName = 'RUNNING';
+          }
+          
+          final category = WorkoutUIUtils.getWorkoutCategory(workoutTypeName);
+          final formattedType = WorkoutUIUtils.formatWorkoutType(workoutTypeName);
           
           final session = WorkoutSession(
             id: const Uuid().v4(),
             templateId: '',
-            category: WorkoutUIUtils.getWorkoutCategory(workoutTypeName),
-            templateName: formattedName,
+            category: category,
+            templateName: formattedType, // 'Nike Run Club'이 아닌 'RUNNING' 등으로 유지
             startTime: data.dateFrom,
             endTime: data.dateTo,
             activeDuration: data.dateTo.difference(data.dateFrom).inSeconds,
             totalDuration: data.dateTo.difference(data.dateFrom).inSeconds,
-            totalDistance: (workoutData?.totalDistance ?? 0).toDouble(),
+            totalDistance: category == 'Strength' ? 0 : (workoutData?.totalDistance ?? 0).toDouble(),
             calories: (workoutData?.totalEnergyBurned ?? 0).toDouble(),
             healthKitWorkoutId: data.uuid,
+            sourceName: data.sourceName, // 실제 앱 출처는 여기에만 저장
+            sourceId: data.sourceId,
             exerciseRecords: [],
           );
           sessionsToSave.add(session);

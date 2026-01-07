@@ -62,14 +62,15 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     // Fetch linked session
     await _fetchLinkedSession();
 
-    if (_workoutData == null) {
+    // If _workoutData is null but we have a session with HealthKitId, 
+    // we can still fetch samples using the session times.
+    if (_workoutData == null && (_session == null || _session!.healthKitWorkoutId == null)) {
       if (mounted) {
         setState(() {
           _isLoading = false;
           _isPaceLoading = false;
           if (_session != null) {
             _avgHeartRate = _session!.averageHeartRate?.toDouble() ?? 0;
-            // averagePace is in seconds/km in WorkoutSession
             _avgPace = _session!.averagePace != null ? _session!.averagePace! / 60 : 0;
           }
         });
@@ -95,28 +96,41 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   }
 
   Future<void> _fetchHeartRateData() async {
-    if (_workoutData == null) return;
+    final startTime = widget.dataWrapper.dateFrom;
+    final endTime = widget.dataWrapper.dateTo;
     final types = [HealthDataType.HEART_RATE];
 
     final granted = await _healthService.requestAuthorization();
     if (granted) {
       try {
         final heartRateData = await _healthService.getHealthDataFromTypes(
-          widget.dataWrapper.dateFrom,
-          widget.dataWrapper.dateTo,
+          startTime,
+          endTime,
           types,
         );
 
         if (heartRateData.isNotEmpty) {
-          double sum = 0;
-          for (var data in heartRateData) {
-            sum += (data.value as NumericHealthValue).numericValue;
+          // sourceId가 있다면 해당 소스 데이커만 필터링 (Nike Run Club 등)
+          var filteredData = _session?.sourceId != null
+              ? heartRateData.where((d) => d.sourceId == _session!.sourceId).toList()
+              : heartRateData;
+
+          // 필터링 결과가 없으면 전체 데이터 사용 (삼성 헬스나 서드파티 앱 기록 방식 차이 대응)
+          if (filteredData.isEmpty && heartRateData.isNotEmpty) {
+            filteredData = heartRateData;
           }
-          if (mounted) {
-            setState(() {
-              _heartRateData = heartRateData;
-              _avgHeartRate = sum / _heartRateData.length;
-            });
+
+          if (filteredData.isNotEmpty) {
+            double sum = 0;
+            for (var data in filteredData) {
+              sum += (data.value as NumericHealthValue).numericValue;
+            }
+            if (mounted) {
+              setState(() {
+                _heartRateData = filteredData;
+                _avgHeartRate = sum / filteredData.length;
+              });
+            }
           }
         }
       } catch (e) {
@@ -206,11 +220,18 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
         // 시간 순서대로 정렬 (과거 → 최신)
         distanceData.sort((a, b) => a.dateFrom.compareTo(b.dateFrom));
-        print('🔍 [PACE DEBUG] After sorting - First: ${(distanceData.first.value as NumericHealthValue).numericValue}m at ${distanceData.first.dateFrom}');
-        print('🔍 [PACE DEBUG] After sorting - Last: ${(distanceData.last.value as NumericHealthValue).numericValue}m at ${distanceData.last.dateFrom}');
+
+        var filteredDistanceData = _session?.sourceId != null
+            ? distanceData.where((d) => d.sourceId == _session!.sourceId).toList()
+            : distanceData;
+
+        // 필터링 결과가 없으면 전체 데이터 사용
+        if (filteredDistanceData.isEmpty && distanceData.isNotEmpty) {
+          filteredDistanceData = distanceData;
+        }
 
         // 거리 샘플에서 페이스 데이터 생성
-        final paceDataPoints = _calculatePaceFromDistance(distanceData);
+        final paceDataPoints = _calculatePaceFromDistance(filteredDistanceData);
         print('🔍 [PACE DEBUG] Pace points generated: ${paceDataPoints.length}');
 
         if (mounted) {
@@ -576,7 +597,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (workoutCategory == 'Strength' && _session != null) ...[
+                    if (workoutCategory == 'Strength' && _session != null && _session!.exerciseRecords != null && _session!.exerciseRecords!.isNotEmpty) ...[
                       _buildStrengthSummary(_session!),
                       const Divider(height: 32),
                     ],
@@ -595,7 +616,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                       '날짜 및 시간',
                       '${DateFormat('yyyy년 MM월 dd일').format(widget.dataWrapper.dateFrom)}\n${DateFormat('HH:mm').format(widget.dataWrapper.dateFrom)} ~ ${DateFormat('HH:mm').format(widget.dataWrapper.dateTo)}',
                     ),
-                    if (workout?.totalDistance != null || _session?.totalDistance != null) ...[
+                    if (workoutCategory != 'Strength' && (workout?.totalDistance != null || _session?.totalDistance != null)) ...[
                       const Divider(height: 24),
                       _buildInfoRow(
                         Icons.straighten,

@@ -26,6 +26,9 @@ class WorkoutDataWrapper {
   }
 
   String get sourceName {
+    if (session?.sourceName != null && session!.sourceName!.isNotEmpty) {
+      return session!.sourceName!;
+    }
     if (healthData != null) return healthData!.sourceName;
     return 'PaceLifter';
   }

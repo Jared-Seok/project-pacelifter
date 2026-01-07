@@ -89,6 +89,12 @@ class WorkoutSession extends HiveObject {
   @HiveField(23)
   final bool isCompleted; // 완료 여부
 
+  @HiveField(26)
+  final String? sourceName; // 데이터 출처 (Nike Run Club, Strava 등)
+
+  @HiveField(27)
+  final String? sourceId; // HealthKit Source Bundle ID
+
   WorkoutSession({
     required this.id,
     required this.templateId,
@@ -116,6 +122,8 @@ class WorkoutSession extends HiveObject {
     this.isCompleted = true,
     this.routePoints,
     this.elevationGain,
+    this.sourceName,
+    this.sourceId,
   });
 
   /// JSON에서 세션 생성
@@ -165,6 +173,8 @@ class WorkoutSession extends HiveObject {
       elevationGain: json['elevationGain'] != null
           ? (json['elevationGain'] as num).toDouble()
           : null,
+      sourceName: json['sourceName'] as String?,
+      sourceId: json['sourceId'] as String?,
     );
   }
 
@@ -197,6 +207,8 @@ class WorkoutSession extends HiveObject {
       'isCompleted': isCompleted,
       'routePoints': routePoints?.map((rp) => rp.toJson()).toList(),
       'elevationGain': elevationGain,
+      'sourceName': sourceName,
+      'sourceId': sourceId,
     };
   }
 
@@ -228,6 +240,8 @@ class WorkoutSession extends HiveObject {
     bool? isCompleted,
     List<RoutePoint>? routePoints,
     double? elevationGain,
+    String? sourceName,
+    String? sourceId,
   }) {
     return WorkoutSession(
       id: id ?? this.id,
@@ -256,6 +270,8 @@ class WorkoutSession extends HiveObject {
       isCompleted: isCompleted ?? this.isCompleted,
       routePoints: routePoints ?? this.routePoints,
       elevationGain: elevationGain ?? this.elevationGain,
+      sourceName: sourceName ?? this.sourceName,
+      sourceId: sourceId ?? this.sourceId,
     );
   }
 }

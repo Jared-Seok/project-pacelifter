@@ -43,13 +43,15 @@ class WorkoutSessionAdapter extends TypeAdapter<WorkoutSession> {
       isCompleted: fields[23] as bool,
       routePoints: (fields[24] as List?)?.cast<RoutePoint>(),
       elevationGain: fields[25] as double?,
+      sourceName: fields[26] as String?,
+      sourceId: fields[27] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, WorkoutSession obj) {
     writer
-      ..writeByte(26)
+      ..writeByte(28)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -101,7 +103,11 @@ class WorkoutSessionAdapter extends TypeAdapter<WorkoutSession> {
       ..writeByte(22)
       ..write(obj.healthKitWorkoutId)
       ..writeByte(23)
-      ..write(obj.isCompleted);
+      ..write(obj.isCompleted)
+      ..writeByte(26)
+      ..write(obj.sourceName)
+      ..writeByte(27)
+      ..write(obj.sourceId);
   }
 
   @override
