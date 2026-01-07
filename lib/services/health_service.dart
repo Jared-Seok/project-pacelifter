@@ -23,6 +23,7 @@ class HealthService {
     // 고급 지표 (선택적)
     HealthDataType.RESTING_HEART_RATE,
     HealthDataType.HEART_RATE_VARIABILITY_SDNN,
+    HealthDataType.RUNNING_SPEED,
   ];
 
   // 쓰기 권한 데이터 타입 (P0 - MVP 필수)

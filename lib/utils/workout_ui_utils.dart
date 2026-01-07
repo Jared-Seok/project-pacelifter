@@ -15,6 +15,20 @@ class WorkoutUIUtils {
     return 'Endurance';
   }
 
+  /// 운동 카테고리에 따른 브랜드 색상 반환
+  static Color getWorkoutColor(BuildContext context, String category) {
+    switch (category) {
+      case 'Strength':
+        return Theme.of(context).colorScheme.primary; // Orange
+      case 'Endurance':
+        return Theme.of(context).colorScheme.tertiary; // Deep Teal
+      case 'Hybrid':
+        return Theme.of(context).colorScheme.secondary; // Neon Green
+      default:
+        return Theme.of(context).colorScheme.secondary;
+    }
+  }
+
   /// 운동 유형에 따른 아이콘 경로 반환
   static String getWorkoutIconPath(String activityType) {
     final type = activityType.toUpperCase();

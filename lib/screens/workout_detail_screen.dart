@@ -12,6 +12,7 @@ import 'package:pacelifter/services/template_service.dart';
 import 'package:pacelifter/models/workout_data_wrapper.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:pacelifter/models/sessions/route_point.dart';
+import 'package:pacelifter/utils/workout_ui_utils.dart';
 import 'dart:math';
 
 /// 운동 세부 정보 화면
@@ -98,173 +99,110 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   Future<void> _fetchHeartRateData() async {
     final startTime = widget.dataWrapper.dateFrom;
     final endTime = widget.dataWrapper.dateTo;
-    final types = [HealthDataType.HEART_RATE];
 
     final granted = await _healthService.requestAuthorization();
-    if (granted) {
-      try {
-        final heartRateData = await _healthService.getHealthDataFromTypes(
-          startTime,
-          endTime,
-          types,
-        );
+    if (!granted) {
+      if (mounted) setState(() => _heartRateError = '심박수 접근 권한이 거부되었습니다.');
+      return;
+    }
 
-        if (heartRateData.isNotEmpty) {
-          // sourceId가 있다면 해당 소스 데이커만 필터링 (Nike Run Club 등)
-          var filteredData = _session?.sourceId != null
-              ? heartRateData.where((d) => d.sourceId == _session!.sourceId).toList()
-              : heartRateData;
+    try {
+      final heartRateData = await _healthService.getHealthDataFromTypes(
+        startTime,
+        endTime,
+        [HealthDataType.HEART_RATE],
+      );
 
-          // 필터링 결과가 없으면 전체 데이터 사용 (삼성 헬스나 서드파티 앱 기록 방식 차이 대응)
-          if (filteredData.isEmpty && heartRateData.isNotEmpty) {
-            filteredData = heartRateData;
-          }
-
-          if (filteredData.isNotEmpty) {
-            double sum = 0;
-            for (var data in filteredData) {
-              sum += (data.value as NumericHealthValue).numericValue;
-            }
-            if (mounted) {
-              setState(() {
-                _heartRateData = filteredData;
-                _avgHeartRate = sum / filteredData.length;
-              });
-            }
-          }
-        }
-      } catch (e) {
-        if (mounted) {
-          setState(() {
-            _heartRateError = '심박수 데이터를 가져오는 데 실패했습니다.';
-          });
-        }
+      if (heartRateData.isEmpty) {
+        if (mounted) setState(() => _isLoading = false);
+        return;
       }
-    } else {
+
+      // sourceId 필터링 (결과 없으면 전체 사용)
+      var filtered = _session?.sourceId != null
+          ? heartRateData.where((d) => d.sourceId == _session!.sourceId).toList()
+          : heartRateData;
+      if (filtered.isEmpty) filtered = heartRateData;
+
+      double sum = 0;
+      for (var d in filtered) {
+        sum += (d.value as NumericHealthValue).numericValue;
+      }
+
       if (mounted) {
         setState(() {
-          _heartRateError = '심박수 접근 권한이 거부되었습니다.';
+          _heartRateData = filtered;
+          _avgHeartRate = sum / filtered.length;
+          _isLoading = false;
         });
       }
-    }
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
+    } catch (e) {
+      if (mounted) setState(() => _heartRateError = '심박수 데이터를 가져오는데 실패했습니다.');
     }
   }
 
   Future<void> _fetchPaceData() async {
-    final workout = _workoutData?.value as WorkoutHealthValue?;
-    final totalDistance = workout?.totalDistance ?? _session?.totalDistance; // 미터
+    final totalDistance = (widget.dataWrapper.healthData?.value as WorkoutHealthValue?)?.totalDistance 
+        ?? _session?.totalDistance ?? 0.0;
 
-    print('🔍 [PACE DEBUG] Starting pace fetch');
-    print('🔍 [PACE DEBUG] Total distance: $totalDistance meters');
-    print('🔍 [PACE DEBUG] Workout source: ${widget.dataWrapper.sourceName}');
-    print('🔍 [PACE DEBUG] Workout dateFrom: ${widget.dataWrapper.dateFrom}');
-    print('🔍 [PACE DEBUG] Workout dateTo: ${widget.dataWrapper.dateTo}');
-
-    // 거리 데이터 확인
-    if (totalDistance == null || totalDistance == 0) {
-      print('❌ [PACE DEBUG] No distance data available');
-      if (mounted) {
-        setState(() {
-          _paceError = '거리 데이터가 없습니다.';
-          _isPaceLoading = false;
-        });
-      }
+    if (totalDistance <= 0) {
+      if (mounted) setState(() => _isPaceLoading = false);
       return;
     }
 
-    // Use native active duration (excluding pauses) for accurate pace calculation
-    // Priority 1: Native HKWorkout duration (most accurate)
-    // Priority 2: Fallback to elapsed time (dateTo - dateFrom)
-    final workoutDuration = _nativeActiveDuration ??
+    final duration = _nativeActiveDuration ?? 
         widget.dataWrapper.dateTo.difference(widget.dataWrapper.dateFrom);
-
-    print('🔍 [PACE DEBUG] Workout duration: ${workoutDuration.inSeconds} seconds');
-    print('🔍 [PACE DEBUG] Using ${_nativeActiveDuration != null ? "native active duration" : "elapsed time (fallback)"}');
-
-    // 평균 페이스 계산 (분/km) - 운동 시간(활동 시간) 기준
-    double avgPaceMinPerKm = 0;
-    if (workoutDuration.inSeconds > 0 && totalDistance > 0) {
-      avgPaceMinPerKm = (workoutDuration.inSeconds / 60) / (totalDistance / 1000);
-      print('🔍 [PACE DEBUG] Average pace calculated: $avgPaceMinPerKm min/km');
-      print('🔍 [PACE DEBUG] Calculation: (${workoutDuration.inSeconds} / 60) / ($totalDistance / 1000)');
+    
+    // 평균 페이스 계산
+    if (duration.inSeconds > 0) {
+      _avgPace = (duration.inSeconds / 60) / (totalDistance / 1000);
+      _movingTime = duration;
     }
 
-    // DISTANCE_WALKING_RUNNING 샘플 데이터로 페이스 차트 생성
+    final granted = await _healthService.requestAuthorization();
+    if (!granted) {
+      if (mounted) setState(() => _isPaceLoading = false);
+      return;
+    }
+
     try {
-      final granted = await _healthService.requestAuthorization();
-      print('🔍 [PACE DEBUG] Authorization granted: $granted');
+      // 거리 및 속도 샘플 동시 요청
+      final samples = await _healthService.getHealthDataFromTypes(
+        widget.dataWrapper.dateFrom,
+        widget.dataWrapper.dateTo,
+        [HealthDataType.DISTANCE_WALKING_RUNNING, HealthDataType.RUNNING_SPEED],
+      );
 
-      if (granted) {
-        // 거리 샘플 데이터로 페이스 계산
-        final distanceData = await _healthService.getHealthDataFromTypes(
-          widget.dataWrapper.dateFrom,
-          widget.dataWrapper.dateTo,
-          [HealthDataType.DISTANCE_WALKING_RUNNING],
-        );
-
-        print('🔍 [PACE DEBUG] Distance samples loaded: ${distanceData.length}');
-
-        if (distanceData.isNotEmpty) {
-          print('🔍 [PACE DEBUG] First sample: ${(distanceData.first.value as NumericHealthValue).numericValue}m at ${distanceData.first.dateFrom}');
-          print('🔍 [PACE DEBUG] Last sample: ${(distanceData.last.value as NumericHealthValue).numericValue}m at ${distanceData.last.dateFrom}');
-
-          for (int i = 0; i < distanceData.length && i < 5; i++) {
-            final distance = (distanceData[i].value as NumericHealthValue).numericValue;
-            print('🔍 [PACE DEBUG] Sample $i: ${distance}m at ${distanceData[i].dateFrom}');
-          }
-        }
-
-        // 시간 순서대로 정렬 (과거 → 최신)
-        distanceData.sort((a, b) => a.dateFrom.compareTo(b.dateFrom));
-
-        var filteredDistanceData = _session?.sourceId != null
-            ? distanceData.where((d) => d.sourceId == _session!.sourceId).toList()
-            : distanceData;
-
-        // 필터링 결과가 없으면 전체 데이터 사용
-        if (filteredDistanceData.isEmpty && distanceData.isNotEmpty) {
-          filteredDistanceData = distanceData;
-        }
-
-        // 거리 샘플에서 페이스 데이터 생성
-        final paceDataPoints = _calculatePaceFromDistance(filteredDistanceData);
-        print('🔍 [PACE DEBUG] Pace points generated: ${paceDataPoints.length}');
-
-        if (mounted) {
-          setState(() {
-            _paceData = paceDataPoints;
-            _avgPace = avgPaceMinPerKm;
-            _movingTime = workoutDuration;
-            _isPaceLoading = false;
-          });
-        }
-
-        print('✅ [PACE DEBUG] State updated - paceData: ${paceDataPoints.length}, avgPace: $avgPaceMinPerKm');
-      } else {
-        print('❌ [PACE DEBUG] Authorization denied');
-        if (mounted) {
-          setState(() {
-            _paceData = [];
-            _avgPace = avgPaceMinPerKm;
-            _movingTime = workoutDuration;
-            _isPaceLoading = false;
-          });
-        }
+      if (samples.isEmpty) {
+        if (mounted) setState(() => _isPaceLoading = false);
+        return;
       }
-    } catch (e) {
-      print('❌ [PACE DEBUG] Error: $e');
+
+      // 소스 필터링 (결과 없으면 전체 사용)
+      var filtered = _session?.sourceId != null
+          ? samples.where((d) => d.sourceId == _session!.sourceId).toList()
+          : samples;
+      if (filtered.isEmpty) filtered = samples;
+
+      final speedSamples = filtered.where((d) => d.type == HealthDataType.RUNNING_SPEED).toList();
+      final distSamples = filtered.where((d) => d.type == HealthDataType.DISTANCE_WALKING_RUNNING).toList();
+
+      List<HealthDataPoint> points = [];
+      if (speedSamples.isNotEmpty) {
+        points = speedSamples;
+      } else if (distSamples.isNotEmpty) {
+        distSamples.sort((a, b) => a.dateFrom.compareTo(b.dateFrom));
+        points = _calculatePaceFromDistance(distSamples);
+      }
+
       if (mounted) {
         setState(() {
-          _paceData = [];
-          _avgPace = avgPaceMinPerKm;
-          _movingTime = workoutDuration;
+          _paceData = points;
           _isPaceLoading = false;
         });
       }
+    } catch (e) {
+      if (mounted) setState(() => _isPaceLoading = false);
     }
   }
 
@@ -305,85 +243,54 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
   /// 거리 샘플 데이터에서 페이스를 계산하여 HealthDataPoint 형식으로 반환
   List<HealthDataPoint> _calculatePaceFromDistance(List<HealthDataPoint> distanceData) {
-    print('🔍 [PACE CALC] Starting pace calculation from distance samples');
-    print('🔍 [PACE CALC] Input distance samples: ${distanceData.length}');
-
-    if (distanceData.length < 2) {
-      print('⚠️ [PACE CALC] Not enough samples (need at least 2, got ${distanceData.length})');
-      return [];
-    }
+    if (distanceData.length < 2) return [];
 
     final pacePoints = <HealthDataPoint>[];
-    int skippedCount = 0;
-
-    // DISTANCE_WALKING_RUNNING은 구간 거리이므로 누적 거리로 변환
-    double cumulativeDistance = 0;
-    final cumulativeDistances = <double>[];
-
-    for (var point in distanceData) {
-      final distance = (point.value as NumericHealthValue).numericValue.toDouble();
-      cumulativeDistance += distance;
-      cumulativeDistances.add(cumulativeDistance);
-    }
-
-    if (cumulativeDistances.isNotEmpty) {
-      print('🔍 [PACE CALC] Cumulative distance - First: ${cumulativeDistances.first}m, Last: ${cumulativeDistances.last}m');
-    }
-
-    // 누적 거리 데이터를 인접한 샘플 간 속도로 변환
-    for (int i = 1; i < distanceData.length; i++) {
-      final prevPoint = distanceData[i - 1];
-      final currPoint = distanceData[i];
-
-      final prevDistance = cumulativeDistances[i - 1];
-      final currDistance = cumulativeDistances[i];
-      final distanceDiff = currDistance - prevDistance;
-      final timeDiff = currPoint.dateFrom.difference(prevPoint.dateFrom).inSeconds;
-
-      if (i <= 3) {
-        print('🔍 [PACE CALC] Sample $i: prev=${prevDistance}m, curr=${currDistance}m, diff=${distanceDiff}m, time=${timeDiff}s');
+    
+    // 타임스탬프가 동일한 샘플들을 그룹화하여 처리 (Strava 등 소스 대응)
+    DateTime? lastTime;
+    double accumulatedDist = 0;
+    
+    for (int i = 0; i < distanceData.length; i++) {
+      final point = distanceData[i];
+      final dist = (point.value as NumericHealthValue).numericValue.toDouble();
+      
+      if (lastTime == null) {
+        lastTime = point.dateFrom;
+        accumulatedDist = dist;
+        continue;
       }
 
-      if (timeDiff > 0 && distanceDiff > 0) {
-        // 속도 (m/s) 계산
-        final speedMs = distanceDiff / timeDiff;
-        final paceMinPerKm = 1000 / (speedMs * 60);
-
-        if (i <= 3) {
-          print('🔍 [PACE CALC] Calculated: speed=${speedMs}m/s, pace=${paceMinPerKm}min/km');
-        }
-
-        // HealthDataPoint 형식으로 변환 (RUNNING_SPEED와 동일한 형식)
-        pacePoints.add(
-          HealthDataPoint(
-            uuid: '${currPoint.uuid}_pace',
+      final timeDiff = point.dateFrom.difference(lastTime).inSeconds;
+      if (timeDiff >= 2) { // 2초 이상의 간격이 있을 때만 포인트 생성
+        final speedMs = accumulatedDist / timeDiff;
+        if (speedMs > 0.5 && speedMs < 10.0) { // 정상 범위 속도만 포함 (2:00/km ~ 30:00/km)
+          pacePoints.add(HealthDataPoint(
+            uuid: '${point.uuid}_calc',
             value: NumericHealthValue(numericValue: speedMs),
             type: HealthDataType.RUNNING_SPEED,
             unit: HealthDataUnit.METER_PER_SECOND,
-            dateFrom: currPoint.dateFrom,
-            dateTo: currPoint.dateTo,
-            sourcePlatform: currPoint.sourcePlatform,
-            sourceDeviceId: currPoint.sourceDeviceId,
-            sourceId: currPoint.sourceId,
-            sourceName: currPoint.sourceName,
-          ),
-        );
-      } else {
-        skippedCount++;
-        if (i <= 3) {
-          print('⚠️ [PACE CALC] Skipped sample $i (invalid: timeDiff=$timeDiff, distanceDiff=$distanceDiff)');
+            dateFrom: point.dateFrom,
+            dateTo: point.dateTo,
+            sourcePlatform: point.sourcePlatform,
+            sourceDeviceId: point.sourceDeviceId,
+            sourceId: point.sourceId,
+            sourceName: point.sourceName,
+          ));
         }
+        lastTime = point.dateFrom;
+        accumulatedDist = dist;
+      } else {
+        accumulatedDist += dist;
       }
     }
-
-    print('✅ [PACE CALC] Generated ${pacePoints.length} pace points (skipped $skippedCount)');
     return pacePoints;
   }
 
   void _showTemplateSelectionDialog(BuildContext context) {
     final workout = _workoutData?.value as WorkoutHealthValue?;
     final type = workout?.workoutActivityType.name ?? _session?.category ?? 'Unknown';
-    final category = _getWorkoutCategory(type);
+    final category = WorkoutUIUtils.getWorkoutCategory(type);
     
     // 해당 카테고리의 템플릿만 로드 (없으면 전체 로드)
     final templates = TemplateService.getTemplatesByCategory(category);
@@ -464,12 +371,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final workout = _workoutData?.value as WorkoutHealthValue?;
+    final workout = (widget.dataWrapper.healthData?.value as WorkoutHealthValue?);
     final workoutType = workout?.workoutActivityType.name ?? _session?.category ?? 'Unknown';
-    // 세션에 저장된 카테고리가 있다면 이를 최우선으로 사용
-    final workoutCategory = _session?.category ?? _getWorkoutCategory(workoutType);
-    final color = _getWorkoutColor(context, workoutCategory);
-    final iconPath = _getWorkoutIconPath(workoutType);
+    final workoutCategory = _session?.category ?? WorkoutUIUtils.getWorkoutCategory(workoutType);
+    final color = WorkoutUIUtils.getWorkoutColor(context, workoutCategory);
+    final iconPath = WorkoutUIUtils.getWorkoutIconPath(workoutType);
     final isRunning = workoutType.toUpperCase().contains('RUNNING');
 
     return Scaffold(
@@ -507,7 +413,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        _formatWorkoutType(workoutType),
+                        _session != null && _session!.templateName.isNotEmpty
+                            ? _session!.templateName
+                            : WorkoutUIUtils.formatWorkoutType(workoutType),
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -516,24 +424,27 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: color.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          workoutCategory,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: color,
+                      // 템플릿 이름이 이미 카테고리와 동일하면 뱃지 숨김
+                      if (workoutCategory != WorkoutUIUtils.formatWorkoutType(workoutType) && 
+                          (_session == null || (workoutCategory != _session!.templateName && !_session!.templateName.contains(workoutCategory))))
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            workoutCategory,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: color,
+                            ),
                           ),
                         ),
-                      ),
                       const SizedBox(height: 16),
                       // 템플릿 설정/표시 버튼
                       InkWell(
@@ -892,8 +803,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     final workoutStartTime = widget.dataWrapper.dateFrom;
     final workout = _workoutData?.value as WorkoutHealthValue?;
     final workoutType = workout?.workoutActivityType.name ?? _session?.category ?? 'Unknown';
-    final workoutCategory = _session?.category ?? _getWorkoutCategory(workoutType);
-    final color = _getWorkoutColor(context, workoutCategory);
+    final workoutCategory = _session?.category ?? WorkoutUIUtils.getWorkoutCategory(workoutType);
+    final color = WorkoutUIUtils.getWorkoutColor(context, workoutCategory);
 
     // X축: 초 단위로 변경 (페이스 차트와 동기화)
     for (var data in _heartRateData) {
@@ -1153,8 +1064,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   Widget _buildPaceChart() {
     final workout = _workoutData?.value as WorkoutHealthValue?;
     final workoutType = workout?.workoutActivityType.name ?? _session?.category ?? 'Unknown';
-    final workoutCategory = _session?.category ?? _getWorkoutCategory(workoutType);
-    final color = _getWorkoutColor(context, workoutCategory);
+    final workoutCategory = _session?.category ?? WorkoutUIUtils.getWorkoutCategory(workoutType);
+    final color = WorkoutUIUtils.getWorkoutColor(context, workoutCategory);
 
     // 1. 원본 페이스 데이터 추출
     final rawPaces = <double>[];
@@ -1548,79 +1459,16 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     );
   }
 
-  String _getWorkoutCategory(String type) {
-    final upperType = type.toUpperCase();
-    if (upperType.contains('CORE') ||
-        upperType.contains('FUNCTIONAL') ||
-        upperType.contains('STRENGTH') ||
-        upperType.contains('WEIGHT') ||
-        upperType.contains('TRADITIONAL_STRENGTH_TRAINING')) {
-      return 'Strength';
-    } else {
-      return 'Endurance';
-    }
-  }
+  // Placeholder to remove duplicated methods replaced by WorkoutUIUtils
 
-  Color _getWorkoutColor(BuildContext context, String category) {
-    switch (category) {
-      case 'Strength':
-        return Theme.of(context).colorScheme.primary; // Orange
-      case 'Endurance':
-        return Theme.of(context).colorScheme.tertiary; // Deep Teal
-      case 'Hybrid':
-        return Theme.of(context).colorScheme.secondary; // Neon Green
-      default:
-        return Theme.of(context).colorScheme.secondary;
-    }
-  }
-
-  String _getWorkoutIconPath(String type) {
-    final upperType = type.toUpperCase();
-    if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
-      return 'assets/images/strength/core-icon.svg';
-    } else if (upperType.contains('STRENGTH') ||
-        upperType.contains('WEIGHT') ||
-        upperType.contains('TRADITIONAL_STRENGTH_TRAINING')) {
-      return 'assets/images/strength/lifter-icon.svg';
-    } else {
-      return 'assets/images/endurance/runner-icon.svg';
-    }
-  }
-
-  String _formatWorkoutType(String type) {
-    final upperType = type.toUpperCase();
-    if (type == 'TRADITIONAL_STRENGTH_TRAINING') {
-      return 'STRENGTH TRAINING';
-    }
-    if (type == 'CORE_TRAINING') {
-      return 'CORE TRAINING';
-    }
-    if (upperType.contains('RUNNING')) {
-      return 'RUNNING';
-    }
-    return type
-        .replaceAll('WORKOUT_ACTIVITY_TYPE_', '')
-        .replaceAll('_', ' ')
-        .toLowerCase()
-        .split(' ')
-        .map(
-          (word) =>
-              word.isEmpty ? '' : word[0].toUpperCase() + word.substring(1),
-        )
-        .join(' ');
-  }
+  String _formatWorkoutType(String type) => WorkoutUIUtils.formatWorkoutType(type);
 
   String _formatDuration(Duration duration) {
     final hours = duration.inHours;
     final minutes = duration.inMinutes.remainder(60);
     final seconds = duration.inSeconds.remainder(60);
-
-    if (hours > 0) {
-      return '$hours시간 $minutes분 $seconds초';
-    } else if (minutes > 0) {
-      return '$minutes분 $seconds초';
-    } else {
-      return '$seconds초';
-    }
+    if (hours > 0) return '$hours시간 $minutes분 $seconds초';
+    if (minutes > 0) return '$minutes분 $seconds초';
+    return '$seconds초';
   }
 }
