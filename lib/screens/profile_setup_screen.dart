@@ -18,6 +18,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
   final PageController _pageController = PageController();
   final ProfileService _profileService = ProfileService();
   UserProfile _userProfile = UserProfile();
+  
+  final TextEditingController _runningExpController = TextEditingController();
+  final TextEditingController _strengthExpController = TextEditingController();
 
   int _currentPage = 0;
   final int _totalPages = 7; // 기본정보, 러닝경험, 웨이트경험, 인바디, 러닝기록, 맨몸운동, 3RM
@@ -46,10 +49,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
   void dispose() {
     _progressAnimationController.dispose();
     _pageController.dispose();
+    _runningExpController.dispose();
+    _strengthExpController.dispose();
     super.dispose();
   }
 
   void _nextPage() {
+    FocusScope.of(context).unfocus();
     if (_currentPage < _totalPages - 1) {
       setState(() {
         _currentPage++;
@@ -124,7 +130,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('저장'),
+            child: Text(
+              '저장',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.secondary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
@@ -132,6 +144,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
   }
 
   Future<void> _finishSetup() async {
+    FocusScope.of(context).unfocus();
     await _profileService.saveProfile(_userProfile);
     await _profileService.setProfileSetupCompleted(true);
 
@@ -308,6 +321,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
           Text('러닝 구력 (년)', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           TextField(
+            controller: _runningExpController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             cursorColor: enduranceColor,
             decoration: InputDecoration(
@@ -318,7 +332,17 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                 borderSide: BorderSide(color: enduranceColor, width: 2),
               ),
             ),
-            onChanged: (val) => setState(() => _userProfile = _userProfile.copyWith(runningExperience: double.tryParse(val))),
+            onChanged: (val) {
+              if (val.length > 2) {
+                final truncated = val.substring(0, 2);
+                _runningExpController.text = truncated;
+                _runningExpController.selection = TextSelection.fromPosition(TextPosition(offset: truncated.length));
+                FocusScope.of(context).unfocus();
+                setState(() => _userProfile = _userProfile.copyWith(runningExperience: double.tryParse(truncated)));
+              } else {
+                setState(() => _userProfile = _userProfile.copyWith(runningExperience: double.tryParse(val)));
+              }
+            },
           ),
 
           const SizedBox(height: 32),
@@ -326,7 +350,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
           const SizedBox(height: 12),
           _buildLevelSelector(
             current: _userProfile.runningLevel,
-            onSelect: (val) => setState(() => _userProfile = _userProfile.copyWith(runningLevel: val)),
+            onSelect: (val) {
+              FocusScope.of(context).unfocus();
+              setState(() => _userProfile = _userProfile.copyWith(runningLevel: val));
+            },
             activeColor: enduranceColor,
           ),
 
@@ -368,6 +395,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
           Text('웨이트 구력 (년)', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           TextField(
+            controller: _strengthExpController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             cursorColor: strengthColor,
             decoration: InputDecoration(
@@ -378,7 +406,17 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                 borderSide: BorderSide(color: strengthColor, width: 2),
               ),
             ),
-            onChanged: (val) => setState(() => _userProfile = _userProfile.copyWith(strengthExperience: double.tryParse(val))),
+            onChanged: (val) {
+              if (val.length > 2) {
+                final truncated = val.substring(0, 2);
+                _strengthExpController.text = truncated;
+                _strengthExpController.selection = TextSelection.fromPosition(TextPosition(offset: truncated.length));
+                FocusScope.of(context).unfocus();
+                setState(() => _userProfile = _userProfile.copyWith(strengthExperience: double.tryParse(truncated)));
+              } else {
+                setState(() => _userProfile = _userProfile.copyWith(strengthExperience: double.tryParse(val)));
+              }
+            },
           ),
 
           const SizedBox(height: 32),
@@ -386,7 +424,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
           const SizedBox(height: 12),
           _buildLevelSelector(
             current: _userProfile.strengthLevel,
-            onSelect: (val) => setState(() => _userProfile = _userProfile.copyWith(strengthLevel: val)),
+            onSelect: (val) {
+              FocusScope.of(context).unfocus();
+              setState(() => _userProfile = _userProfile.copyWith(strengthLevel: val));
+            },
             activeColor: strengthColor,
           ),
 
@@ -471,6 +512,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
         _userProfile.fullMarathonTime,
         (duration) => setState(() => _userProfile = _userProfile.copyWith(fullMarathonTime: duration)),
         maxHours: 4,
+        minHours: 2,
         activeColor: enduranceColor,
       ),
       _buildTimeDialField(
@@ -497,7 +539,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     ], activeColor: enduranceColor);
   }
 
-  Widget _buildTimeDialField(String label, Duration? value, Function(Duration) onChanged, {required int maxHours, Color? activeColor}) {
+  Widget _buildTimeDialField(String label, Duration? value, Function(Duration) onChanged, {required int maxHours, int minHours = 0, Color? activeColor}) {
     final focusColor = activeColor ?? Theme.of(context).colorScheme.secondary;
     final displayValue = value != null 
         ? (maxHours > 0 
@@ -513,7 +555,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
           Text(label, style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 8),
           InkWell(
-            onTap: () => _showTimePickerDial(label, value, maxHours, onChanged),
+            onTap: () => _showTimePickerDial(label, value, maxHours, minHours, onChanged),
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -539,13 +581,14 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     );
   }
 
-  void _showTimePickerDial(String title, Duration? initialValue, int maxHours, Function(Duration) onSelected) {
-    int h = initialValue?.inHours ?? (maxHours > 0 ? (maxHours ~/ 2) : 0);
+  void _showTimePickerDial(String title, Duration? initialValue, int maxHours, int minHours, Function(Duration) onSelected) {
+    int h = initialValue?.inHours ?? (maxHours > minHours ? ((maxHours + minHours) ~/ 2) : minHours);
     int m = (initialValue?.inMinutes ?? 0) % 60;
     int s = (initialValue?.inSeconds ?? 0) % 60;
 
     // Ensure h is within range
     if (h > maxHours && maxHours > 0) h = maxHours;
+    if (h < minHours) h = minHours;
 
     showCupertinoModalPopup(
       context: context,
@@ -579,7 +622,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (maxHours > 0) ...[
-                    _buildPicker(maxHours + 1, h, '시간', (val) => h = val),
+                    _buildPicker(maxHours - minHours + 1, h - minHours, '시간', (val) => h = val + minHours, startValue: minHours),
                   ],
                   _buildPicker(60, m, '분', (val) => m = val),
                   _buildPicker(60, s, '초', (val) => s = val),
@@ -592,7 +635,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     );
   }
 
-  Widget _buildPicker(int count, int initialItem, String unit, Function(int) onChanged) {
+  Widget _buildPicker(int count, int initialItem, String unit, Function(int) onChanged, {int startValue = 0}) {
     return Expanded(
       child: Stack(
         alignment: Alignment.center,
@@ -601,7 +644,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
             itemExtent: 40,
             scrollController: FixedExtentScrollController(initialItem: initialItem),
             onSelectedItemChanged: onChanged,
-            children: List.generate(count, (i) => Center(child: Text('$i', style: const TextStyle(color: Colors.white, fontSize: 20)))),
+            children: List.generate(count, (i) => Center(child: Text('${i + startValue}', style: const TextStyle(color: Colors.white, fontSize: 20)))),
           ),
           Positioned(
             right: 10,
