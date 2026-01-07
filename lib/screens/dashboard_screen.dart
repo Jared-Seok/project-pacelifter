@@ -18,6 +18,7 @@ import 'package:pacelifter/screens/workout_feed_screen.dart';
 import 'package:pacelifter/screens/performance_analysis_screen.dart';
 import 'package:pacelifter/services/workout_history_service.dart';
 import 'package:pacelifter/models/sessions/workout_session.dart';
+import 'package:pacelifter/widgets/triangle_performance_chart.dart';
 import 'package:pacelifter/services/template_service.dart';
 import 'package:pacelifter/services/scoring_engine.dart';
 import 'package:pacelifter/models/scoring/performance_scores.dart';
@@ -192,6 +193,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _loadPerformanceScores() async {
     try {
       final scores = await ScoringEngine().getLatestScores();
+      debugPrint('📊 [SCORES] Loaded scores: Endurance=${scores.enduranceScore}, Strength=${scores.strengthScore}, Conditioning=${scores.conditioningScore}, Balance=${scores.hybridBalanceScore}, ACWR=${scores.acwr}');
       if (mounted) {
         setState(() {
           _scores = scores;
@@ -199,6 +201,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
       
       final updatedScores = await ScoringEngine().calculateAndSaveScores();
+      debugPrint('📊 [SCORES] Updated scores: Endurance=${updatedScores.enduranceScore}, Strength=${updatedScores.strengthScore}, Conditioning=${updatedScores.conditioningScore}, Balance=${updatedScores.hybridBalanceScore}, ACWR=${updatedScores.acwr}');
       if (mounted) {
         setState(() {
           _scores = updatedScores;
@@ -217,14 +220,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       if (isFirstLogin && !isSyncCompleted && mounted) {
         debugPrint('ℹ️ [Dashboard] Showing health sync dialog for the first time');
+        
+        // [CRITICAL FIX] Race Condition 방지: 팝업 진입 결정 즉시 플래그 삭제
+        // 딜레이 중에 앱이 꺼져도 다시 묻지 않도록 함
+        await _authService.clearFirstLoginFlag();
+        debugPrint('✅ [Dashboard] First login flag cleared immediately to prevent loop');
+
         await Future.delayed(const Duration(milliseconds: 800));
         if (mounted && context.mounted) {
           WidgetsBinding.instance.addPostFrameCallback((_) async {
             if (mounted && context.mounted) {
               _showHealthSyncDialog();
-              // 다이얼로그를 한 번 보여줬으면 더 이상 '첫 로그인의 동기화 안내'는 띄우지 않도록 즉시 플래그 제거
-              await _authService.clearFirstLoginFlag();
-              debugPrint('✅ [Dashboard] First login flag cleared');
             }
           });
         }
@@ -771,6 +777,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           _buildHeader(),
                           const SizedBox(height: 16),
                           _buildPerformanceSection(),
+                          const SizedBox(height: 16),
+                          _buildBalanceAndWorkloadSection(),
                           const SizedBox(height: 24),
                           _buildSwipableCardsSection(),
                           const SizedBox(height: 24),
@@ -877,60 +885,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     SizedBox(
                       width: 144,
                       height: 144,
-                      child: RadarChart(
-                        RadarChartData(
-                          dataSets: [
-                            // 100점 기준 가이드라인 (스케일 고정용)
-                            RadarDataSet(
-                              fillColor: Colors.transparent,
-                              borderColor: Colors.transparent,
-                              entryRadius: 0,
-                              dataEntries: [
-                                const RadarEntry(value: 100),
-                                const RadarEntry(value: 100),
-                                const RadarEntry(value: 100),
-                                const RadarEntry(value: 100),
-                                const RadarEntry(value: 100),
-                              ],
-                            ),
-                            RadarDataSet(
-                              fillColor: Theme.of(context).colorScheme.secondary.withOpacity(0.2),
-                              borderColor: Theme.of(context).colorScheme.secondary,
-                              entryRadius: 2,
-                              dataEntries: [
-                                RadarEntry(value: _scores!.enduranceScore.toDouble()),
-                                RadarEntry(value: _scores!.strengthScore.toDouble()),
-                                RadarEntry(value: _scores!.conditioningScore.toDouble()),
-                                RadarEntry(value: _scores!.hybridBalanceScore.toDouble()),
-                                RadarEntry(value: (100 - ((1.0 - _scores!.acwr).abs() * 100)).clamp(0, 100).toDouble()),
-                              ],
-                            ),
-                          ],
-                          getTitle: (index, angle) {
-                            switch (index) {
-                              case 0: return const RadarChartTitle(text: '지구력');
-                              case 1: return const RadarChartTitle(text: '근력');
-                              case 2: return const RadarChartTitle(text: '컨디셔닝');
-                              case 3: return const RadarChartTitle(text: '밸런스');
-                              case 4: return const RadarChartTitle(text: '훈련부하');
-                              default: return const RadarChartTitle(text: '');
-                            }
-                          },
-                          tickCount: 4, // 25, 50, 75, 100 단위로 4개 보조선
-                          ticksTextStyle: const TextStyle(color: Colors.transparent),
-                          gridBorderData: BorderSide(color: Colors.white.withOpacity(0.15)),
+                      child: CustomPaint(
+                        painter: TrianglePerformanceChartPainter(
+                          conditioningScore: _scores!.conditioningScore.toDouble(),
+                          enduranceScore: _scores!.enduranceScore.toDouble(),
+                          strengthScore: _scores!.strengthScore.toDouble(),
+                          primaryColor: Theme.of(context).colorScheme.secondary,
+                          gridColor: Colors.white.withOpacity(0.15),
                         ),
+                        child: Container(),
                       ),
                     ),
                     const SizedBox(width: 24),
                     Expanded(
                       child: Column(
                         children: [
+                          _buildScoreTile('Conditioning', _scores!.conditioningScore, Theme.of(context).colorScheme.secondary),
+                          const Divider(height: 12),
                           _buildScoreTile('Endurance', _scores!.enduranceScore, Theme.of(context).colorScheme.tertiary),
                           const Divider(height: 12),
                           _buildScoreTile('Strength', _scores!.strengthScore, Theme.of(context).colorScheme.primary),
-                          const Divider(height: 12),
-                          _buildScoreTile('Conditioning', _scores!.conditioningScore, Theme.of(context).colorScheme.secondary),
                         ],
                       ),
                     ),
@@ -962,13 +936,144 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  Widget _buildBalanceAndWorkloadSection() {
+    if (_scores == null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Row(
+        children: [
+          Expanded(
+            child: Card(
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => PerformanceAnalysisScreen(scores: _scores!),
+                    ),
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.bolt, color: Theme.of(context).colorScheme.secondary, size: 20),
+                          const SizedBox(width: 6),
+                          const Text('밸런스', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          SizedBox(
+                            width: 60,
+                            height: 60,
+                            child: CircularProgressIndicator(
+                              value: _scores!.hybridBalanceScore / 100,
+                              strokeWidth: 6,
+                              backgroundColor: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
+                              valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.secondary),
+                            ),
+                          ),
+                          Text(
+                            '${_scores!.hybridBalanceScore.toInt()}',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.secondary),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _scores!.hybridBalanceScore >= 80 ? '균형 우수' : _scores!.hybridBalanceScore >= 60 ? '균형 양호' : '개선 필요',
+                        style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Card(
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => PerformanceAnalysisScreen(scores: _scores!),
+                    ),
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.trending_up, color: Theme.of(context).colorScheme.primary, size: 20),
+                          const SizedBox(width: 6),
+                          const Text('훈련부하', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        _scores!.acwr.toStringAsFixed(2),
+                        style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: _getACWRColor(_scores!.acwr)),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _getACWRStatus(_scores!.acwr),
+                        style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getACWRColor(num acwr) {
+    if (acwr >= 0.8 && acwr <= 1.3) {
+      return Theme.of(context).colorScheme.primary;
+    } else if (acwr >= 0.5 && acwr < 0.8) {
+      return Colors.orange;
+    } else if (acwr > 1.3 && acwr <= 1.5) {
+      return Colors.orange;
+    } else {
+      return Colors.red;
+    }
+  }
+
+  String _getACWRStatus(num acwr) {
+    if (acwr >= 0.8 && acwr <= 1.3) {
+      return '최적 범위';
+    } else if (acwr >= 0.5 && acwr < 0.8) {
+      return '부하 낮음';
+    } else if (acwr > 1.3 && acwr <= 1.5) {
+      return '부하 높음';
+    } else if (acwr > 1.5) {
+      return '과부하 위험';
+    } else {
+      return '부하 매우 낮음';
+    }
+  }
+
   Widget _buildSwipableCardsSection() {
     final List<Widget> pages = [
       _buildWorkoutSummaryPage(),
       _buildRacesPage(),
-      _buildHybridBalancePage(),
     ];
-    final List<String> titles = ['최근 운동 요약', '준비중인 레이스', '하이브리드 밸런스'];
+    final List<String> titles = ['최근 운동 요약', '준비중인 레이스'];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

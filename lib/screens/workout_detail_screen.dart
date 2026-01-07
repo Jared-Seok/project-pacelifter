@@ -42,6 +42,12 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   String? _paceError;
   Duration? _movingTime;
 
+  // Pre-calculated chart data
+  List<FlSpot> _heartRateSpots = [];
+  List<FlSpot> _paceSpots = [];
+  double _paceChartMaxX = 0;
+  double _heartRateChartMaxX = 0;
+
   // Native HealthKit duration data
   Duration? _nativeActiveDuration;
   Duration? _nativeElapsedTime;
@@ -132,6 +138,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       if (mounted) {
         setState(() {
           _heartRateData = filtered;
+          _processHeartRateData(filtered); // Pre-calculate
           _avgHeartRate = sum / filtered.length;
           _isLoading = false;
         });
@@ -139,6 +146,32 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     } catch (e) {
       if (mounted) setState(() => _heartRateError = '심박수 데이터를 가져오는데 실패했습니다.');
     }
+  }
+
+  void _processHeartRateData(List<HealthDataPoint> data) {
+    if (data.isEmpty) return;
+
+    final workoutStartTime = widget.dataWrapper.dateFrom;
+    final spots = <FlSpot>[];
+    
+    for (var d in data) {
+      final elapsedSeconds = d.dateFrom.difference(workoutStartTime).inSeconds.toDouble();
+      spots.add(FlSpot(
+        elapsedSeconds,
+        (d.value as NumericHealthValue).numericValue.toDouble(),
+      ));
+    }
+
+    // X-Axis calculation
+    final workoutEndTime = widget.dataWrapper.dateTo;
+    final totalDuration = workoutEndTime.difference(workoutStartTime).inSeconds.toDouble();
+    final maxDataTime = spots.isNotEmpty ? spots.last.x : 0.0;
+    
+    setState(() {
+      _heartRateSpots = spots;
+      _heartRateChartMaxX = max(totalDuration, maxDataTime);
+      if (_heartRateChartMaxX == 0) _heartRateChartMaxX = 1.0;
+    });
   }
 
   Future<void> _fetchPaceData() async {
@@ -198,12 +231,67 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       if (mounted) {
         setState(() {
           _paceData = points;
+          _processPaceData(points); // Pre-calculate spots
           _isPaceLoading = false;
         });
       }
     } catch (e) {
       if (mounted) setState(() => _isPaceLoading = false);
     }
+  }
+
+  void _processPaceData(List<HealthDataPoint> data) {
+    if (data.isEmpty) return;
+
+    // 1. 유효한 페이스 데이터 추출
+    final validPoints = <HealthDataPoint>[];
+    final validPaces = <double>[];
+    
+    for (var d in data) {
+      final speedMs = (d.value as NumericHealthValue).numericValue.toDouble();
+      if (speedMs > 0.1) {
+        final pace = 1000 / (speedMs * 60);
+        if (pace < 30) {
+          validPoints.add(d);
+          validPaces.add(pace);
+        }
+      }
+    }
+
+    if (validPaces.isEmpty) return;
+
+    // 2. 스무딩 (Moving Average)
+    final smoothedPaces = <double>[];
+    if (validPaces.length < 3) {
+      smoothedPaces.addAll(validPaces);
+    } else {
+      smoothedPaces.add((validPaces[0] + validPaces[1]) / 2);
+      for (int i = 1; i < validPaces.length - 1; i++) {
+        smoothedPaces.add((validPaces[i - 1] + validPaces[i] + validPaces[i + 1]) / 3);
+      }
+      smoothedPaces.add((validPaces[validPaces.length - 2] + validPaces[validPaces.length - 1]) / 2);
+    }
+
+    // 3. FlSpot 변환 및 X축 범위 계산
+    final workoutStartTime = widget.dataWrapper.dateFrom;
+    final workoutEndTime = widget.dataWrapper.dateTo;
+    final totalDuration = workoutEndTime.difference(workoutStartTime).inSeconds.toDouble();
+    
+    // 데이터의 마지막 시간과 전체 운동 시간 중 큰 값을 선택하여 X축 잘림 방지
+    double maxSpotTime = 0;
+    
+    final spots = <FlSpot>[];
+    for (int i = 0; i < smoothedPaces.length; i++) {
+      final elapsedSeconds = validPoints[i].dateFrom.difference(workoutStartTime).inSeconds.toDouble();
+      spots.add(FlSpot(elapsedSeconds, -smoothedPaces[i]));
+      if (elapsedSeconds > maxSpotTime) maxSpotTime = elapsedSeconds;
+    }
+
+    setState(() {
+      _paceSpots = spots;
+      _paceChartMaxX = max(totalDuration, maxSpotTime);
+      if (_paceChartMaxX == 0) _paceChartMaxX = 1.0;
+    });
   }
 
   /// Fetch native HKWorkout duration data via HealthKit Bridge
@@ -799,43 +887,25 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   }
 
   Widget _buildHeartRateChart() {
-    final spots = <FlSpot>[];
-    final workoutStartTime = widget.dataWrapper.dateFrom;
     final workout = _workoutData?.value as WorkoutHealthValue?;
     final workoutType = workout?.workoutActivityType.name ?? _session?.category ?? 'Unknown';
     final workoutCategory = _session?.category ?? WorkoutUIUtils.getWorkoutCategory(workoutType);
     final color = WorkoutUIUtils.getWorkoutColor(context, workoutCategory);
 
-    // X축: 초 단위로 변경 (페이스 차트와 동기화)
-    for (var data in _heartRateData) {
-      final elapsedSeconds = data.dateFrom.difference(workoutStartTime).inSeconds.toDouble();
-      spots.add(
-        FlSpot(
-          elapsedSeconds,
-          (data.value as NumericHealthValue).numericValue.toDouble(),
-        ),
-      );
+    if (_heartRateSpots.isEmpty) {
+      // 심박수 데이터는 있는데 처리된 spots가 없으면 데이터 없는 것으로 간주
+      return const Center(child: Text('심박수 데이터가 없습니다.'));
     }
 
-    // Calculate min/max heart rate for Y-axis
-    final minHeartRate = _heartRateData
-        .map((e) => (e.value as NumericHealthValue).numericValue)
-        .reduce(min)
-        .floorToDouble();
-    final maxHeartRate = _heartRateData
-        .map((e) => (e.value as NumericHealthValue).numericValue)
-        .reduce(max)
-        .ceilToDouble();
-
-    // X축 범위: 0 ~ 총 운동 시간 (초)
-    final workoutEndTime = widget.dataWrapper.dateTo;
-    final totalDurationSeconds = workoutEndTime.difference(workoutStartTime).inSeconds.toDouble();
-    final maxXSeconds = totalDurationSeconds == 0 ? 1.0 : totalDurationSeconds;
+    // Calculate min/max heart rate for Y-axis from pre-calculated spots
+    final allY = _heartRateSpots.map((e) => e.y).toList();
+    final minHeartRate = allY.reduce(min);
+    final maxHeartRate = allY.reduce(max);
 
     return LineChart(
       LineChartData(
         minX: 0,
-        maxX: maxXSeconds,
+        maxX: _heartRateChartMaxX,
         minY: minHeartRate - (minHeartRate * 0.1), // 10% buffer below min
         maxY: maxHeartRate + (maxHeartRate * 0.1), // 10% buffer above max
         gridData: FlGridData(
@@ -933,7 +1003,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 30,
-              interval: max(60, (maxXSeconds / 5).floorToDouble()),
+              interval: max(60, (_heartRateChartMaxX / 5).floorToDouble()),
               getTitlesWidget: (value, meta) {
                 final minutes = (value / 60).floor();
                 final seconds = (value % 60).toInt();
@@ -986,7 +1056,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         ),
         lineBarsData: [
           LineChartBarData(
-            spots: spots,
+            spots: _heartRateSpots,
             isCurved: true,
             color: color, // Use dynamic category color
             barWidth: 3,
@@ -1067,78 +1137,23 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     final workoutCategory = _session?.category ?? WorkoutUIUtils.getWorkoutCategory(workoutType);
     final color = WorkoutUIUtils.getWorkoutColor(context, workoutCategory);
 
-    // 1. 유효한 페이스 데이터 추출 및 포인트 쌍(Pair) 생성
-    final validPoints = <HealthDataPoint>[];
-    final validPaces = <double>[];
-    
-    for (var data in _paceData) {
-      final speedMs = (data.value as NumericHealthValue).numericValue.toDouble();
-      if (speedMs > 0.1) { // 0.1 m/s (약 166분/km) 이상이면 유효한 걷기/러닝으로 간주
-        final pace = 1000 / (speedMs * 60);
-        if (pace < 30) { // 30분/km 이내의 기록만 포함
-          validPoints.add(data);
-          validPaces.add(pace);
-        }
-      }
-    }
-
-    if (validPaces.isEmpty) {
+    if (_paceSpots.isEmpty) {
       return const Center(child: Text('유효한 페이스 데이터가 없습니다.'));
     }
 
-    // 2. 이동 평균(Moving Average) 스무딩 적용
-    final smoothedPaces = <double>[];
-    if (validPaces.length < 3) {
-      smoothedPaces.addAll(validPaces);
-    } else {
-      smoothedPaces.add((validPaces[0] + validPaces[1]) / 2);
-      for (int i = 1; i < validPaces.length - 1; i++) {
-        smoothedPaces.add((validPaces[i - 1] + validPaces[i] + validPaces[i + 1]) / 3);
-      }
-      smoothedPaces.add((validPaces[validPaces.length - 2] + validPaces[validPaces.length - 1]) / 2);
-    }
-
-    // 3. X축 범위 결정 (전체 경과 시간 기준)
-    final workoutStartTime = widget.dataWrapper.dateFrom;
-    final workoutEndTime = widget.dataWrapper.dateTo;
-    final totalDurationSeconds = workoutEndTime.difference(workoutStartTime).inSeconds.toDouble();
-    final maxXSeconds = totalDurationSeconds == 0 ? 1.0 : totalDurationSeconds;
-
-    // 4. 스무딩된 데이터를 FlSpot으로 변환
-    final spots = <FlSpot>[];
-    for (int i = 0; i < smoothedPaces.length; i++) {
-      final elapsedSeconds = validPoints[i].dateFrom.difference(workoutStartTime).inSeconds.toDouble();
-      // 활동 시간이 아닌 전체 시간 범위 내의 데이터 포함
-      if (elapsedSeconds <= maxXSeconds) {
-        spots.add(FlSpot(elapsedSeconds, -smoothedPaces[i]));
-      }
-    }
-
-    if (spots.isEmpty) {
-      return const Center(child: Text('유효한 페이스 데이터가 없습니다.'));
-    }
-
-    // Y축 및 X축 범위 계산 (음수이므로 min/max 혼동 주의)
-    final allY = spots.map((e) => e.y).toList();
-    final allX = spots.map((e) => e.x).toList();
+    // Y축 범위 계산 (음수이므로 min/max 혼동 주의)
+    final allY = _paceSpots.map((e) => e.y).toList();
     final minY = allY.reduce(min);
     final maxY = allY.reduce(max);
-    final minX = allX.reduce(min);
-    final maxXFromSpots = allX.reduce(max);
     
-    // 차트의 최종 X축 범위: 운동 전체 시간 혹은 샘플 중 늦은 시간을 선택
-    final chartMaxX = max(maxXSeconds, maxXFromSpots);
-    
-    // Y축 버퍼 추가 (20%)
+    // Y축 버퍼 (20%)
     final rangeY = (maxY - minY).abs();
     final bufferY = rangeY < 0.1 ? 1.0 : rangeY * 0.2;
 
-    debugPrint('📊 [PACE CHART] Stats -> Spots: ${spots.length}, minX: $minX, maxX: $chartMaxX, minY: $minY, maxY: $maxY');
-
     return LineChart(
       LineChartData(
-        minX: min(0.0, minX),
-        maxX: chartMaxX,
+        minX: 0,
+        maxX: _paceChartMaxX,
         minY: minY - bufferY,
         maxY: maxY + bufferY,
         gridData: FlGridData(
@@ -1151,7 +1166,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           verticalLines: [
             // 페이스 차트는 활동 시간만 표시하므로 운동 종료 수직선 불필요
             // 차트 인터랙션 동기화: 터치된 지점 표시
-            if (_touchedTimestamp != null && _touchedTimestamp! <= maxXSeconds)
+            if (_touchedTimestamp != null && _touchedTimestamp! <= _paceChartMaxX)
               VerticalLine(
                 x: _touchedTimestamp!,
                 color: Colors.red.withValues(alpha: 0.7),
@@ -1166,7 +1181,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 30,
-              interval: max(60, (maxXSeconds / 5).floorToDouble()),
+              interval: max(60, (_paceChartMaxX / 5).floorToDouble()),
               getTitlesWidget: (value, meta) {
                 final minutes = (value / 60).floor();
                 final seconds = (value % 60).toInt();
@@ -1252,13 +1267,13 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         ),
         lineBarsData: [
           LineChartBarData(
-            spots: spots,
-            isCurved: spots.length >= 5, // 샘플이 너무 적으면 직선으로 표시
+            spots: _paceSpots,
+            isCurved: _paceSpots.length >= 5, // 샘플이 너무 적으면 직선으로 표시
             color: color,
             barWidth: 3,
             isStrokeCapRound: true,
             dotData: FlDotData(
-              show: spots.length < 10, // 샘플이 적으면 포인트(점) 표시하여 가시성 확보
+              show: _paceSpots.length < 10, // 샘플이 적으면 포인트(점) 표시하여 가시성 확보
               getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
                 radius: 3,
                 color: color,
