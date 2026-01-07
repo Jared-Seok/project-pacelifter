@@ -28,7 +28,8 @@ class PerformanceAnalysisScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildCoachingSummary(context),
-                  const SizedBox(height: 24),
+                  _buildHybridBalanceAnalysis(context),
+                  const SizedBox(height: 16),
                   _buildConditioningAnalysis(context),
                   const SizedBox(height: 16),
                   _buildCategoryAnalysis(
@@ -114,6 +115,8 @@ class PerformanceAnalysisScreen extends StatelessWidget {
                             const RadarEntry(value: 100),
                             const RadarEntry(value: 100),
                             const RadarEntry(value: 100),
+                            const RadarEntry(value: 100),
+                            const RadarEntry(value: 100),
                           ],
                         ),
                         RadarDataSet(
@@ -121,18 +124,21 @@ class PerformanceAnalysisScreen extends StatelessWidget {
                           borderColor: Theme.of(context).colorScheme.secondary,
                           entryRadius: 3,
                           dataEntries: [
-                            RadarEntry(value: scores.enduranceScore),
-                            RadarEntry(value: scores.strengthScore),
-                            RadarEntry(value: scores.conditioningScore),
+                            RadarEntry(value: scores.enduranceScore.toDouble()),
+                            RadarEntry(value: scores.strengthScore.toDouble()),
+                            RadarEntry(value: scores.conditioningScore.toDouble()),
+                            RadarEntry(value: scores.hybridBalanceScore.toDouble()),
+                            RadarEntry(value: (100 - ((1.0 - scores.acwr).abs() * 100)).clamp(0, 100).toDouble()),
                           ],
                         ),
                       ],
-                      radarShape: RadarShape.polygon,
                       getTitle: (index, angle) {
                         switch (index) {
                           case 0: return const RadarChartTitle(text: '지구력');
                           case 1: return const RadarChartTitle(text: '근력');
                           case 2: return const RadarChartTitle(text: '컨디셔닝');
+                          case 3: return const RadarChartTitle(text: '밸런스');
+                          case 4: return const RadarChartTitle(text: '훈련부하');
                           default: return const RadarChartTitle(text: '');
                         }
                       },
@@ -195,11 +201,11 @@ class PerformanceAnalysisScreen extends StatelessWidget {
     BuildContext context, {
     required String title,
     required Color color,
-    required double score,
+    required num score,
     required String metricLabel,
     required String metricValue,
-    required double freqValue,
-    required double baselineFreq,
+    required num freqValue,
+    required num baselineFreq,
     required String description,
   }) {
     final double ratio = baselineFreq > 0 ? freqValue / baselineFreq : 1.0;
@@ -229,6 +235,79 @@ class PerformanceAnalysisScreen extends StatelessWidget {
             Text(description, style: const TextStyle(fontSize: 12, color: Colors.grey)),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildHybridBalanceAnalysis(BuildContext context) {
+    final color = Theme.of(context).colorScheme.secondary; // Neon Green for Hybrid
+    final score = scores.hybridBalanceScore;
+    
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.bolt, color: color, size: 20),
+                    const SizedBox(width: 8),
+                    Text('하이브리드 밸런스', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(color: color.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12)),
+                  child: Text('${score.toInt()}점', style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              '지구력과 근력의 균형 발달 상태를 나타냅니다. 두 지표의 차이가 적을수록 하이브리드 운동선수로서의 완성도가 높음을 의미합니다.',
+              style: TextStyle(fontSize: 13, color: Colors.white70, height: 1.4),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                _buildSimpleBar('지구력', scores.enduranceScore, Theme.of(context).colorScheme.tertiary),
+                const SizedBox(width: 12),
+                _buildSimpleBar('근력', scores.strengthScore, Theme.of(context).colorScheme.primary),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSimpleBar(String label, num score, Color color) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+              Text('${score.toInt()}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: LinearProgressIndicator(
+              value: score / 100,
+              backgroundColor: color.withValues(alpha: 0.1),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+              minHeight: 4,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -299,7 +378,7 @@ class PerformanceAnalysisScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildFrequencyComparison(BuildContext context, double current, double baseline, Color color) {
+  Widget _buildFrequencyComparison(BuildContext context, num current, num baseline, Color color) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

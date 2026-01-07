@@ -2,10 +2,15 @@ import 'package:hive/hive.dart';
 import 'package:pacelifter/models/sessions/workout_session.dart';
 import 'package:pacelifter/models/sessions/exercise_record.dart';
 import 'package:pacelifter/models/templates/workout_template.dart';
+import 'package:pacelifter/models/sessions/session_metadata.dart';
 import 'package:uuid/uuid.dart';
 
 class WorkoutHistoryService {
   static const String _sessionBoxName = 'user_workout_history';
+  static const String _indexBoxName = 'session_metadata_index';
+
+  // 동기화 모드 (Box <-> LazyBox 전환용)
+  bool _isSyncMode = false;
 
   // Singleton instance
   static final WorkoutHistoryService _instance = WorkoutHistoryService._internal();
@@ -26,96 +31,186 @@ class WorkoutHistoryService {
     }
   }
 
-  /// HealthKit UUID로 운동 세션 찾기
+  /// HealthKit UUID로 운동 세션 찾기 (인덱스 우선 활용)
   Future<WorkoutSession?> getSessionByHealthKitId(String healthKitId) async {
-    final box = await _getBox();
+    // 1. 인덱스에서 먼저 찾기 (메모리 조회)
+    final indexBox = Hive.box<SessionMetadata>(_indexBoxName);
     try {
-      if (box is Box<WorkoutSession>) {
-        return box.values.firstWhere(
-          (session) => session.healthKitWorkoutId == healthKitId,
-        );
-      } else {
-        final lazyBox = box as LazyBox<WorkoutSession>;
-        for (var key in lazyBox.keys) {
-          final session = await lazyBox.get(key);
-          if (session?.healthKitWorkoutId == healthKitId) return session;
-        }
-      }
-    } catch (e) {
-      // ignore
-    }
-    return await getSessionById(healthKitId);
-  }
-
-  /// 모든 세션 가져오기
-  Future<List<WorkoutSession>> getAllSessions() async {
-    final box = await _getBox();
-    if (box is Box<WorkoutSession>) {
-      return box.values.toList();
-    } else {
-      final lazyBox = box as LazyBox<WorkoutSession>;
-      final List<WorkoutSession> sessions = [];
-      for (var key in lazyBox.keys) {
-        final session = await lazyBox.get(key);
-        if (session != null) sessions.add(session);
-      }
-      return sessions;
+      final meta = indexBox.values.firstWhere(
+        (meta) => meta.healthKitId == healthKitId,
+      );
+      return await getSessionById(meta.id);
+    } catch (_) {
+      // 인덱스에 없으면 ID 자체로 조회 시도
+      return await getSessionById(healthKitId);
     }
   }
 
-  /// 최근 N일간의 세션 가져오기
-  Future<List<WorkoutSession>> getRecentSessions({int days = 90}) async {
-    final box = await _getBox();
-    final cutoff = DateTime.now().subtract(Duration(days: days));
-    
-    if (box is Box<WorkoutSession>) {
-      return box.values.where((s) => s.startTime.isAfter(cutoff)).toList();
-    } else {
-      final lazyBox = box as LazyBox<WorkoutSession>;
-      final List<WorkoutSession> sessions = [];
-      for (var key in lazyBox.keys) {
-        final session = await lazyBox.get(key);
-        if (session != null && session.startTime.isAfter(cutoff)) {
-          sessions.add(session);
-        }
-      }
-      return sessions;
-    }
-  }
+  // getAllSessions 및 getRecentSessions는 하단에 인덱스 기반으로 구현됨
 
   /// 운동 세션 저장
   Future<void> saveSession(WorkoutSession session) async {
     final box = await _getBox();
-    if (box is Box<WorkoutSession>) {
-      await box.put(session.id, session);
-    } else {
-      await (box as LazyBox<WorkoutSession>).put(session.id, session);
-    }
+    await (box as BoxBase<WorkoutSession>).put(session.id, session);
+    
+    // 인덱스 업데이트
+    final indexBox = Hive.box<SessionMetadata>(_indexBoxName);
+    await indexBox.put(session.id, SessionMetadata.fromSession(session));
+  }
+
+  /// 여러 운동 세션 일괄 저장 (Batch Save)
+  Future<void> saveSessions(List<WorkoutSession> sessions) async {
+    if (sessions.isEmpty) return;
+    final box = await _getBox();
+    
+    final Map<String, WorkoutSession> sessionMap = {
+      for (var s in sessions) s.id: s
+    };
+    await (box as BoxBase<WorkoutSession>).putAll(sessionMap);
+
+    // 인덱스 일괄 업데이트
+    final indexBox = Hive.box<SessionMetadata>(_indexBoxName);
+    final Map<String, SessionMetadata> indexMap = {
+      for (var s in sessions) s.id: SessionMetadata.fromSession(s)
+    };
+    await indexBox.putAll(indexMap);
   }
 
   /// 운동 세션 삭제 (PaceLifter 로컬 기록만 삭제)
   Future<void> deleteSession(String sessionId) async {
     final box = await _getBox();
-    if (box is Box<WorkoutSession>) {
-      await box.delete(sessionId);
+    await (box as BoxBase<WorkoutSession>).delete(sessionId);
+    
+    // 인덱스 삭제
+    final indexBox = Hive.box<SessionMetadata>(_indexBoxName);
+    await indexBox.delete(sessionId);
+  }
+
+  /// 내부 박스 접근 도우미 (동기화 모드 대응)
+  Future<BoxBase<WorkoutSession>> _getBox() async {
+    if (Hive.isBoxOpen(_sessionBoxName)) {
+      if (_isSyncMode) {
+        try {
+          return Hive.box<WorkoutSession>(_sessionBoxName);
+        } catch (_) {}
+      } else {
+        try {
+          return Hive.lazyBox<WorkoutSession>(_sessionBoxName);
+        } catch (_) {}
+      }
+      // 모드 불일치 시 닫기 (setSyncMode에서 미리 처리하지만 안전을 위해)
+      if (Hive.isBoxOpen(_sessionBoxName)) {
+         try {
+            await Hive.box(_sessionBoxName).close();
+         } catch (_) {
+            await Hive.lazyBox(_sessionBoxName).close();
+         }
+      }
+    }
+    
+    if (_isSyncMode) {
+      return await Hive.openBox<WorkoutSession>(_sessionBoxName);
     } else {
-      await (box as LazyBox<WorkoutSession>).delete(sessionId);
+      return await Hive.openLazyBox<WorkoutSession>(_sessionBoxName);
     }
   }
 
-  /// 내부 박스 접근 도우미 (Box와 LazyBox 모두 대응)
-  Future<BoxBase<WorkoutSession>> _getBox() async {
+  /// 고속 동기화 모드 설정 (RAM 활용)
+  Future<void> setSyncMode(bool enabled) async {
+    if (_isSyncMode == enabled) return;
+    
+    _isSyncMode = enabled;
     if (Hive.isBoxOpen(_sessionBoxName)) {
-      // 이미 열려있다면 해당 인스턴스 반환
-      // Hive.box()나 Hive.lazyBox()는 타입이 맞지 않으면 에러를 내므로 안전하게 처리
-      try {
-        return Hive.box<WorkoutSession>(_sessionBoxName);
-      } catch (_) {
-        return Hive.lazyBox<WorkoutSession>(_sessionBoxName);
+      if (_isSyncMode) {
+        // LazyBox -> Box 전환
+        final lazyBox = Hive.lazyBox<WorkoutSession>(_sessionBoxName);
+        await lazyBox.close();
+        await Hive.openBox<WorkoutSession>(_sessionBoxName);
+      } else {
+        // Box -> LazyBox 전환
+        final box = Hive.box<WorkoutSession>(_sessionBoxName);
+        await box.close();
+        await Hive.openLazyBox<WorkoutSession>(_sessionBoxName);
       }
     }
-    // 닫혀있다면 LazyBox로 오픈 (기본 정책)
-    return await Hive.openLazyBox<WorkoutSession>(_sessionBoxName);
+  }
+
+  /// 인덱스 재빌드 (전체 세션 기반)
+  Future<void> rebuildIndex() async {
+    final indexBox = Hive.box<SessionMetadata>(_indexBoxName);
+    await indexBox.clear();
+
+    final box = await _getBox();
+    if (box is Box<WorkoutSession>) {
+      final Map<String, SessionMetadata> indexMap = {};
+      for (var session in box.values) {
+        indexMap[session.id] = SessionMetadata.fromSession(session);
+      }
+      await indexBox.putAll(indexMap);
+    } else {
+      final lazyBox = box as LazyBox<WorkoutSession>;
+      final Map<String, SessionMetadata> indexMap = {};
+      for (var key in lazyBox.keys) {
+        final session = await lazyBox.get(key);
+        if (session != null) {
+          indexMap[session.id] = SessionMetadata.fromSession(session);
+        }
+      }
+      await indexBox.putAll(indexMap);
+    }
+  }
+
+  /// 최근 N일간의 세션 가져오기 (인덱스 기반 초고속 쿼리)
+  Future<List<WorkoutSession>> getRecentSessions({int days = 90}) async {
+    final indexBox = Hive.box<SessionMetadata>(_indexBoxName);
+    final cutoff = DateTime.now().subtract(Duration(days: days));
+    
+    // 1. 인덱스에서 조건에 맞는 ID들만 추출 및 날짜순 정렬
+    final targetMetas = indexBox.values
+        .where((meta) => meta.startTime.isAfter(cutoff))
+        .toList();
+    
+    targetMetas.sort((a, b) => b.startTime.compareTo(a.startTime));
+    final targetIds = targetMetas.map((meta) => meta.id).toList();
+
+    // 2. 해당 ID들만 LazyBox에서 로드
+    final box = await _getBox();
+    final List<WorkoutSession> results = [];
+    
+    for (var id in targetIds) {
+      if (box is Box<WorkoutSession>) {
+        final session = box.get(id);
+        if (session != null) results.add(session);
+      } else {
+        final session = await (box as LazyBox<WorkoutSession>).get(id);
+        if (session != null) results.add(session);
+      }
+    }
+    
+    return results;
+  }
+
+  /// 모든 세션 가져오기 (인덱스 활용)
+  Future<List<WorkoutSession>> getAllSessions() async {
+    final indexBox = Hive.box<SessionMetadata>(_indexBoxName);
+    final targetMetas = indexBox.values.toList();
+    targetMetas.sort((a, b) => b.startTime.compareTo(a.startTime));
+    final targetIds = targetMetas.map((meta) => meta.id).toList();
+
+    final box = await _getBox();
+    final List<WorkoutSession> results = [];
+    
+    for (var id in targetIds) {
+      if (box is Box<WorkoutSession>) {
+        final session = box.get(id);
+        if (session != null) results.add(session);
+      } else {
+        final session = await (box as LazyBox<WorkoutSession>).get(id);
+        if (session != null) results.add(session);
+      }
+    }
+    
+    return results;
   }
 
   /// 운동 세션에 템플릿 연결 (또는 세션 생성)

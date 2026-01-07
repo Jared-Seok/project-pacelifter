@@ -47,13 +47,25 @@ class _HealthImportScreenState extends State<HealthImportScreen> {
           final totalDistance = workoutData?.totalDistance?.toDouble();
           final totalEnergyBurned = workoutData?.totalEnergyBurned?.toDouble();
           
+          String workoutType = workoutData?.workoutActivityType.name ?? 'Unknown';
+          
+          // Apple HealthKit의 실내/실외 메타데이터 확인하여 보정
+          if (workoutType.contains('RUNNING')) {
+            final isIndoor = e.metadata?['HKMetadataKeyIndoorWorkout'] == 1 || 
+                             e.metadata?['HKIndoorWorkout'] == true;
+            if (isIndoor) {
+              workoutType = 'RUNNING_TREADMILL';
+            }
+          }
+
           return HealthWorkout(
-            workoutType: workoutData?.workoutActivityType.name ?? 'Unknown',
+            workoutType: workoutType,
             startDate: e.dateFrom,
             endDate: e.dateTo,
             distance: totalDistance,
             totalEnergyBurned: totalEnergyBurned,
             sourceName: e.sourceName,
+            metadata: e.metadata ?? {},
           );
         }).toList();
 
@@ -65,12 +77,12 @@ class _HealthImportScreenState extends State<HealthImportScreen> {
         // ----------------------------------------------------
         final historyService = WorkoutHistoryService();
         for (var workout in workouts) {
-          // 중복 체크 로직이 있으면 좋으나, 현재는 간단히 생성 및 저장
-          // 시작 시간과 타입을 조합하여 간단한 중복 체크 (또는 그냥 저장)
           final session = WorkoutSession(
             id: const Uuid().v4(),
             templateId: 'health_kit_import',
-            category: workout.workoutType.contains('RUNNING') ? 'Endurance' : 'Other',
+            category: workout.workoutType.contains('RUNNING') 
+                ? 'Endurance' 
+                : (workout.workoutType.contains('STRENGTH') ? 'Strength' : 'Other'),
             templateName: workout.workoutType,
             startTime: workout.startDate,
             endTime: workout.endDate,
@@ -79,6 +91,7 @@ class _HealthImportScreenState extends State<HealthImportScreen> {
             totalDistance: workout.distance ?? 0,
             calories: workout.totalEnergyBurned ?? 0,
             exerciseRecords: [],
+            healthKitWorkoutId: workout.metadata['HKWorkoutUUID'], // 중복 방지용 ID 저장
           );
           await historyService.saveSession(session);
         }

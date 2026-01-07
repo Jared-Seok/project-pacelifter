@@ -40,11 +40,11 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _performInitialization() async {
     try {
-      // 1. 데이터 초기화 (Hive 박스 오픈 등)
+      // 1. 데이터 초기화 (이미 main에서 수행되었으므로 즉시 반환됨)
       await AppInitializer.init();
       
-      // 최소 로딩 시간 보장
-      await Future.delayed(const Duration(milliseconds: 800));
+      // 최소 로딩 시간 보장 (부드러운 전환을 위한 시각적 지연)
+      await Future.delayed(const Duration(milliseconds: 1500));
 
       if (mounted) {
         widget.onInitComplete();

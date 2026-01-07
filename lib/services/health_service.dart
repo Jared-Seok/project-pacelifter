@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:health/health.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HealthService {
   final Health health = Health();
@@ -79,12 +80,13 @@ class HealthService {
     List<HealthDataType> types,
   ) async {
     try {
+      // 여러 타입을 동시에 요청 (속도 개선)
       List<HealthDataPoint> healthData = await health.getHealthDataFromTypes(
         types: types,
         startTime: startTime,
         endTime: endTime,
       ).timeout(
-        const Duration(seconds: 10),
+        const Duration(seconds: 15),
         onTimeout: () {
           debugPrint('⚠️ [HealthService] Data fetch timed out for $types');
           return [];
@@ -97,33 +99,43 @@ class HealthService {
     }
   }
 
-  /// 운동 데이터 가져오기
-  Future<List<HealthDataPoint>> fetchWorkoutData({int days = 30}) async {
+  static const String _lastSyncKey = 'last_health_sync_time';
+
+  Future<DateTime?> getLastSyncTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastSyncStr = prefs.getString(_lastSyncKey);
+    return lastSyncStr != null ? DateTime.parse(lastSyncStr) : null;
+  }
+
+  Future<void> setLastSyncTime(DateTime time) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_lastSyncKey, time.toIso8601String());
+  }
+
+  /// 마지막 동기화 시간 기반 증분 업데이트 지원
+  Future<List<HealthDataPoint>> fetchWorkoutData({int days = 30, DateTime? lastSyncTime}) async {
     final now = DateTime.now();
-    // 지정된 일수 전부터 데이터를 가져오기 (기본 30일)
-    // 대시보드에서는 최근 데이터만 필요하므로 범위를 좁혀 성능 개선
-    final startDate = now.subtract(Duration(days: days));
+    // 마지막 동기화 시간이 지정되지 않았다면 저장된 시간 확인
+    final effectiveLastSync = lastSyncTime ?? await getLastSyncTime();
+    final startDate = effectiveLastSync ?? now.subtract(Duration(days: days));
 
     bool granted = await requestAuthorization();
     if (granted) {
       try {
-        // 지정된 기간 동안의 운동 데이터 요청
+        debugPrint('🔄 [HealthService] Fetching workouts from $startDate to $now');
         List<HealthDataPoint> healthData = await health.getHealthDataFromTypes(
           types: [HealthDataType.WORKOUT],
           startTime: startDate,
           endTime: now,
         ).timeout(
-          const Duration(seconds: 15),
+          const Duration(seconds: 20),
           onTimeout: () {
             debugPrint('⚠️ [HealthService] Workout data fetch timed out');
             return [];
           },
         );
 
-        // 중복 데이터 제거
-        healthData = health.removeDuplicates(healthData);
-
-        return healthData;
+        return health.removeDuplicates(healthData);
       } catch (e) {
         debugPrint('❌ Error fetching workout data: $e');
         return [];

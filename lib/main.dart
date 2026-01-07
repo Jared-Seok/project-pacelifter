@@ -22,12 +22,19 @@ import 'models/sessions/exercise_record.dart';
 import 'models/sessions/route_point.dart';
 import 'models/scoring/performance_scores.dart';
 
-void main() {
-  // 1. 엔진 초기화 (최소한의 필수 작업만 수행)
+import 'models/sessions/session_metadata.dart';
+import 'services/workout_history_service.dart';
+
+void main() async {
+  // 1. 엔진 및 최소 필수 초기화
   print('🚀 [App] Starting main()...');
   WidgetsFlutterBinding.ensureInitialized();
   
-  // 2. 앱 즉시 실행 (하얀 화면 방지)
+  // 2. 중요 리소스(Hive) 순차적 초기화 (Recommendation 1)
+  // 서비스 Provider들이 생성되기 전에 Hive 박스가 준비되어야 데드락을 방지할 수 있습니다.
+  await AppInitializer.init();
+
+  // 3. 앱 실행
   runApp(
     MultiProvider(
       providers: [
@@ -63,8 +70,16 @@ class AppInitializer {
       await _forceOpenBox<CustomPhasePreset>('custom_phase_presets', timeout: boxTimeout);
       await _forceOpenBox<Exercise>('exercises', timeout: boxTimeout);
       await _forceOpenBox<PerformanceScores>('user_scores', timeout: boxTimeout);
+      await _forceOpenBox<SessionMetadata>('session_metadata_index', timeout: boxTimeout);
       await _forceOpenLazyBox<WorkoutSession>('user_workout_history', timeout: boxTimeout);
       await _forceOpenLazyBox<ExerciseRecord>('user_exercise_records', timeout: boxTimeout);
+
+      // 인덱스 자가 복구: 기존 데이터가 있는데 인덱스가 비어있는 경우 재빌드
+      final indexBox = Hive.box<SessionMetadata>('session_metadata_index');
+      if (indexBox.isEmpty) {
+        print('🔍 [AppInitializer] Index empty. Rebuilding...');
+        await WorkoutHistoryService().rebuildIndex();
+      }
 
       // 4. 데이터 로드 (TemplateService)
       print('📦 [AppInitializer] Loading Templates...');
@@ -123,6 +138,7 @@ class AppInitializer {
       if (!Hive.isAdapterRegistered(5)) Hive.registerAdapter(ExerciseRecordAdapter());
       if (!Hive.isAdapterRegistered(6)) Hive.registerAdapter(SetRecordAdapter());
       if (!Hive.isAdapterRegistered(7)) Hive.registerAdapter(RoutePointAdapter());
+      if (!Hive.isAdapterRegistered(9)) Hive.registerAdapter(SessionMetadataAdapter());
       if (!Hive.isAdapterRegistered(40)) Hive.registerAdapter(PerformanceScoresAdapter());
     } catch (e) {
       print('⚠️ Adapter registration warning: $e');

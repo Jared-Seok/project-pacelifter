@@ -56,7 +56,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       // 1. Fetch workout data from HealthKit (last 1 year for calendar)
       final healthData = await _healthService.fetchWorkoutData(days: 365);
       
-      // 2. Fetch all local sessions
+      // 2. Fetch local sessions (인덱스 기반으로 전체 기록을 빠르게 필터링)
       final sessions = await _historyService.getAllSessions();
       
       // 3. Create a map of sessions by healthKitWorkoutId for easy lookup

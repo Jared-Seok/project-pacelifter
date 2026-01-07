@@ -293,7 +293,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
       );
       
-      // 2. 로컬 Hive 세션 가져오기
+      // 2. 로컬 Hive 세션 가져오기 (인덱스 기반으로 전체 기록을 빠르게 필터링)
+      // 데이터 제한을 해제하여 전체 10년 기록을 로드 (인덱스 덕분에 가능)
       final sessions = await WorkoutHistoryService().getAllSessions();
       final sessionMap = <String, WorkoutSession>{};
       for (var s in sessions) {
@@ -883,6 +884,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 const RadarEntry(value: 100),
                                 const RadarEntry(value: 100),
                                 const RadarEntry(value: 100),
+                                const RadarEntry(value: 100),
+                                const RadarEntry(value: 100),
                               ],
                             ),
                             RadarDataSet(
@@ -890,18 +893,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               borderColor: Theme.of(context).colorScheme.secondary,
                               entryRadius: 2,
                               dataEntries: [
-                                RadarEntry(value: _scores!.enduranceScore),
-                                RadarEntry(value: _scores!.strengthScore),
-                                RadarEntry(value: _scores!.conditioningScore),
+                                RadarEntry(value: _scores!.enduranceScore.toDouble()),
+                                RadarEntry(value: _scores!.strengthScore.toDouble()),
+                                RadarEntry(value: _scores!.conditioningScore.toDouble()),
+                                RadarEntry(value: _scores!.hybridBalanceScore.toDouble()),
+                                RadarEntry(value: (100 - ((1.0 - _scores!.acwr).abs() * 100)).clamp(0, 100).toDouble()),
                               ],
                             ),
                           ],
-                          radarShape: RadarShape.polygon,
                           getTitle: (index, angle) {
                             switch (index) {
                               case 0: return const RadarChartTitle(text: '지구력');
                               case 1: return const RadarChartTitle(text: '근력');
                               case 2: return const RadarChartTitle(text: '컨디셔닝');
+                              case 3: return const RadarChartTitle(text: '밸런스');
+                              case 4: return const RadarChartTitle(text: '훈련부하');
                               default: return const RadarChartTitle(text: '');
                             }
                           },
@@ -933,7 +939,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildScoreTile(String label, double score, Color color) {
+  Widget _buildScoreTile(String label, num score, Color color) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -955,8 +961,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final List<Widget> pages = [
       _buildWorkoutSummaryPage(),
       _buildRacesPage(),
+      _buildHybridBalancePage(),
     ];
-    final List<String> titles = ['최근 운동 요약', '준비중인 레이스'];
+    final List<String> titles = ['최근 운동 요약', '준비중인 레이스', '하이브리드 밸런스'];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1038,6 +1045,68 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: _buildStrengthEndurancePage(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHybridBalancePage() {
+    if (_scores == null) return const SizedBox.shrink();
+    
+    final color = Theme.of(context).colorScheme.secondary;
+    final score = _scores!.hybridBalanceScore;
+    
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: InkWell(
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => PerformanceAnalysisScreen(scores: _scores!),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                   Icon(Icons.bolt, color: color, size: 24),
+                   const SizedBox(width: 8),
+                   const Text('Hybrid Balance', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  SizedBox(
+                    width: 80,
+                    height: 80,
+                    child: CircularProgressIndicator(
+                      value: score / 100,
+                      strokeWidth: 8,
+                      backgroundColor: color.withValues(alpha: 0.1),
+                      valueColor: AlwaysStoppedAnimation<Color>(color),
+                    ),
+                  ),
+                  Text(
+                    '${score.toInt()}',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                '지구력과 근력이 균형 있게 발달하고 있습니다.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1887,12 +1956,20 @@ class _SyncProgressModal extends StatefulWidget {
 class _SyncProgressModalState extends State<_SyncProgressModal> {
   String _status = 'fetching'; // fetching, analyzing, completed
   int _foundCount = 0;
+  int _savedCount = 0;
   double _progress = 0.0;
+  bool _isCancelled = false;
 
   @override
   void initState() {
     super.initState();
     _runSync();
+  }
+
+  void _cancelSync() {
+    setState(() {
+      _isCancelled = true;
+    });
   }
 
   Future<void> _runSync() async {
@@ -1901,21 +1978,31 @@ class _SyncProgressModalState extends State<_SyncProgressModal> {
     final scoringEngine = ScoringEngine();
 
     try {
-      // Step 1: Fetching (10 years)
+      // Step 0: RAM 모드 활성화 (고속 동기화)
+      await historyService.setSyncMode(true);
+
+      // Step 1: Fetching (10 years for full sync, but delta applied)
       setState(() => _status = 'fetching');
-      final allWorkouts = await healthService.fetchWorkoutData(days: 3650);
+      final lastSync = await healthService.getLastSyncTime();
+      // 처음이면 10년치, 아니면 저장된 시간부터
+      final allWorkouts = await healthService.fetchWorkoutData(days: lastSync == null ? 3650 : 30);
       
-      if (!mounted) return;
+      if (!mounted || _isCancelled) return;
       setState(() {
         _foundCount = allWorkouts.length;
         _status = 'analyzing';
       });
 
-      // Step 2: Saving & Analyzing
-      // Save to local cache to ensure persistence
-      int savedCount = 0;
-      for (var data in allWorkouts) {
+      // Step 2: Saving in small batches to support cancellation & progress
+      const batchSize = 20;
+      final List<WorkoutSession> sessionsToSave = [];
+      
+      for (int i = 0; i < allWorkouts.length; i++) {
+        if (_isCancelled) break;
+        
+        final data = allWorkouts[i];
         final existing = await historyService.getSessionByHealthKitId(data.uuid);
+        
         if (existing == null) {
           final workoutData = data.value is WorkoutHealthValue ? data.value as WorkoutHealthValue : null;
           final workoutTypeName = workoutData?.workoutActivityType.name ?? 'Other';
@@ -1923,7 +2010,7 @@ class _SyncProgressModalState extends State<_SyncProgressModal> {
           
           final session = WorkoutSession(
             id: const Uuid().v4(),
-            templateId: '', // 기본 임포트는 템플릿 지정 없음
+            templateId: '',
             category: WorkoutUIUtils.getWorkoutCategory(workoutTypeName),
             templateName: formattedName,
             startTime: data.dateFrom,
@@ -1935,30 +2022,48 @@ class _SyncProgressModalState extends State<_SyncProgressModal> {
             healthKitWorkoutId: data.uuid,
             exerciseRecords: [],
           );
-          await historyService.saveSession(session);
-          savedCount++;
+          sessionsToSave.add(session);
         }
-        
-        // Update progress UI slowly
-        if (savedCount % 10 == 0 || savedCount == allWorkouts.length) {
+
+        // Batch save every N items or at the end
+        if (sessionsToSave.length >= batchSize || i == allWorkouts.length - 1) {
+          await historyService.saveSessions(sessionsToSave);
+          _savedCount += sessionsToSave.length;
+          sessionsToSave.clear();
+        }
+
+        if (i % 5 == 0 || i == allWorkouts.length - 1) {
           setState(() {
-            _progress = (allWorkouts.indexOf(data) + 1) / allWorkouts.length;
+            _progress = (i + 1) / allWorkouts.length;
           });
         }
       }
 
+      // 동기화 성공 시 시간 기록 (최소 하나라도 성공했거나 취소되지 않았을 때)
+      if (!_isCancelled) {
+        await healthService.setLastSyncTime(DateTime.now());
+      }
+
       // Step 3: Global Athletic Analysis
       await scoringEngine.calculateAndSaveScores();
+
+      // Step 4: 스토리지 모드 전환 (메모리 절약)
+      await historyService.setSyncMode(false);
 
       if (!mounted) return;
       setState(() {
         _status = 'completed';
       });
       
-      widget.onComplete();
+      if (!_isCancelled) {
+        widget.onComplete();
+      }
     } catch (e) {
       debugPrint('❌ Sync Process Error: $e');
       if (mounted) Navigator.pop(context);
+    } finally {
+      // Step 5: 어떠한 경우에도 스토리지 모드로 복구 (메모리 누수 방지)
+      await historyService.setSyncMode(false);
     }
   }
 
@@ -1984,25 +2089,57 @@ class _SyncProgressModalState extends State<_SyncProgressModal> {
               Text('과거 10년의 모든 운동 기록을\n안전하게 가져오고 있습니다.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[400])),
             ] else if (_status == 'analyzing') ...[
               SizedBox(
-                width: 100, height: 100,
+                width: 130, height: 130, // 크기 확대 (100 -> 130)
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    CircularProgressIndicator(value: _progress, strokeWidth: 8, backgroundColor: Colors.white10),
-                    Text('${(_progress * 100).toInt()}%', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    SizedBox(
+                      width: 120, height: 120,
+                      child: CircularProgressIndicator(
+                        value: _progress, 
+                        strokeWidth: 8, 
+                        backgroundColor: Colors.white10,
+                        color: _isCancelled ? Colors.redAccent : null,
+                      ),
+                    ),
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('${(_progress * 100).toInt()}%', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 2),
+                        Text('$_savedCount / $_foundCount', style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+                      ],
+                    ),
                   ],
                 ),
               ),
               const SizedBox(height: 32),
-              const Text('애슬릿 분석 진행 중', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+              Text(_isCancelled ? '동기 중단 중...' : '애슬릿 분석 진행 중', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
               const SizedBox(height: 12),
               Text('총 $_foundCount개의 기록을 기반으로\n종합 퍼포먼스를 산출하고 있습니다.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[400])),
+              if (!_isCancelled) ...[
+                const SizedBox(height: 24),
+                TextButton(
+                  onPressed: _cancelSync,
+                  child: Text('취소 및 현재까지 저장', style: TextStyle(color: Colors.redAccent.withValues(alpha: 0.8), fontSize: 13)),
+                ),
+              ],
             ] else ...[
-              const Icon(Icons.check_circle_outline, color: Color(0xFFD4E157), size: 64),
+              Icon(
+                _isCancelled ? Icons.pause_circle_outline : Icons.check_circle_outline, 
+                color: const Color(0xFFD4E157), 
+                size: 64
+              ),
               const SizedBox(height: 24),
-              const Text('동기화 및 분석 완료!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+              Text(_isCancelled ? '동기화 중단됨' : '동기화 및 분석 완료!', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
               const SizedBox(height: 12),
-              Text('이제 모든 과거 기록이 대시보드와\n캘린더에 완벽하게 반영되었습니다.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[400])),
+              Text(
+                _isCancelled 
+                  ? '사용자에 의해 중단되었습니다.\n$_savedCount개의 기록이 저장되었습니다.' 
+                  : '이제 모든 과거 기록이 대시보드와\n캘린더에 완벽하게 반영되었습니다.', 
+                textAlign: TextAlign.center, 
+                style: TextStyle(color: Colors.grey[400])
+              ),
               const SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,
@@ -2014,7 +2151,7 @@ class _SyncProgressModalState extends State<_SyncProgressModal> {
                     foregroundColor: Colors.black,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text('시작하기', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: Text(_isCancelled ? '확인' : '시작하기', style: const TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
             ],

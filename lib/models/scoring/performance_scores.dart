@@ -7,16 +7,16 @@ part 'performance_scores.g.dart';
 @HiveType(typeId: 40)
 class PerformanceScores extends HiveObject {
   @HiveField(0)
-  final double enduranceScore; // 0-100
+  final num enduranceScore; // 0-100
 
   @HiveField(1)
-  final double strengthScore; // 0-100
+  final num strengthScore; // 0-100
 
   @HiveField(2)
-  final double conditioningScore; // 0-100
+  final num conditioningScore; // 0-100
 
   @HiveField(3)
-  final double hybridBalanceScore; // 0-100
+  final num hybridBalanceScore; // 0-100
 
   @HiveField(4)
   final DateTime lastUpdated;
@@ -25,27 +25,27 @@ class PerformanceScores extends HiveObject {
   
   // 1. Endurance 상세
   @HiveField(9)
-  final double enduranceWeeklyFreq; // 최근 7일 운동 횟수
+  final num enduranceWeeklyFreq; // 최근 7일 운동 횟수
   @HiveField(10)
-  final double enduranceBaselineFreq; // 베이스라인 주당 평균 횟수
+  final num enduranceBaselineFreq; // 베이스라인 주당 평균 횟수
   @HiveField(11)
-  final double totalDistanceKm; // 최근 7일 누적 거리
+  final num totalDistanceKm; // 최근 7일 누적 거리
 
   // 2. Strength 상세
   @HiveField(12)
-  final double strengthWeeklyFreq; // 최근 7일 운동 횟수
+  final num strengthWeeklyFreq; // 최근 7일 운동 횟수
   @HiveField(13)
-  final double strengthBaselineFreq; // 베이스라인 주당 평균 횟수
+  final num strengthBaselineFreq; // 베이스라인 주당 평균 횟수
   @HiveField(14)
-  final double totalVolumeTon; // 최근 7일 누적 볼륨 (톤)
+  final num totalVolumeTon; // 최근 7일 누적 볼륨 (톤)
 
   // 3. Conditioning 상세
   @HiveField(15)
-  final double acwr; // Acute-Chronic Workload Ratio
+  final num acwr; // Acute-Chronic Workload Ratio
   @HiveField(16)
-  final double? avgRestingHeartRate;
+  final num? avgRestingHeartRate;
   @HiveField(17)
-  final double? avgHRV;
+  final num? avgHRV;
 
   PerformanceScores({
     required this.enduranceScore,
@@ -74,7 +74,7 @@ class PerformanceScores extends HiveObject {
     );
   }
 
-  String getGrade(double score) {
+  String getGrade(num score) {
     if (score >= 90) return 'Elite';
     if (score >= 80) return 'Advanced';
     if (score >= 70) return 'Intermediate+';

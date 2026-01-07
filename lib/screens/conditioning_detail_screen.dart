@@ -62,7 +62,7 @@ class ConditioningDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildACWRCard(BuildContext context, double acwr) {
+  Widget _buildACWRCard(BuildContext context, num acwr) {
     final color = _getACWRColor(context, acwr);
     final String status = _getACWRStatus(acwr);
     final String description = _getACWRDescription(acwr);
@@ -95,7 +95,7 @@ class ConditioningDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildACWRVisualizer(BuildContext context, double acwr) {
+  Widget _buildACWRVisualizer(BuildContext context, num acwr) {
     final secondaryColor = Theme.of(context).colorScheme.secondary;
     return Column(
       children: [
@@ -123,7 +123,7 @@ class ConditioningDetailScreen extends StatelessWidget {
             ),
             // 현재 지점 표시
             Positioned(
-              left: (MediaQuery.of(context).size.width - 88) * (acwr.clamp(0.0, 2.0) / 2.0),
+              left: (MediaQuery.of(context).size.width - 88) * (acwr.toDouble().clamp(0.0, 2.0) / 2.0),
               child: Container(
                 height: 12,
                 width: 4,
@@ -189,18 +189,18 @@ class ConditioningDetailScreen extends StatelessWidget {
     );
   }
 
-  Color _getACWRColor(BuildContext context, double acwr) {
+  Color _getACWRColor(BuildContext context, num acwr) {
     return Theme.of(context).colorScheme.secondary;
   }
 
-  String _getACWRStatus(double acwr) {
+  String _getACWRStatus(num acwr) {
     if (acwr < 0.8) return "훈련량 부족";
     if (acwr <= 1.3) return "최적의 컨디션";
     if (acwr <= 1.5) return "과도한 훈련 부하";
     return "부상 위험 매우 높음";
   }
 
-  String _getACWRDescription(double acwr) {
+  String _getACWRDescription(num acwr) {
     if (acwr < 0.8) return "평소보다 훈련량이 적습니다. 신체 능력이 정체될 수 있으니 점진적으로 강도를 높여보세요.";
     if (acwr <= 1.3) return "현재 부상 위험이 낮으면서도 체력이 가장 효율적으로 향상되는 'Sweet Spot'에 있습니다.";
     if (acwr <= 1.5) return "훈련량이 급격히 늘어났습니다. 피로가 쌓이기 쉬우므로 컨디션 모니터링이 필요합니다.";
