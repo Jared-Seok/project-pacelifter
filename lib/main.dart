@@ -23,13 +23,11 @@ import 'models/sessions/route_point.dart';
 import 'models/scoring/performance_scores.dart';
 
 void main() {
-  // 1. 최소한의 엔진 초기화 (동기)
+  // 1. 엔진 초기화 (최소한의 필수 작업만 수행)
+  print('🚀 [App] Starting main()...');
   WidgetsFlutterBinding.ensureInitialized();
   
-  // 2. Hive 어댑터 미리 등록 (Hot Restart 대응 및 데이터 접근 안전성 확보)
-  AppInitializer._registerHiveAdapters();
-
-  // 3. 앱 즉시 실행 (MultiProvider로 감싸 컨텍스트 안정성 확보)
+  // 2. 앱 즉시 실행 (하얀 화면 방지)
   runApp(
     MultiProvider(
       providers: [
@@ -45,62 +43,72 @@ class AppInitializer {
   static bool _isInitialized = false;
 
   static Future<void> init() async {
-    // 어댑터는 main에서 먼저 등록하지만, 안전을 위해 여기서도 호출
-    _registerHiveAdapters();
-    
     if (_isInitialized) return;
     
     try {
-      debugPrint('📦 AppInitializer: Starting Hive...');
-      await Hive.initFlutter();
-
-      debugPrint('📦 AppInitializer: Opening Boxes sequentially...');
+      print('📦 [AppInitializer] Starting initialization...');
       
-      // Define a standard timeout for each box to prevent infinite hang
+      // 1. Hive 초기화
+      print('📦 [AppInitializer] Initializing Hive...');
+      await Hive.initFlutter();
+      
+      // 2. 어댑터 등록
+      _registerHiveAdapters();
+
+      // 3. 박스 오픈 (타임아웃 적용 및 강제 복구 로직)
+      print('📦 [AppInitializer] Opening Boxes...');
       const boxTimeout = Duration(seconds: 5);
 
-      // 1. Regular Boxes
-      await _safeOpenBox<WorkoutTemplate>('workout_templates', timeout: boxTimeout);
-      await _safeOpenBox<CustomPhasePreset>('custom_phase_presets', timeout: boxTimeout);
-      await _safeOpenBox<Exercise>('exercises', timeout: boxTimeout);
-      await _safeOpenBox<PerformanceScores>('user_scores', timeout: boxTimeout);
-      
-      // 2. Large Boxes (Always Lazy)
-      await _safeOpenLazyBox<WorkoutSession>('user_workout_history', timeout: boxTimeout);
-      await _safeOpenLazyBox<ExerciseRecord>('user_exercise_records', timeout: boxTimeout);
+      await _forceOpenBox<WorkoutTemplate>('workout_templates', timeout: boxTimeout);
+      await _forceOpenBox<CustomPhasePreset>('custom_phase_presets', timeout: boxTimeout);
+      await _forceOpenBox<Exercise>('exercises', timeout: boxTimeout);
+      await _forceOpenBox<PerformanceScores>('user_scores', timeout: boxTimeout);
+      await _forceOpenLazyBox<WorkoutSession>('user_workout_history', timeout: boxTimeout);
+      await _forceOpenLazyBox<ExerciseRecord>('user_exercise_records', timeout: boxTimeout);
 
-      debugPrint('📦 AppInitializer: Loading Templates...');
+      // 4. 데이터 로드 (TemplateService)
+      print('📦 [AppInitializer] Loading Templates...');
       await TemplateService.loadAllTemplatesAndExercises().timeout(
-        const Duration(seconds: 10),
-        onTimeout: () => debugPrint('⚠️ AppInitializer: Template loading timed out'),
+        const Duration(seconds: 15),
+        onTimeout: () => print('⚠️ [AppInitializer] Template loading timed out'),
       );
       
       _isInitialized = true;
-      debugPrint('✅ AppInitializer: Completed Successfully');
-    } catch (e) {
-      debugPrint('❌ AppInitializer: Critical Failure: $e');
-      rethrow;
+      print('✅ [AppInitializer] Completed Successfully');
+    } catch (e, stack) {
+      print('❌ [AppInitializer] Critical Failure: $e');
+      print(stack);
+      _isInitialized = true; // 에러가 나더라도 앱은 띄우도록 설정
     }
   }
 
-  static Future<void> _safeOpenBox<T>(String name, {required Duration timeout}) async {
+  static Future<void> _forceOpenBox<T>(String name, {required Duration timeout}) async {
     try {
       if (Hive.isBoxOpen(name)) return;
+      print('📦 Opening Box: $name');
       await Hive.openBox<T>(name).timeout(timeout);
-      debugPrint('✅ Opened Box: $name');
     } catch (e) {
-      debugPrint('⚠️ Failed to open Box $name: $e');
-      // If it's already open as LazyBox, try to proceed
+      print('🚨 Box $name corrupted. Recreating...');
+      try {
+        await Hive.deleteBoxFromDisk(name);
+        await Hive.openBox<T>(name).timeout(timeout);
+      } catch (e2) {
+        print('❌ Failed to open box $name: $e2');
+      }
     }
   }
 
-  static Future<void> _safeOpenLazyBox<T>(String name, {required Duration timeout}) async {
+  static Future<void> _forceOpenLazyBox<T>(String name, {required Duration timeout}) async {
     try {
       if (Hive.isBoxOpen(name)) return;
+      print('📦 Opening LazyBox: $name');
       await Hive.openLazyBox<T>(name).timeout(timeout);
-      debugPrint('✅ Opened LazyBox: $name');
     } catch (e) {
-      debugPrint('⚠️ Failed to open LazyBox $name: $e');
+      print('🚨 LazyBox $name corrupted. Recreating...');
+      try {
+        await Hive.deleteBoxFromDisk(name);
+        await Hive.openLazyBox<T>(name).timeout(timeout);
+      } catch (_) {}
     }
   }
 
@@ -109,18 +117,16 @@ class AppInitializer {
       if (!Hive.isAdapterRegistered(0)) Hive.registerAdapter(WorkoutTemplateAdapter());
       if (!Hive.isAdapterRegistered(1)) Hive.registerAdapter(TemplatePhaseAdapter());
       if (!Hive.isAdapterRegistered(2)) Hive.registerAdapter(TemplateBlockAdapter());
-      // CustomPhasePreset is now typeId: 8
       if (!Hive.isAdapterRegistered(8)) Hive.registerAdapter(CustomPhasePresetAdapter());
-      // Exercise is typeId: 3
       if (!Hive.isAdapterRegistered(3)) Hive.registerAdapter(ExerciseAdapter());
       if (!Hive.isAdapterRegistered(4)) Hive.registerAdapter(WorkoutSessionAdapter());
       if (!Hive.isAdapterRegistered(5)) Hive.registerAdapter(ExerciseRecordAdapter());
       if (!Hive.isAdapterRegistered(6)) Hive.registerAdapter(SetRecordAdapter());
       if (!Hive.isAdapterRegistered(7)) Hive.registerAdapter(RoutePointAdapter());
-      
-      // PerformanceScores has typeId 40
       if (!Hive.isAdapterRegistered(40)) Hive.registerAdapter(PerformanceScoresAdapter());
-    } catch (_) {}
+    } catch (e) {
+      print('⚠️ Adapter registration warning: $e');
+    }
   }
 }
 

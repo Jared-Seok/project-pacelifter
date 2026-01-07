@@ -285,7 +285,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _loadHealthData() async {
     try {
       // 1. HealthKit 데이터 가져오기 (최근 90일치 - 일상적 로드는 빠르게)
-      final workoutData = await _healthService.fetchWorkoutData(days: 90);
+      final workoutData = await _healthService.fetchWorkoutData(days: 90).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          debugPrint('⚠️ [Dashboard] Health data fetch timed out');
+          return <HealthDataPoint>[];
+        },
+      );
       
       // 2. 로컬 Hive 세션 가져오기
       final sessions = await WorkoutHistoryService().getAllSessions();

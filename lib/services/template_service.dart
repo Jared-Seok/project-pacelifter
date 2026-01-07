@@ -14,69 +14,89 @@ class TemplateService {
   /// 모든 템플릿과 운동 데이터를 Assets에서 로드하여 Hive에 저장
   static Future<void> loadAllTemplatesAndExercises() async {
     try {
+      // 박스가 열려있는지 확인하고 없으면 여기서라도 열기 시도
+      if (!Hive.isBoxOpen(_templatesBoxName)) {
+        await Hive.openBox<WorkoutTemplate>(_templatesBoxName);
+      }
+      if (!Hive.isBoxOpen(_exercisesBoxName)) {
+        await Hive.openBox<Exercise>(_exercisesBoxName);
+      }
+
       final templateBox = Hive.box<WorkoutTemplate>(_templatesBoxName);
       final exerciseBox = Hive.box<Exercise>(_exercisesBoxName);
 
-      // 이미 데이터가 충분히 있다면 로드 과정을 생략하여 구동 속도 개선
-      if (templateBox.length >= 20 && exerciseBox.length >= 50) {
-        print('✅ Templates and exercises already loaded. Skipping initialization.');
+      // 데이터 존재 여부 확인 (최소 기준치)
+      bool hasTemplates = templateBox.isNotEmpty;
+      bool hasExercises = exerciseBox.isNotEmpty;
+
+      if (hasTemplates && hasExercises && templateBox.length >= 10) {
+        print('✅ Templates and exercises already exist (${templateBox.length} templates, ${exerciseBox.length} exercises). Skipping full load.');
         return;
       }
 
-      // 운동 라이브러리를 먼저 로드
+      print('📦 TemplateService: Starting data import from assets...');
+
+      // 1. 운동 라이브러리 로드 (병렬 로딩 시도)
       await _loadExercisesLibrary();
 
-      // 템플릿 로드
-      await _loadEnduranceTemplates();
-      await _loadStrengthTemplates();
-      await _loadHybridTemplates();
+      // 2. 템플릿 로드 (병렬 실행)
+      await Future.wait([
+        _loadEnduranceTemplates(),
+        _loadStrengthTemplates(),
+        _loadHybridTemplates(),
+      ]);
       
-      // 프리셋 박스 확인
+      // 3. 프리셋 박스 보장
       if (!Hive.isBoxOpen(_presetsBoxName)) {
         await Hive.openBox<CustomPhasePreset>(_presetsBoxName);
       }
 
-      print('✅ All templates and exercises loaded successfully');
-    } catch (e) {
-      print('❌ Error loading templates and exercises: $e');
-      // 치명적인 에러가 아니면 계속 진행할 수 있도록 rethrow 대신 로그만 출력
+      print('✅ TemplateService: All data successfully synchronized');
+    } catch (e, stackTrace) {
+      print('❌ TemplateService: Critical error during data load: $e');
+      print(stackTrace);
+      // 여기서 에러를 던지지 않아야 초기화 프로세스가 멈추지 않음 (최소한 앱 실행은 가능하게 함)
     }
   }
 
   /// 운동 라이브러리 로드
   static Future<void> _loadExercisesLibrary() async {
-    final box = Hive.box<Exercise>(_exercisesBoxName);
-    
-    // 데이터가 이미 있으면 중복 로드 방지
-    if (box.length > 50) return;
-
-    // 기본 운동 데이터 파일 목록
-    final libraryFiles = [
-      'assets/data/exercises/chest_exercises.json',
-      'assets/data/exercises/back_exercises.json',
-      'assets/data/exercises/shoulder_exercises.json',
-      'assets/data/exercises/biceps_exercises.json',
-      'assets/data/exercises/triceps_exercises.json',
-      'assets/data/exercises/forearms_exercises.json',
-      'assets/data/exercises/legs_exercises.json',
-      'assets/data/exercises/core_exercises.json',
-    ];
-
     try {
-      for (var filePath in libraryFiles) {
-        final String jsonString = await rootBundle.loadString(filePath);
-        final Map<String, dynamic> jsonData = json.decode(jsonString);
-        final List<dynamic> exercisesList = jsonData['exercises'] as List;
+      if (!Hive.isBoxOpen(_exercisesBoxName)) return;
+      final box = Hive.box<Exercise>(_exercisesBoxName);
+      
+      if (box.length > 50) return;
 
-        for (var exerciseJson in exercisesList) {
-          final exercise = Exercise.fromJson(exerciseJson as Map<String, dynamic>);
-          await box.put(exercise.id, exercise);
+      final libraryFiles = [
+        'assets/data/exercises/chest_exercises.json',
+        'assets/data/exercises/back_exercises.json',
+        'assets/data/exercises/shoulder_exercises.json',
+        'assets/data/exercises/biceps_exercises.json',
+        'assets/data/exercises/triceps_exercises.json',
+        'assets/data/exercises/forearms_exercises.json',
+        'assets/data/exercises/legs_exercises.json',
+        'assets/data/exercises/core_exercises.json',
+      ];
+
+      // 각 파일을 병렬로 로드하여 속도 개선
+      await Future.wait(libraryFiles.map((filePath) async {
+        try {
+          final String jsonString = await rootBundle.loadString(filePath);
+          final Map<String, dynamic> jsonData = json.decode(jsonString);
+          final List<dynamic> exercisesList = jsonData['exercises'] as List;
+
+          for (var exerciseJson in exercisesList) {
+            final exercise = Exercise.fromJson(exerciseJson as Map<String, dynamic>);
+            await box.put(exercise.id, exercise);
+          }
+        } catch (e) {
+          print('⚠️ Failed to load exercise file $filePath: $e');
         }
-      }
+      }));
 
-      print('✅ Loaded ${box.length} exercises from all libraries');
+      print('✅ TemplateService: Loaded ${box.length} exercises');
     } catch (e) {
-      print('❌ Error loading exercises library: $e');
+      print('❌ TemplateService: Exercise library load failed: $e');
     }
   }
 

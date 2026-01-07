@@ -55,8 +55,8 @@ class HeartRateService {
 
     _pollingTimer?.cancel();
     
-    // 5초마다 최신 심박수 데이터 폴링
-    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+    // 3초마다 최신 심박수 데이터 폴링
+    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
       _fetchLatestHeartRate();
     });
 

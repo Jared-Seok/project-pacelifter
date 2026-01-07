@@ -21,6 +21,7 @@ class HealthService {
 
     // 고급 지표 (선택적)
     HealthDataType.RESTING_HEART_RATE,
+    HealthDataType.HEART_RATE_VARIABILITY_SDNN,
   ];
 
   // 쓰기 권한 데이터 타입 (P0 - MVP 필수)
@@ -56,11 +57,18 @@ class HealthService {
         bool requested = await health.requestAuthorization(
           allTypes,
           permissions: permissions,
+        ).timeout(
+          const Duration(seconds: 30),
+          onTimeout: () {
+            debugPrint('⚠️ [HealthService] Authorization request timed out');
+            return false;
+          },
         );
         return requested;
       }
       return true;
     } catch (e) {
+      debugPrint('❌ [HealthService] Authorization Error: $e');
       return false;
     }
   }
@@ -75,9 +83,16 @@ class HealthService {
         types: types,
         startTime: startTime,
         endTime: endTime,
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint('⚠️ [HealthService] Data fetch timed out for $types');
+          return [];
+        },
       );
       return health.removeDuplicates(healthData);
     } catch (e) {
+      debugPrint('❌ [HealthService] Error fetching $types: $e');
       return [];
     }
   }
@@ -97,6 +112,12 @@ class HealthService {
           types: [HealthDataType.WORKOUT],
           startTime: startDate,
           endTime: now,
+        ).timeout(
+          const Duration(seconds: 15),
+          onTimeout: () {
+            debugPrint('⚠️ [HealthService] Workout data fetch timed out');
+            return [];
+          },
         );
 
         // 중복 데이터 제거

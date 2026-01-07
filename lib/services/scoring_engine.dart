@@ -1,5 +1,6 @@
 import 'package:hive/hive.dart';
 import 'package:health/health.dart';
+import 'package:flutter/foundation.dart';
 import '../models/scoring/performance_scores.dart';
 import '../models/sessions/workout_session.dart';
 import '../models/workout_data_wrapper.dart';
@@ -33,7 +34,15 @@ class ScoringEngine {
     final strResult = _calculateDetailedMetrics(unifiedWorkouts, 'Strength');
 
     // 4. 컨디셔닝 상세
-    final condResult = await _calculateDetailedConditioning(unifiedWorkouts);
+    final condResult = await _calculateDetailedConditioning(unifiedWorkouts).timeout(
+      const Duration(seconds: 10),
+      onTimeout: () => {
+        'score': 0.0,
+        'acwr': 1.0,
+        'rhr': null,
+        'hrv': null,
+      },
+    );
 
     // 5. 결과 객체 생성
     final scores = PerformanceScores(
@@ -66,7 +75,10 @@ class ScoringEngine {
     final localSessions = await _historyService.getRecentSessions(days: days);
     
     // B. HealthKit 데이터 로드 (최근 데이터만 보완적으로 가져옴)
-    final healthData = await _healthService.fetchWorkoutData(days: 30);
+    final healthData = await _healthService.fetchWorkoutData(days: 30).timeout(
+      const Duration(seconds: 10),
+      onTimeout: () => [],
+    );
 
     final List<WorkoutDataWrapper> unified = [];
     final Set<String> linkedHealthIds = {};
@@ -113,7 +125,7 @@ class ScoringEngine {
     // Baseline: 주당 평균 빈도
     final firstDate = categoryWorkouts.map((w) => w.dateFrom).reduce((a, b) => a.isBefore(b) ? a : b);
     final daysDiff = now.difference(firstDate).inDays.clamp(7, 180);
-    final baselineFreq = (categoryWorkouts.length / daysDiff) * 7;
+    final baselineFreq = (categoryWorkouts.length.toDouble() / daysDiff.toDouble()) * 7.0;
 
     // Recent: 7일간 데이터
     final recentWorkouts = categoryWorkouts.where((w) => w.dateFrom.isAfter(sevenDaysAgo)).toList();
@@ -124,13 +136,14 @@ class ScoringEngine {
     for (var w in recentWorkouts) {
       if (category == 'Endurance') {
         if (w.session != null) {
-          totalMetric += (w.session!.totalDistance ?? 0) / 1000;
+          totalMetric += (w.session!.totalDistance?.toDouble() ?? 0.0) / 1000.0;
         } else if (w.healthData != null && w.healthData!.value is WorkoutHealthValue) {
-          totalMetric += ((w.healthData!.value as WorkoutHealthValue).totalDistance ?? 0) / 1000;
+          final distance = (w.healthData!.value as WorkoutHealthValue).totalDistance;
+          totalMetric += (distance?.toDouble() ?? 0.0) / 1000.0;
         }
       } else {
         // Strength: 로컬 세션 기록이 있는 경우에만 볼륨 합산 가능
-        totalMetric += (w.session?.totalVolume ?? 0) / 1000;
+        totalMetric += (w.session?.totalVolume?.toDouble() ?? 0.0) / 1000.0;
       }
     }
 
@@ -162,10 +175,22 @@ class ScoringEngine {
       final now = DateTime.now();
       final yesterday = now.subtract(const Duration(days: 1));
       final rhrData = await _healthService.getHealthDataFromTypes(yesterday, now, [HealthDataType.RESTING_HEART_RATE]);
-      if (rhrData.isNotEmpty) rhr = (rhrData.last.value as NumericHealthValue).numericValue.toDouble();
+      if (rhrData.isNotEmpty) {
+        final value = rhrData.last.value;
+        if (value is NumericHealthValue) {
+          rhr = value.numericValue.toDouble();
+        }
+      }
       final hrvData = await _healthService.getHealthDataFromTypes(yesterday, now, [HealthDataType.HEART_RATE_VARIABILITY_SDNN]);
-      if (hrvData.isNotEmpty) hrv = (hrvData.last.value as NumericHealthValue).numericValue.toDouble();
-    } catch (e) {}
+      if (hrvData.isNotEmpty) {
+        final value = hrvData.last.value;
+        if (value is NumericHealthValue) {
+          hrv = value.numericValue.toDouble();
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ [ScoringEngine] Error fetching conditioning data: $e');
+    }
 
     // ACWR (Load Sum 기반)
     final acuteLoad = _calculateLoadSum(workouts.where((w) => w.dateFrom.isAfter(DateTime.now().subtract(const Duration(days: 7)))).toList());
@@ -194,18 +219,18 @@ class ScoringEngine {
 
       if (w.session != null) {
         cat = w.session!.category;
-        dist = w.session!.totalDistance ?? 0;
-        vol = w.session!.totalVolume ?? 0;
+        dist = (w.session!.totalDistance ?? 0).toDouble();
+        vol = (w.session!.totalVolume ?? 0).toDouble();
       } else if (w.healthData != null && w.healthData!.value is WorkoutHealthValue) {
         final val = w.healthData!.value as WorkoutHealthValue;
         cat = WorkoutUIUtils.getWorkoutCategory(val.workoutActivityType.name);
-        dist = val.totalDistance?.toDouble() ?? 0;
+        dist = (val.totalDistance ?? 0).toDouble();
       }
 
       if (cat == 'Endurance') {
-        sum += dist / 1000;
+        sum += dist / 1000.0;
       } else {
-        sum += vol / 1000;
+        sum += vol / 1000.0;
       }
     }
     return sum;

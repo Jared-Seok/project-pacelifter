@@ -139,9 +139,6 @@ class WorkoutTrackingService extends ChangeNotifier {
 
     // 1.4 실시간 업데이트 타이머 (1초마다)
     _startUpdateTimer();
-
-    // 1.5 백그라운드 추적 설정
-    await _enableBackgroundTracking();
   }
 
   // ==============================
@@ -150,18 +147,47 @@ class WorkoutTrackingService extends ChangeNotifier {
 
   void _startGPSTracking() {
     // NRC/Strava 방식: accuracy.high + distanceFilter 5m
-    const LocationSettings locationSettings = LocationSettings(
-      accuracy: LocationAccuracy.high,
-      distanceFilter: 5, // 5미터 이동 시 업데이트
-    );
+    // 백그라운드에서도 OS에 의해 종료되지 않도록 플랫폼별 상세 설정 추가
+    late final LocationSettings locationSettings;
+
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      locationSettings = AndroidSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 5,
+        forceLocationManager: true,
+        intervalDuration: const Duration(seconds: 1),
+        // 안드로이드 백그라운드 알림 설정 (필요 시)
+        foregroundNotificationConfig: const ForegroundNotificationConfig(
+          notificationText: "운동 경로를 기록 중입니다.",
+          notificationTitle: "PaceLifter 실행 중",
+          enableWakeLock: true,
+        ),
+      );
+    } else if (defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.macOS) {
+      locationSettings = AppleSettings(
+        accuracy: LocationAccuracy.high,
+        activityType: ActivityType.fitness,
+        distanceFilter: 5,
+        pauseLocationUpdatesAutomatically: false,
+        // 백그라운드에서 실행되도록 허용
+        showBackgroundLocationIndicator: true,
+        allowBackgroundLocationUpdates: true,
+      );
+    } else {
+      locationSettings = const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 5,
+      );
+    }
 
     _positionStream =
         Geolocator.getPositionStream(locationSettings: locationSettings).listen(
-          _onLocationUpdate,
-          onError: (error) {
-            // GPS 오류 무시
-          },
-        );
+      _onLocationUpdate,
+      onError: (error) {
+        debugPrint('📍 GPS Error: $error');
+      },
+    );
   }
 
   // ==============================
@@ -593,9 +619,6 @@ class WorkoutTrackingService extends ChangeNotifier {
   // 13. 백그라운드 추적
   // ==============================
 
-  Future<void> _enableBackgroundTracking() async {
-    // iOS: Background Modes - Location updates 필요
-  }
 
   // ==============================
   // 14. 권한 확인

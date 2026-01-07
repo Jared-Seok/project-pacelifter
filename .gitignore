@@ -46,3 +46,12 @@ app.*.map.json
 
 # Secrets
 /ios/Flutter/Secrets.xcconfig
+
+# Internal strategy and setup documents
+APPLE_DEVELOPER_SETUP.md
+DEPLOYMENT_RECOVERY.md
+HEALTH_DATA_ANALYSIS.md
+HEART_RATE_OPTIMIZATION.md
+SETUP_API_KEYS.md
+SETUP_COMPLETE.md
+WATCH_APP_STRATEGY.md
