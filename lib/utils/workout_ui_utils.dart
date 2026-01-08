@@ -34,24 +34,26 @@ class WorkoutUIUtils {
     // 1. 템플릿 이름이나 활동명에서 더 구체적인 키워드(Deep Layer)를 먼저 체크
     final combinedName = (activityType + (templateName ?? '')).toUpperCase();
     
-    if (combinedName.contains('CORE') || combinedName.contains('ABDOMINAL')) {
+    // 한국어 키워드 지원 추가
+    if (combinedName.contains('CORE') || combinedName.contains('ABDOMINAL') || combinedName.contains('코어')) {
       return 'assets/images/strength/core-icon.svg';
     }
     
-    if (combinedName.contains('FUNCTIONAL') || combinedName.contains('HYROX')) {
+    if (combinedName.contains('FUNCTIONAL') || combinedName.contains('HYROX') || combinedName.contains('기능성')) {
       return 'assets/images/strength/core-icon.svg'; // 기능성 운동은 코어 아이콘 활용
     }
     
-    if (combinedName.contains('TRAIL')) {
+    if (combinedName.contains('TRAIL') || combinedName.contains('트레일')) {
       return 'assets/images/endurance/trail-icon.svg';
     }
 
     // 2. 일반 카테고리 체크
-    if (combinedName.contains('STRENGTH') || combinedName.contains('WEIGHT') || combinedName.contains('TRADITIONAL_STRENGTH_TRAINING')) {
+    if (combinedName.contains('STRENGTH') || combinedName.contains('WEIGHT') || 
+        combinedName.contains('TRADITIONAL_STRENGTH_TRAINING') || combinedName.contains('근력')) {
       return 'assets/images/strength/lifter-icon.svg';
     }
     
-    if (combinedName.contains('RUN') || combinedName.contains('JOG')) {
+    if (combinedName.contains('RUN') || combinedName.contains('JOG') || combinedName.contains('러닝')) {
       return 'assets/images/endurance/runner-icon.svg';
     }
     

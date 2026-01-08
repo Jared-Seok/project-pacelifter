@@ -28,7 +28,7 @@ class EnduranceEnvironmentScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Text(
-                '운동 환경을 선택하세요',
+                '운동 환경',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,

@@ -1795,6 +1795,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       workoutCategory = WorkoutUIUtils.getWorkoutCategory(type);
     } else if (session != null) {
       workoutCategory = session.category;
+      distance = session.totalDistance ?? 0.0; // 거리 할당 추가 (누락 해결)
       // WorkoutSession에는 activityType 필드가 없으므로 카테고리에 따라 기본값 설정
       // 실제 아이콘/명칭은 WorkoutUIUtils에서 templateName을 통해 더 구체적으로 정해짐
       type = session.category == 'Strength' ? 'TRADITIONAL_STRENGTH_TRAINING' : 
@@ -1805,7 +1806,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final upperType = type.toUpperCase();
 
     // 표시 이름 결정 (유틸리티 사용)
-    String displayName = WorkoutUIUtils.formatWorkoutType(type, templateName: session?.templateName);
+    // 🚀 타이틀 중복 해결: 대시보드 피드 타이틀에는 템플릿명이 아닌 활동명(러닝 등)만 표시하도록 templateName 인자 제거
+    String displayName = WorkoutUIUtils.formatWorkoutType(type);
 
     final Color backgroundColor;
     final Color iconColor;
@@ -1882,7 +1884,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 Text(
                   DateFormat('yyyy-MM-dd').format(date),
-                  style: TextStyle(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.8)),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
                 ),
                 if (session != null && session.templateId.isNotEmpty && session.templateId != 'health_kit_import')
                   Padding(
