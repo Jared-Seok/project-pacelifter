@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../models/scoring/performance_scores.dart';
 import '../services/scoring_engine.dart';
 import 'conditioning_detail_screen.dart';
+import '../widgets/triangle_performance_chart.dart';
 
 class PerformanceAnalysisScreen extends StatelessWidget {
   final PerformanceScores scores;
@@ -96,56 +97,22 @@ class PerformanceAnalysisScreen extends StatelessWidget {
                 ),
               ),
             ),
-            // 대형 레이더 차트
+            // 대형 삼각형 차트
             Center(
               child: Padding(
                 padding: const EdgeInsets.only(top: 40.0),
                 child: SizedBox(
                   width: 305,
                   height: 305,
-                  child: RadarChart(
-                    RadarChartData(
-                      dataSets: [
-                        // 가이드라인 (스케일 고정용)
-                        RadarDataSet(
-                          fillColor: Colors.transparent,
-                          borderColor: Colors.transparent,
-                          entryRadius: 0,
-                          dataEntries: [
-                            const RadarEntry(value: 100),
-                            const RadarEntry(value: 100),
-                            const RadarEntry(value: 100),
-                            const RadarEntry(value: 100),
-                            const RadarEntry(value: 100),
-                          ],
-                        ),
-                        RadarDataSet(
-                          fillColor: Theme.of(context).colorScheme.secondary.withOpacity(0.2),
-                          borderColor: Theme.of(context).colorScheme.secondary,
-                          entryRadius: 3,
-                          dataEntries: [
-                            RadarEntry(value: scores.enduranceScore.toDouble()),
-                            RadarEntry(value: scores.strengthScore.toDouble()),
-                            RadarEntry(value: scores.conditioningScore.toDouble()),
-                            RadarEntry(value: scores.hybridBalanceScore.toDouble()),
-                            RadarEntry(value: (100 - ((1.0 - scores.acwr).abs() * 100)).clamp(0, 100).toDouble()),
-                          ],
-                        ),
-                      ],
-                      getTitle: (index, angle) {
-                        switch (index) {
-                          case 0: return const RadarChartTitle(text: '지구력');
-                          case 1: return const RadarChartTitle(text: '근력');
-                          case 2: return const RadarChartTitle(text: '컨디셔닝');
-                          case 3: return const RadarChartTitle(text: '밸런스');
-                          case 4: return const RadarChartTitle(text: '훈련부하');
-                          default: return const RadarChartTitle(text: '');
-                        }
-                      },
-                      tickCount: 4, // 25, 50, 75, 100
-                      ticksTextStyle: const TextStyle(color: Colors.transparent),
-                      gridBorderData: BorderSide(color: Colors.white.withOpacity(0.15)),
+                  child: CustomPaint(
+                    painter: TrianglePerformanceChartPainter(
+                      conditioningScore: scores.conditioningScore.toDouble(),
+                      enduranceScore: scores.enduranceScore.toDouble(),
+                      strengthScore: scores.strengthScore.toDouble(),
+                      primaryColor: Theme.of(context).colorScheme.secondary,
+                      gridColor: Colors.white.withOpacity(0.15),
                     ),
+                    child: Container(),
                   ),
                 ),
               ),

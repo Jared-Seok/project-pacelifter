@@ -33,13 +33,15 @@ class TrianglePerformanceChartPainter extends CustomPainter {
     );
 
     // 5개 레벨의 동심 삼각형 그리기 (0, 25, 50, 75, 100)
+    // 가장 작은 삼각형(0점) = scale 0.2
+    // 가장 큰 삼각형(100점) = scale 1.0
     final gridPaint = Paint()
       ..color = gridColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
 
     for (int i = 1; i <= 5; i++) {
-      final scale = i / 5.0; // 0.2, 0.4, 0.6, 0.8, 1.0
+      final scale = i / 5.0; // 0.2, 0.4, 0.6, 0.8, 1.0 (0점, 25점, 50점, 75점, 100점)
       _drawTriangle(
         canvas,
         center,
@@ -52,9 +54,16 @@ class TrianglePerformanceChartPainter extends CustomPainter {
     }
 
     // 실제 점수 삼각형 그리기
-    final dataScale1 = conditioningScore / 100; // 위쪽
-    final dataScale2 = enduranceScore / 100;    // 좌측 하단
-    final dataScale3 = strengthScore / 100;     // 우측 하단
+    // 점수 → 스케일 변환: 0점 = 0.2, 100점 = 1.0
+    const double minScale = 0.2;  // 가장 작은 삼각형 (0점)
+    const double maxScale = 1.0;  // 가장 큰 삼각형 (100점)
+    
+    final dataScale1 = minScale + (conditioningScore / 100) * (maxScale - minScale); // 위쪽
+    final dataScale2 = minScale + (enduranceScore / 100) * (maxScale - minScale);    // 좌측 하단
+    final dataScale3 = minScale + (strengthScore / 100) * (maxScale - minScale);     // 우측 하단
+
+    debugPrint('📊 [Triangle Chart] Scores: C=$conditioningScore, E=$enduranceScore, S=$strengthScore');
+    debugPrint('📊 [Triangle Chart] Scales: C=${dataScale1.toStringAsFixed(3)}, E=${dataScale2.toStringAsFixed(3)}, S=${dataScale3.toStringAsFixed(3)}');
 
     final dataPoint1 = _getScaledPoint(center, topVertex, dataScale1);
     final dataPoint2 = _getScaledPoint(center, bottomLeftVertex, dataScale2);
@@ -97,9 +106,16 @@ class TrianglePerformanceChartPainter extends CustomPainter {
       fontWeight: FontWeight.w500,
     );
 
-    _drawLabel(canvas, '컨디셔닝', Offset(center.dx, topVertex.dy - 15), textStyle);
-    _drawLabel(canvas, '지구력', Offset(bottomLeftVertex.dx - 30, bottomLeftVertex.dy + 15), textStyle);
-    _drawLabel(canvas, '근력', Offset(bottomRightVertex.dx + 30, bottomRightVertex.dy + 15), textStyle);
+    // 컨디셔닝 (위쪽) - 중앙 정렬
+    _drawLabel(canvas, '컨디셔닝', Offset(center.dx, topVertex.dy - 18), textStyle);
+    
+    // 지구력 (좌측 하단) - 왼쪽 정렬, 캔버스 내부에 위치하도록 조정
+    final enduranceLabelX = bottomLeftVertex.dx + 5;  // 꼭지점에서 약간 오른쪽
+    _drawLabel(canvas, '지구력', Offset(enduranceLabelX, bottomLeftVertex.dy + 18), textStyle);
+    
+    // 근력 (우측 하단) - 오른쪽 정렬, 캔버스 내부에 위치하도록 조정
+    final strengthLabelX = bottomRightVertex.dx - 5;  // 꼭지점에서 약간 왼쪽
+    _drawLabel(canvas, '근력', Offset(strengthLabelX, bottomRightVertex.dy + 18), textStyle);
   }
 
   void _drawTriangle(
