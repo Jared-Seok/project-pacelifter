@@ -1,9 +1,9 @@
 {
   "id": "endurance_outdoor_interval",
-  "name": "Outdoor Interval",
+  "name": "인터벌",
   "category": "Endurance",
   "environmentType": "Outdoor",
-  "subCategory": "Interval",
+  "subCategory": "속도 및 심폐 강화",
   "description": "야외에서 진행하는 인터벌 트레이닝입니다. 언덕이나 평지를 활용할 수 있습니다.",
   "imagePath": "assets/images/endurance/runner-icon.svg",
   "isCustom": false,

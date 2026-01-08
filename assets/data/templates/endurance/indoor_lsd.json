@@ -1,9 +1,9 @@
 {
   "id": "endurance_indoor_lsd",
-  "name": "Indoor LSD",
+  "name": "LSD (장거리)",
   "category": "Endurance",
   "environmentType": "Indoor",
-  "subCategory": "LSD",
+  "subCategory": "지구력 증진",
   "description": "Long Slow Distance - 낮은 강도로 장시간 유산소 능력을 향상시키는 훈련입니다. 트레드밀이나 실내 트랙에서 진행합니다.",
   "imagePath": "assets/images/endurance/runner-icon.svg",
   "isCustom": false,

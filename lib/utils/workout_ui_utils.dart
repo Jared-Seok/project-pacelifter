@@ -85,36 +85,80 @@ class WorkoutUIUtils {
     );
   }
 
-  /// 운동 타입 이름 포맷팅
+  /// 운동 타입 한국어 매핑 테이블
+  static const Map<String, String> _activityTypeToKorean = {
+    'RUNNING': '러닝',
+    'WALKING': '걷기',
+    'HIKING': '하이킹',
+    'TRADITIONAL_STRENGTH_TRAINING': '근력 웨이트',
+    'STRENGTH_TRAINING': '근력 웨이트',
+    'CORE_TRAINING': '코어 강화',
+    'FUNCTIONAL_STRENGTH_TRAINING': '기능성 훈련',
+    'CROSS_TRAINING': '크로스 트레이닝',
+    'YOGA': '요가',
+    'STAIR_CLIMBING': '계단 오르기',
+    'TRAIL_RUNNING': '트레일 러닝',
+    'CYCLING': '사이클',
+    'SWIMMING': '수영',
+    'OTHER': '기타 운동',
+    'FITNESS_GAMING': '피트니스 게임',
+    'BARRE': '바레',
+    'CARDIO_DANCE': '댄스 카디오',
+    'SOCIAL_DANCE': '소셜 댄스',
+    'MIND_AND_BODY': '마음 챙김',
+    'PICKLEBALL': '피클볼',
+    'COOLDOWN': '쿨다운',
+    'FLEXIBILITY': '스트레칭',
+  };
+
+  /// 운동 타입 이름 포맷팅 (한국어 전면 도입)
   static String formatWorkoutType(String type, {String? templateName}) {
-    // 1. 템플릿 이름이 있으면 그것을 최우선으로 사용
-    if (templateName != null && templateName.trim().isNotEmpty) {
-      return templateName;
+    // 1. 표시할 기본 이름 결정
+    String baseName = (templateName != null && templateName.trim().isNotEmpty) 
+        ? templateName 
+        : type.toUpperCase().replaceAll('WORKOUT_ACTIVITY_TYPE_', '');
+
+    final upper = baseName.toUpperCase();
+    
+    // 2. 레거시 영문 이름 및 특정 키워드 한국어 매핑 (템플릿 이름이 영문인 경우 포함)
+    if (upper.contains('TREADMILL') || upper.contains('INDOOR RUN')) {
+      return '실내 러닝';
+    }
+    if (upper.contains('TRAIL')) {
+      return '트레일 러닝';
+    }
+    if (upper == 'RUNNING' || upper == 'OUTDOOR RUN' || upper == 'BASIC RUN') {
+      return '러닝';
+    }
+    if (upper.contains('INTERVAL')) {
+      return '인터벌';
+    }
+    if (upper.contains('LSD')) {
+      return 'LSD (장거리)';
+    }
+    if (upper.contains('TEMPO')) {
+      return '템포';
     }
 
-    final upper = type.toUpperCase();
-    
-    // 2. 특정 타입에 대한 명칭 매핑
-    if (upper.contains('CORE_TRAINING')) {
-      return 'Core Training';
+    // 3. 한국어 매핑 테이블 확인
+    if (_activityTypeToKorean.containsKey(upper)) {
+      return _activityTypeToKorean[upper]!;
+    }
+
+    // 4. 매핑 테이블 부분 일치 확인
+    for (var entry in _activityTypeToKorean.entries) {
+      if (upper.contains(entry.key)) {
+        return entry.value;
+      }
     }
     
-    if (upper.contains('TRADITIONAL_STRENGTH_TRAINING') || upper.contains('STRENGTH_TRAINING')) {
-      return 'Strength Training';
+    // 5. 기본 변환 logic (영문일 경우만 포맷팅)
+    if (RegExp(r'[a-zA-Z]').hasMatch(baseName)) {
+      String name = upper.replaceAll('_', ' ');
+      return name[0].toUpperCase() + name.substring(1).toLowerCase();
     }
     
-    if (upper.contains('RUNNING') || upper.contains('RUN')) {
-      return 'Running';
-    }
-    
-    if (upper.contains('TRAIL_RUNNING')) {
-      return 'Trail Running';
-    }
-    
-    // 3. 기본 변환 logic
-    String name = upper.replaceAll('WORKOUT_ACTIVITY_TYPE_', '').replaceAll('_', ' ');
-    // 첫글자 대문자화 등 기본 포맷팅
-    return name[0].toUpperCase() + name.substring(1).toLowerCase();
+    return baseName;
   }
 
   /// 화면 상단에 세련된 알림 표시 (Top Toast)

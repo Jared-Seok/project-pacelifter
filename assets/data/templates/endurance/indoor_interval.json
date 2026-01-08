@@ -1,9 +1,9 @@
 {
   "id": "endurance_indoor_interval",
-  "name": "Indoor Interval",
+  "name": "인터벌",
   "category": "Endurance",
   "environmentType": "Indoor",
-  "subCategory": "Interval",
+  "subCategory": "속도 및 심폐 강화",
   "description": "고강도와 저강도를 반복하는 인터벌 트레이닝입니다.",
   "imagePath": "assets/images/endurance/runner-icon.svg",
   "isCustom": false,

@@ -75,7 +75,8 @@ class _EnduranceTemplateScreenState extends State<EnduranceTemplateScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        title: Text(widget.environmentType),
+        title: Text(widget.environmentType == 'Outdoor' ? '로드 러닝' : 
+                   (widget.environmentType == 'Indoor' ? '실내 러닝' : '트레일 러닝')),
         backgroundColor: Theme.of(context).colorScheme.surface,
         foregroundColor: Theme.of(context).colorScheme.onSurface,
       ),

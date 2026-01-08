@@ -29,11 +29,8 @@ class TemplateService {
       bool hasTemplates = templateBox.isNotEmpty;
       bool hasExercises = exerciseBox.isNotEmpty;
 
-      if (hasTemplates && hasExercises && templateBox.length >= 10) {
-        print('✅ Templates and exercises already exist (${templateBox.length} templates, ${exerciseBox.length} exercises). Skipping full load.');
-        return;
-      }
-
+      // 📦 UI Overhaul (2026-01-08): 항상 에셋을 새로 로드하여 변경된 템플릿 이름(한국어)과 구조가 반영되도록 함.
+      // (기존 skip 로직 제거)
       print('📦 TemplateService: Starting data import from assets...');
 
       // 1. 운동 라이브러리 로드 (병렬 로딩 시도)
@@ -100,26 +97,34 @@ class TemplateService {
     }
   }
 
-  /// Endurance 템플릿 로드
+  /// Endurance 템플릿 로드 (정예화: 로드 4, 실내 4, 트레일 1)
   static Future<void> _loadEnduranceTemplates() async {
     final box = Hive.box<WorkoutTemplate>(_templatesBoxName);
     
-    // 이미 Endurance 템플릿이 로드되어 있는지 확인 (기본 12개)
-    final enduranceCount = box.values.where((t) => t.category == 'Endurance' && !t.isCustom).length;
-    if (enduranceCount >= 12) return;
+    // 1. 불필요한 레거시 템플릿 정리 (트레일 리서치 기반으로 제거)
+    final legacyIds = [
+      'endurance_trail_lsd',
+      'endurance_trail_interval',
+      'endurance_trail_tempo',
+    ];
+    for (var id in legacyIds) {
+      if (box.containsKey(id)) {
+        await box.delete(id);
+      }
+    }
 
     final templateFiles = [
-      'indoor_lsd.json',
-      'indoor_interval.json',
-      'indoor_tempo.json',
-      'indoor_basic_run.json',
+      // 로드 (Outdoor) - 4개
       'outdoor_lsd.json',
       'outdoor_interval.json',
       'outdoor_tempo.json',
       'outdoor_basic_run.json',
-      'trail_lsd.json',
-      'trail_interval.json',
-      'trail_tempo.json',
+      // 실내 (Indoor) - 4개
+      'indoor_lsd.json',
+      'indoor_interval.json',
+      'indoor_tempo.json',
+      'indoor_basic_run.json',
+      // 트레일 (Trail) - 1개
       'trail_basic_run.json',
     ];
 

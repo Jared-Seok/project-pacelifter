@@ -1,9 +1,9 @@
 {
   "id": "endurance_outdoor_lsd",
-  "name": "Outdoor LSD",
+  "name": "LSD (장거리)",
   "category": "Endurance",
   "environmentType": "Outdoor",
-  "subCategory": "LSD",
+  "subCategory": "지구력 증진",
   "description": "야외에서 진행하는 장거리 유산소 훈련입니다. 자연 속에서 여유롭게 달립니다.",
   "imagePath": "assets/images/endurance/runner-icon.svg",
   "isCustom": false,

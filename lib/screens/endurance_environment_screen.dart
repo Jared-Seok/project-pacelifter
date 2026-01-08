@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'endurance_template_screen.dart';
+import 'workout_setup_screen.dart';
+import '../services/template_service.dart';
 
-/// Endurance 운동 환경 선택 화면 (로드/트레일/실내)
+/// Endurance 운동 환경 선택 화면 (로드/실내/트레일)
 class EnduranceEnvironmentScreen extends StatelessWidget {
   const EnduranceEnvironmentScreen({super.key});
 
@@ -11,7 +13,7 @@ class EnduranceEnvironmentScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        title: const Text('Endurance'),
+        title: const Text('지구력 훈련 (Endurance)'),
         backgroundColor: Theme.of(context).colorScheme.surface,
         foregroundColor: Theme.of(context).colorScheme.onSurface,
         leading: IconButton(
@@ -37,15 +39,15 @@ class EnduranceEnvironmentScreen extends StatelessWidget {
                 '어디서 달리실 건가요?',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.grey[600],
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
               const SizedBox(height: 24),
-              // 로드 (Road) -> Outdoor
+              // 1. 로드 (Road) -> Outdoor
               _buildEnvironmentCard(
                 context: context,
-                title: '로드',
-                subtitle: '도로 및 야외 러닝',
+                title: '로드 러닝',
+                subtitle: '도로 및 야외에서의 일반적인 러닝',
                 iconPath: 'assets/images/endurance/runner-icon.svg',
                 color: Theme.of(context).colorScheme.tertiary, // Deep Teal
                 onTap: () {
@@ -60,30 +62,11 @@ class EnduranceEnvironmentScreen extends StatelessWidget {
                 },
               ),
               const SizedBox(height: 16),
-              // 트레일 (Trail) -> Trail
+              // 2. 실내 (Indoor) -> Indoor
               _buildEnvironmentCard(
                 context: context,
-                title: '트레일',
-                subtitle: '산악 및 오프로드',
-                iconPath: 'assets/images/endurance/trail-icon.svg',
-                color: Theme.of(context).colorScheme.tertiary, // Deep Teal
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const EnduranceTemplateScreen(
-                        environmentType: 'Trail',
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 16),
-              // 실내 (Indoor) -> Indoor
-              _buildEnvironmentCard(
-                context: context,
-                title: '실내',
-                subtitle: '러닝머신 (Treadmill)',
+                title: '실내 러닝',
+                subtitle: '트레드밀 및 실내 트랙 (Treadmill)',
                 iconPath: 'assets/images/endurance/runner-icon.svg',
                 color: Theme.of(context).colorScheme.tertiary, // Deep Teal
                 onTap: () {
@@ -95,6 +78,39 @@ class EnduranceEnvironmentScreen extends StatelessWidget {
                       ),
                     ),
                   );
+                },
+              ),
+              const SizedBox(height: 16),
+              // 3. 트레일 (Trail) -> Trail (최하단 배치 및 즉시 설정 화면 진입)
+              _buildEnvironmentCard(
+                context: context,
+                title: '트레일 러닝',
+                subtitle: '산악 및 비포장 도로 (산악 달리기)',
+                iconPath: 'assets/images/endurance/trail-icon.svg',
+                color: Theme.of(context).colorScheme.tertiary, // Deep Teal
+                onTap: () {
+                  // 트레일은 템플릿이 1개이므로 즉시 설정 화면으로 이동
+                  final template = TemplateService.getTemplateById('endurance_trail_basic');
+                  if (template != null) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => WorkoutSetupScreen(
+                          template: template,
+                        ),
+                      ),
+                    );
+                  } else {
+                    // 템플릿 로드 실패 시 기본 화면으로 폴백 (안전 장치)
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const EnduranceTemplateScreen(
+                          environmentType: 'Trail',
+                        ),
+                      ),
+                    );
+                  }
                 },
               ),
             ],

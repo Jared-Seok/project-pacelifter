@@ -1,9 +1,9 @@
 {
   "id": "endurance_outdoor_tempo",
-  "name": "Outdoor Tempo",
+  "name": "템포",
   "category": "Endurance",
   "environmentType": "Outdoor",
-  "subCategory": "Tempo",
+  "subCategory": "젖산 역치 향상",
   "description": "야외에서 진행하는 템포 런입니다. 일정한 중강도 페이스를 유지합니다.",
   "imagePath": "assets/images/endurance/runner-icon.svg",
   "isCustom": false,
