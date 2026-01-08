@@ -1795,25 +1795,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
       workoutCategory = WorkoutUIUtils.getWorkoutCategory(type);
     } else if (session != null) {
       workoutCategory = session.category;
-      // 템플릿 이름에 RUNNING이 포함되어 있으면 RUNNING으로 매핑
-      if (session.templateName.toUpperCase().contains('RUN')) {
-        type = 'RUNNING';
-      } else {
-        type = session.category == 'Strength' ? 'TRADITIONAL_STRENGTH_TRAINING' : 'OTHER';
-      }
+      // WorkoutSession에는 activityType 필드가 없으므로 카테고리에 따라 기본값 설정
+      // 실제 아이콘/명칭은 WorkoutUIUtils에서 templateName을 통해 더 구체적으로 정해짐
+      type = session.category == 'Strength' ? 'TRADITIONAL_STRENGTH_TRAINING' : 
+             (session.category == 'Endurance' ? 'RUNNING' : 'OTHER');
     }
 
     final color = _getCategoryColor(workoutCategory);
     final upperType = type.toUpperCase();
 
-    // 표시 이름 결정
-    String displayName;
-    if (session != null && session.templateName.isNotEmpty) {
-      // 템플릿 아이디가 없더라도 저장된 이름을 우선 사용 (동기화 기록 대응)
-      displayName = session.templateName;
-    } else {
-      displayName = WorkoutUIUtils.formatWorkoutType(type);
-    }
+    // 표시 이름 결정 (유틸리티 사용)
+    String displayName = WorkoutUIUtils.formatWorkoutType(type, templateName: session?.templateName);
 
     final Color backgroundColor;
     final Color iconColor;

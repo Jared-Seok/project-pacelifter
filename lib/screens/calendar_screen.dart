@@ -503,45 +503,49 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Widget _buildEventItem(WorkoutDataWrapper wrapper) {
-    String title = "운동";
-    String subtitle = "";
-    String category = "Endurance";
-    String type = "RUNNING";
+    String category = "Unknown";
+    String type = "OTHER";
     String? environmentType;
 
     final session = wrapper.session;
-    if (session != null && session.templateId.isNotEmpty && session.templateId != 'health_kit_import') {
-      title = session.templateName;
-      category = session.category;
-      type = category == 'Strength' ? 'TRADITIONAL_STRENGTH_TRAINING' : 'RUNNING';
-      environmentType = session.environmentType;
-    } else {
-      final workoutType = (wrapper.healthData?.value as WorkoutHealthValue?)?.workoutActivityType.name ?? 
-                         (session?.category == 'Strength' ? 'TRADITIONAL_STRENGTH_TRAINING' : 'RUNNING');
-      type = workoutType;
+    final healthData = wrapper.healthData;
+
+    if (healthData != null && healthData.value is WorkoutHealthValue) {
+      final workout = healthData.value as WorkoutHealthValue;
+      type = workout.workoutActivityType.name;
       category = WorkoutUIUtils.getWorkoutCategory(type);
-      title = WorkoutUIUtils.formatWorkoutType(type);
+    } else if (session != null) {
+      category = session.category;
+      // WorkoutSession에는 activityType 필드가 없으므로 카테고리에 따라 기본값 설정
+      type = session.category == 'Strength' ? 'TRADITIONAL_STRENGTH_TRAINING' : 
+             (session.category == 'Endurance' ? 'RUNNING' : 'OTHER');
+      environmentType = session.environmentType;
     }
 
+    // 중앙 집중화된 유틸리티 사용 (Dashboard와 동일)
+    String title = WorkoutUIUtils.formatWorkoutType(type, templateName: session?.templateName);
+    
+    String subtitle = "";
     if (category == 'Endurance') {
       final dist = (session?.totalDistance ?? (wrapper.healthData?.value as WorkoutHealthValue?)?.totalDistance ?? 0).toDouble();
       if (dist > 0) subtitle = "${(dist / 1000).toStringAsFixed(2)}K 러닝";
       else subtitle = "유산소 운동";
     } else {
-      subtitle = "근력 트레이닝";
+      subtitle = (category == 'Strength' || category == 'Hybrid') ? "근력 트레이닝" : "운동 기록";
     }
 
-    final Color categoryColor = category == 'Strength' 
-        ? Theme.of(context).colorScheme.primary 
-        : Theme.of(context).colorScheme.tertiary; 
+    final Color categoryColor = _getCategoryColor(category); 
 
     final Color backgroundColor;
     final Color iconColor;
 
     final upperType = type.toUpperCase();
-    if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
+    final combinedName = (upperType + (session?.templateName ?? '')).toUpperCase();
+    
+    // Core/Functional은 특별 색상 적용 (WorkoutUIUtils와 일관성 유지)
+    if (combinedName.contains('CORE') || combinedName.contains('FUNCTIONAL')) {
       backgroundColor = Theme.of(context).colorScheme.primary.withValues(alpha: 0.2);
-      iconColor = Theme.of(context).colorScheme.primary; // User requested primary for Core
+      iconColor = Theme.of(context).colorScheme.primary; 
     } else {
       backgroundColor = categoryColor.withValues(alpha: 0.2);
       iconColor = categoryColor;
@@ -593,5 +597,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
       ),
     );
+  }
+
+  Color _getCategoryColor(String category) {
+    switch (category) {
+      case 'Strength':
+        return Theme.of(context).colorScheme.primary; // Orange
+      case 'Endurance':
+        return Theme.of(context).colorScheme.tertiary; // Deep Teal
+      case 'Hybrid':
+        return Theme.of(context).colorScheme.secondary; // Neon Green
+      default:
+        return Theme.of(context).colorScheme.secondary;
+    }
   }
 }
