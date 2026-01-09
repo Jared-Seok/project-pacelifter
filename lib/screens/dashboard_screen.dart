@@ -39,6 +39,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final RaceService _raceService = RaceService();
   late PageController _mainPageController;
   late PageController _racePageController;
+  late PageController _metricsPageController;
   final ScrollController _scrollController = ScrollController();
   List<WorkoutDataWrapper> _unifiedWorkouts = [];
   List<Race> _races = [];
@@ -46,6 +47,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   TimePeriod _selectedPeriod = TimePeriod.week;
   int _currentPage = 0;
   int _currentRacePage = 0;
+  int _currentMetricsPage = 0;
 
   double _strengthPercentage = 0.0;
   double _endurancePercentage = 0.0;
@@ -65,6 +67,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     _mainPageController = PageController();
     _racePageController = PageController();
+    _metricsPageController = PageController();
     _scrollController.addListener(_onScroll);
     _initialize();
     
@@ -98,6 +101,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void dispose() {
     _mainPageController.dispose();
     _racePageController.dispose();
+    _metricsPageController.dispose();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _historySubscription?.cancel();
@@ -340,6 +344,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (mounted) {
         setState(() {
           _unifiedWorkouts = unified;
+          // 초기 로드 시 데이터가 있는 기간을 자동으로 선택
+          _selectedPeriod = _calculateInitialPeriod(unified);
           _calculateStatistics();
           _prepareMonthKeys();
         });
@@ -347,6 +353,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } catch (e) {
       debugPrint('❌ Error loading health data: $e');
     }
+  }
+
+  TimePeriod _calculateInitialPeriod(List<WorkoutDataWrapper> workouts) {
+    if (workouts.isEmpty) return TimePeriod.week;
+
+    final now = DateTime.now();
+
+    // 1. 주간 데이터 확인
+    final currentWeekday = now.weekday;
+    final startOfWeek = DateTime(now.year, now.month, now.day).subtract(Duration(days: currentWeekday - 1));
+    final weekCount = workouts.where((w) => w.dateFrom.isAfter(startOfWeek.subtract(const Duration(seconds: 1)))).length;
+    if (weekCount > 0) return TimePeriod.week;
+
+    // 2. 월간 데이터 확인
+    final startOfMonth = DateTime(now.year, now.month, 1);
+    final monthCount = workouts.where((w) => w.dateFrom.isAfter(startOfMonth.subtract(const Duration(seconds: 1)))).length;
+    if (monthCount > 0) return TimePeriod.month;
+
+    // 3. 연간 데이터 확인
+    final startOfYear = DateTime(now.year, 1, 1);
+    final yearCount = workouts.where((w) => w.dateFrom.isAfter(startOfYear.subtract(const Duration(seconds: 1)))).length;
+    if (yearCount > 0) return TimePeriod.year;
+
+    // 모두 0이면 기본값 주간 반환
+    return TimePeriod.week;
   }
 
   void _prepareMonthKeys() {
@@ -776,11 +807,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         children: [
                           _buildHeader(),
                           const SizedBox(height: 16),
-                          _buildPerformanceSection(),
-                          const SizedBox(height: 16),
-                          _buildBalanceAndWorkloadSection(),
-                          const SizedBox(height: 24),
                           _buildSwipableCardsSection(),
+                          const SizedBox(height: 24),
+                          _buildPerformanceMetricsSection(),
                           const SizedBox(height: 24),
                         ],
                       ),
@@ -844,9 +873,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildPerformanceSection() {
+  Widget _buildPerformanceMetricsSection() {
     if (_scores == null) return const SizedBox.shrink();
 
+    final List<Widget> pages = [
+      _buildPerformancePage(),
+      _buildBalancePage(),
+      _buildWorkloadPage(),
+    ];
+    final List<String> titles = ['종합 퍼포먼스', '하이브리드 밸런스', '훈련부하 (ACWR)'];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Text(
+            titles[_currentMetricsPage],
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 200, // 삼각형 차트를 고려해 높이 약간 조정
+          child: PageView(
+            controller: _metricsPageController,
+            onPageChanged: (index) {
+              setState(() {
+                _currentMetricsPage = index;
+              });
+            },
+            children: pages,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(
+            pages.length,
+            (index) => _buildPageIndicator(index == _currentMetricsPage),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPerformancePage() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Card(
@@ -861,54 +933,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
           },
           child: Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Column(
+            child: Row(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        const Text('종합 퍼포먼스', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                        const SizedBox(width: 6),
-                        Icon(Icons.chevron_right, size: 20, color: Colors.grey.withValues(alpha: 0.5)),
-                      ],
+                SizedBox(
+                  width: 130,
+                  height: 130,
+                  child: CustomPaint(
+                    painter: TrianglePerformanceChartPainter(
+                      conditioningScore: _scores!.conditioningScore.toDouble(),
+                      enduranceScore: _scores!.enduranceScore.toDouble(),
+                      strengthScore: _scores!.strengthScore.toDouble(),
+                      primaryColor: Theme.of(context).colorScheme.primary,
+                      gridColor: Colors.white.withOpacity(0.15),
                     ),
-                    Text(
-                      '최근 업데이트: ${DateFormat('HH:mm').format(_scores!.lastUpdated)}',
-                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                    ),
-                  ],
+                    child: Container(),
+                  ),
                 ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    SizedBox(
-                      width: 144,
-                      height: 144,
-                      child: CustomPaint(
-                        painter: TrianglePerformanceChartPainter(
-                          conditioningScore: _scores!.conditioningScore.toDouble(),
-                          enduranceScore: _scores!.enduranceScore.toDouble(),
-                          strengthScore: _scores!.strengthScore.toDouble(),
-                          primaryColor: Theme.of(context).colorScheme.primary,
-                          gridColor: Colors.white.withOpacity(0.15),
-                        ),
-                        child: Container(),
-                      ),
-                    ),
-                    const SizedBox(width: 24),
-                    Expanded(
-                      child: Column(
-                        children: [
-                          _buildScoreTile('Strength', _scores!.strengthScore, Theme.of(context).colorScheme.secondary),
-                          const Divider(height: 12),
-                          _buildScoreTile('Endurance', _scores!.enduranceScore, Theme.of(context).colorScheme.tertiary),
-                          const Divider(height: 12),
-                          _buildScoreTile('Conditioning', _scores!.conditioningScore, Theme.of(context).colorScheme.primary),
-                        ],
-                      ),
-                    ),
-                  ],
+                const SizedBox(width: 24),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildScoreTile('Strength', _scores!.strengthScore, Theme.of(context).colorScheme.secondary),
+                      const Divider(height: 12),
+                      _buildScoreTile('Endurance', _scores!.enduranceScore, Theme.of(context).colorScheme.tertiary),
+                      const Divider(height: 12),
+                      _buildScoreTile('Conditioning', _scores!.conditioningScore, Theme.of(context).colorScheme.primary),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -936,108 +988,133 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildBalanceAndWorkloadSection() {
-    if (_scores == null) return const SizedBox.shrink();
-
+  Widget _buildBalancePage() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: Row(
-        children: [
-          Expanded(
-            child: Card(
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => PerformanceAnalysisScreen(scores: _scores!),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => PerformanceAnalysisScreen(scores: _scores!),
+              ),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Row(
+              children: [
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    SizedBox(
+                      width: 100,
+                      height: 100,
+                      child: CircularProgressIndicator(
+                        value: _scores!.hybridBalanceScore / 100,
+                        strokeWidth: 10,
+                        backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                        valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
+                      ),
                     ),
-                  );
-                },
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                    Text(
+                      '${_scores!.hybridBalanceScore.toInt()}',
+                      style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 32),
+                Expanded(
                   child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.bolt, color: Theme.of(context).colorScheme.primary, size: 20),
-                          const SizedBox(width: 6),
-                          const Text('밸런스', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          SizedBox(
-                            width: 60,
-                            height: 60,
-                            child: CircularProgressIndicator(
-                              value: _scores!.hybridBalanceScore / 100,
-                              strokeWidth: 6,
-                              backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                              valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
-                            ),
-                          ),
+                          Icon(Icons.bolt, color: Theme.of(context).colorScheme.primary, size: 24),
+                          const SizedBox(width: 8),
                           Text(
-                            '${_scores!.hybridBalanceScore.toInt()}',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary),
+                            _scores!.hybridBalanceScore >= 80 ? '균형 우수' : _scores!.hybridBalanceScore >= 60 ? '균형 양호' : '개선 필요',
+                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        _scores!.hybridBalanceScore >= 80 ? '균형 우수' : _scores!.hybridBalanceScore >= 60 ? '균형 양호' : '개선 필요',
-                        style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                        '지구력과 근력이 균형 있게 발달하고 있습니다.',
+                        style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                       ),
                     ],
                   ),
                 ),
-              ),
+              ],
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Card(
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => PerformanceAnalysisScreen(scores: _scores!),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWorkloadPage() {
+    final acwrColor = _getACWRColor(_scores!.acwr);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => PerformanceAnalysisScreen(scores: _scores!),
+              ),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Row(
+              children: [
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      _scores!.acwr.toStringAsFixed(2),
+                      style: TextStyle(fontSize: 48, fontWeight: FontWeight.w900, color: acwrColor),
                     ),
-                  );
-                },
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                    Text(
+                      'ACWR Index',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 32),
+                Expanded(
                   child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.trending_up, color: Theme.of(context).colorScheme.primary, size: 20),
-                          const SizedBox(width: 6),
-                          const Text('훈련부하', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                          Icon(Icons.trending_up, color: acwrColor, size: 24),
+                          const SizedBox(width: 8),
+                          Text(
+                            _getACWRStatus(_scores!.acwr),
+                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: acwrColor),
+                          ),
                         ],
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        _scores!.acwr.toStringAsFixed(2),
-                        style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: _getACWRColor(_scores!.acwr)),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        _getACWRStatus(_scores!.acwr),
-                        style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                        '최근 7일 부하가 28일 평균 대비 ${_scores!.acwr > 1.3 ? '높습니다. 부상에 주의하세요.' : _scores!.acwr < 0.8 ? '낮습니다. 훈련 강도를 높여보세요.' : '적절합니다.'}',
+                        style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                       ),
                     ],
                   ),
                 ),
-              ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
