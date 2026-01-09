@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 import 'package:pacelifter/models/workout_data_wrapper.dart';
 import 'package:pacelifter/screens/workout_detail_screen.dart';
@@ -11,16 +12,16 @@ import 'package:health/health.dart';
 import 'package:pacelifter/utils/workout_ui_utils.dart';
 
 class WorkoutFeedScreen extends StatefulWidget {
-  final List<WorkoutDataWrapper> unifiedWorkouts;
+  final List<WorkoutDataWrapper> allWorkouts; // 전체 데이터를 받아 필터링
   final TimePeriod period;
-  final String dateRangeText;
+  final String initialDateRangeText;
   final String? raceName;
 
   const WorkoutFeedScreen({
     super.key,
-    required this.unifiedWorkouts,
+    required this.allWorkouts,
     required this.period,
-    required this.dateRangeText,
+    required this.initialDateRangeText,
     this.raceName,
   });
 
@@ -29,8 +30,181 @@ class WorkoutFeedScreen extends StatefulWidget {
 }
 
 class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
+  late DateTime _currentBaseDate;
+  late List<WorkoutDataWrapper> _filteredWorkouts;
+  late String _dateRangeText;
   bool _showTotalTime = false;
   final String _filterType = 'All';
+
+  @override
+  void initState() {
+    super.initState();
+    _currentBaseDate = DateTime.now();
+    _calculateFilteredData();
+  }
+
+  void _calculateFilteredData() {
+    DateTime startDate;
+    DateTime endDate;
+
+    switch (widget.period) {
+      case TimePeriod.week:
+        final currentWeekday = _currentBaseDate.weekday;
+        final daysToMonday = currentWeekday - 1;
+        final daysToSunday = 7 - currentWeekday;
+
+        startDate = DateTime(_currentBaseDate.year, _currentBaseDate.month, _currentBaseDate.day)
+            .subtract(Duration(days: daysToMonday));
+        endDate = DateTime(_currentBaseDate.year, _currentBaseDate.month, _currentBaseDate.day)
+            .add(Duration(days: daysToSunday))
+            .add(const Duration(hours: 23, minutes: 59, seconds: 59));
+
+        if (startDate.year != endDate.year) {
+          _dateRangeText = '${startDate.year}년 ${startDate.month}월 ${startDate.day}일 ~ ${endDate.year}년 ${endDate.month}월 ${endDate.day}일';
+        } else if (startDate.month != endDate.month) {
+          _dateRangeText = '${startDate.year}년 ${startDate.month}월 ${startDate.day}일 ~ ${endDate.month}월 ${endDate.day}일';
+        } else {
+          _dateRangeText = '${startDate.year}년 ${startDate.month}월 ${startDate.day}일 ~ ${endDate.day}일';
+        }
+        break;
+
+      case TimePeriod.month:
+        startDate = DateTime(_currentBaseDate.year, _currentBaseDate.month, 1);
+        endDate = DateTime(_currentBaseDate.year, _currentBaseDate.month + 1, 0, 23, 59, 59);
+        _dateRangeText = '${_currentBaseDate.year}년 ${_currentBaseDate.month}월';
+        break;
+
+      case TimePeriod.year:
+        startDate = DateTime(_currentBaseDate.year, 1, 1);
+        endDate = DateTime(_currentBaseDate.year, 12, 31, 23, 59, 59);
+        _dateRangeText = '${_currentBaseDate.year}년';
+        break;
+    }
+
+    _filteredWorkouts = widget.allWorkouts.where((data) =>
+        data.dateFrom.isAfter(startDate.subtract(const Duration(seconds: 1))) &&
+        data.dateFrom.isBefore(endDate.add(const Duration(seconds: 1)))).toList();
+  }
+
+  void _showDatePicker() {
+    if (widget.period == TimePeriod.week) {
+      // 주간은 일반 DatePicker 사용 (선택한 날짜가 포함된 주를 계산)
+      showDatePicker(
+        context: context,
+        initialDate: _currentBaseDate,
+        firstDate: DateTime(2020),
+        lastDate: DateTime.now().add(const Duration(days: 365)),
+      ).then((selected) {
+        if (selected != null) {
+          setState(() {
+            _currentBaseDate = selected;
+            _calculateFilteredData();
+          });
+        }
+      });
+    } else if (widget.period == TimePeriod.month) {
+      _showMonthYearPicker();
+    } else {
+      _showYearPicker();
+    }
+  }
+
+  void _showMonthYearPicker() {
+    showCupertinoModalPopup(
+      context: context,
+      builder: (context) {
+        int selectedYear = _currentBaseDate.year;
+        int selectedMonth = _currentBaseDate.month;
+        return Container(
+          height: 300,
+          color: Theme.of(context).colorScheme.surface,
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  CupertinoButton(child: const Text('취소'), onPressed: () => Navigator.pop(context)),
+                  CupertinoButton(
+                    child: const Text('확인'),
+                    onPressed: () {
+                      setState(() {
+                        _currentBaseDate = DateTime(selectedYear, selectedMonth);
+                        _calculateFilteredData();
+                      });
+                      Navigator.pop(context);
+                    },
+                  ),
+                ],
+              ),
+              Expanded(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: CupertinoPicker(
+                        scrollController: FixedExtentScrollController(initialItem: selectedYear - 2020),
+                        itemExtent: 40,
+                        onSelectedItemChanged: (index) => selectedYear = 2020 + index,
+                        children: List.generate(11, (index) => Center(child: Text('${2020 + index}년'))),
+                      ),
+                    ),
+                    Expanded(
+                      child: CupertinoPicker(
+                        scrollController: FixedExtentScrollController(initialItem: selectedMonth - 1),
+                        itemExtent: 40,
+                        onSelectedItemChanged: (index) => selectedMonth = index + 1,
+                        children: List.generate(12, (index) => Center(child: Text('${index + 1}월'))),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showYearPicker() {
+    showCupertinoModalPopup(
+      context: context,
+      builder: (context) {
+        int selectedYear = _currentBaseDate.year;
+        return Container(
+          height: 300,
+          color: Theme.of(context).colorScheme.surface,
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  CupertinoButton(child: const Text('취소'), onPressed: () => Navigator.pop(context)),
+                  CupertinoButton(
+                    child: const Text('확인'),
+                    onPressed: () {
+                      setState(() {
+                        _currentBaseDate = DateTime(selectedYear);
+                        _calculateFilteredData();
+                      });
+                      Navigator.pop(context);
+                    },
+                  ),
+                ],
+              ),
+              Expanded(
+                child: CupertinoPicker(
+                  scrollController: FixedExtentScrollController(initialItem: selectedYear - 2020),
+                  itemExtent: 40,
+                  onSelectedItemChanged: (index) => selectedYear = 2020 + index,
+                  children: List.generate(11, (index) => Center(child: Text('${2020 + index}년'))),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   String get periodTitle {
     if (widget.raceName != null) return widget.raceName!;
@@ -52,20 +226,12 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredData = widget.unifiedWorkouts.where((wrapper) {
-      if (_filterType == 'All') return true;
-      final hasSession = wrapper.session != null;
-      if (_filterType == 'Set') return hasSession;
-      if (_filterType == 'Unset') return !hasSession;
-      return true;
-    }).toList();
-
     int strengthCount = 0;
     int enduranceCount = 0;
     double totalDistance = 0.0;
     Duration totalTime = Duration.zero;
 
-    for (final wrapper in widget.unifiedWorkouts) {
+    for (final wrapper in _filteredWorkouts) {
       String category = 'Unknown';
       double dist = 0.0;
       
@@ -95,23 +261,44 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
       body: Column(
         children: [
           Container(
-            margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+            margin: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+            padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
               children: [
-                Text(
-                  widget.dateRangeText,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(width: 48), // 좌측 여백 (우측 버튼과의 대칭을 위해)
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          _dateRangeText,
+                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _showDatePicker,
+                      icon: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.calendar_today, size: 20, color: Theme.of(context).colorScheme.primary),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 28),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    Expanded(child: _buildStatItem(context, '총 운동', '${widget.unifiedWorkouts.length}회', null, svgPath: 'assets/images/pllogo.svg', iconSize: 36, color: Theme.of(context).colorScheme.primary)),
+                    Expanded(child: _buildStatItem(context, '총 운동', '${_filteredWorkouts.length}회', null, svgPath: 'assets/images/pllogo.svg', iconSize: 36, color: Theme.of(context).colorScheme.primary)),
                     Expanded(child: _buildStatItem(context, 'Endurance', '$enduranceCount회', null, svgPath: 'assets/images/endurance/runner-icon.svg', color: Theme.of(context).colorScheme.tertiary)),
                     Expanded(child: _buildStatItem(context, 'Strength', '$strengthCount회', null, svgPath: 'assets/images/strength/lifter-icon.svg', color: Theme.of(context).colorScheme.secondary)),
                     if (totalDistance > 0 || totalTime > Duration.zero)
@@ -122,7 +309,7 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
             ),
           ),
           Expanded(
-            child: filteredData.isEmpty
+            child: _filteredWorkouts.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -135,8 +322,8 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: filteredData.length,
-                    itemBuilder: (context, index) => _buildWorkoutItem(context, filteredData[index]),
+                    itemCount: _filteredWorkouts.length,
+                    itemBuilder: (context, index) => _buildWorkoutItem(context, _filteredWorkouts[index]),
                   ),
           ),
         ],
@@ -160,7 +347,9 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
   }
 
   Widget _buildToggleableStatItem(BuildContext context, double totalDistance, Duration totalTime) {
-    final displayColor = Theme.of(context).colorScheme.primary;
+    final displayColor = _showTotalTime 
+        ? Theme.of(context).colorScheme.primary 
+        : Theme.of(context).colorScheme.tertiary;
     const size = 32.0;
 
     String formatDuration(Duration duration) {
@@ -204,7 +393,6 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
     } else if (session != null) {
       workoutCategory = session.category;
       distance = session.totalDistance ?? 0.0;
-      // WorkoutSession에 구체적인 activityType이 없으므로 카테고리에 기반한 기본값 설정
       if (session.category == 'Strength') {
         type = 'TRADITIONAL_STRENGTH_TRAINING';
       } else if (session.category == 'Endurance') {
@@ -218,7 +406,6 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
     final upperType = type.toUpperCase();
     final combinedName = (upperType + (session?.templateName ?? '')).toUpperCase();
 
-    // 표시 이름 결정
     String displayName;
     if (session != null && session.templateId.isNotEmpty && session.templateId != 'health_kit_import') {
       displayName = session.templateName;

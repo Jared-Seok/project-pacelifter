@@ -639,45 +639,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _scrollToCurrentPeriod() {
-    // 현재 선택된 기간의 운동 데이터 필터링
-    final now = DateTime.now();
-    DateTime startDate;
-    DateTime endDate;
-
-    switch (_selectedPeriod) {
-      case TimePeriod.week:
-        final currentWeekday = now.weekday;
-        final daysToMonday = currentWeekday - 1;
-        final daysToSunday = 7 - currentWeekday;
-        startDate = DateTime(now.year, now.month, now.day)
-            .subtract(Duration(days: daysToMonday));
-        endDate = DateTime(now.year, now.month, now.day)
-            .add(Duration(days: daysToSunday))
-            .add(const Duration(hours: 23, minutes: 59, seconds: 59));
-        break;
-      case TimePeriod.month:
-        startDate = DateTime(now.year, now.month, 1);
-        endDate = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
-        break;
-      case TimePeriod.year:
-        startDate = DateTime(now.year, 1, 1);
-        endDate = DateTime(now.year, 12, 31, 23, 59, 59);
-        break;
-    }
-
-    final filteredData = _unifiedWorkouts
-        .where((data) =>
-            data.dateFrom.isAfter(startDate.subtract(const Duration(seconds: 1))) &&
-            data.dateFrom.isBefore(endDate.add(const Duration(seconds: 1))))
-        .toList();
-
     // 상세 페이지로 이동
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => WorkoutFeedScreen(
-          unifiedWorkouts: filteredData,
+          allWorkouts: _unifiedWorkouts, // 전체 데이터 전달
           period: _selectedPeriod,
-          dateRangeText: _dateRangeText,
+          initialDateRangeText: _dateRangeText,
         ),
       ),
     );
@@ -699,10 +667,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       switch (_selectedPeriod) {
       case TimePeriod.week:
         // 월요일부터 일요일까지
-        // DateTime.weekday: 1 = Monday, 7 = Sunday
         final currentWeekday = now.weekday;
-        final daysToMonday = currentWeekday - 1; // 월요일까지의 일수
-        final daysToSunday = 7 - currentWeekday; // 일요일까지의 일수
+        final daysToMonday = currentWeekday - 1;
+        final daysToSunday = 7 - currentWeekday;
 
         startDate = DateTime(now.year, now.month, now.day)
             .subtract(Duration(days: daysToMonday));
@@ -710,38 +677,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
             .add(Duration(days: daysToSunday))
             .add(const Duration(hours: 23, minutes: 59, seconds: 59));
 
-        // 날짜 범위 텍스트 생성: "25/12/8~14" 형식 (월이 바뀌면 "25/12/30~26/1/5" 형식)
-        final startDay = startDate.day;
-        final endDay = endDate.day;
-
-        // 시작일과 종료일의 연도/월이 다른지 확인
-        if (startDate.year != endDate.year || startDate.month != endDate.month) {
-          // 연도나 월이 바뀌는 경우: 전체 날짜 표시
-          _dateRangeText =
-              '${startDate.year.toString().substring(2)}/${startDate.month}/$startDay~'
-              '${endDate.year.toString().substring(2)}/${endDate.month}/$endDay';
+        if (startDate.year != endDate.year) {
+          _dateRangeText = '${startDate.year}년 ${startDate.month}월 ${startDate.day}일 ~ ${endDate.year}년 ${endDate.month}월 ${endDate.day}일';
+        } else if (startDate.month != endDate.month) {
+          _dateRangeText = '${startDate.year}년 ${startDate.month}월 ${startDate.day}일 ~ ${endDate.month}월 ${endDate.day}일';
         } else {
-          // 같은 월인 경우: 간단하게 표시
-          _dateRangeText = '${startDate.year.toString().substring(2)}/${startDate.month}/$startDay~$endDay';
+          _dateRangeText = '${startDate.year}년 ${startDate.month}월 ${startDate.day}일 ~ ${endDate.day}일';
         }
         break;
 
       case TimePeriod.month:
-        // 해당 월의 1일부터 마지막 날까지
         startDate = DateTime(now.year, now.month, 1);
         endDate = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
-
-        // 날짜 범위 텍스트 생성: "25/12" 형식
-        _dateRangeText = '${now.year.toString().substring(2)}/${now.month}';
+        _dateRangeText = '${now.year}년 ${now.month}월';
         break;
 
       case TimePeriod.year:
-        // 해당 연도의 1월 1일부터 12월 31일까지
         startDate = DateTime(now.year, 1, 1);
         endDate = DateTime(now.year, 12, 31, 23, 59, 59);
-
-        // 날짜 범위 텍스트 생성: "2025" 형식
-        _dateRangeText = '${now.year}';
+        _dateRangeText = '${now.year}년';
         break;
     }
 
@@ -1370,23 +1324,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _navigateToRaceTrainingFeed(Race race) {
     final now = DateTime.now();
 
-    // 훈련 기간 동안의 운동 데이터 필터링 (통합 데이터 사용)
-    final trainingWorkouts = _unifiedWorkouts.where((wrapper) {
-      final date = wrapper.dateFrom;
-      return date.isAfter(race.trainingStartDate.subtract(const Duration(seconds: 1))) &&
-             date.isBefore(now.add(const Duration(seconds: 1)));
-    }).toList();
-
     // 훈련 기간 텍스트 생성
-    final dateRangeText = '${DateFormat('yy.MM.dd').format(race.trainingStartDate)} ~ ${DateFormat('yy.MM.dd').format(now)}';
+    final dateRangeText = '${DateFormat('yyyy년 M월 d일').format(race.trainingStartDate)} ~ ${DateFormat('yyyy년 M월 d일').format(now)}';
 
     // WorkoutFeedScreen으로 이동
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => WorkoutFeedScreen(
-          unifiedWorkouts: trainingWorkouts,
+          allWorkouts: _unifiedWorkouts, // 전체 데이터 전달
           period: TimePeriod.month, // 기본값으로 month 사용
-          dateRangeText: dateRangeText,
+          initialDateRangeText: dateRangeText,
           raceName: race.name, // 레이스 이름 전달
         ),
       ),
@@ -1709,11 +1656,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       .withValues(alpha: 0.7))),
           Text(_dateRangeText,
               style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
                   color: Theme.of(context)
                       .colorScheme
                       .onSurface
-                      .withValues(alpha: 0.5)))
+                      .withValues(alpha: 0.7)))
         ],
       )
     ]);
