@@ -8,19 +8,25 @@ class HealthKitBridge {
     private let healthStore = HKHealthStore()
 
     // Dynamic registrar to avoid header issues during diagnosis
-    static func registerPlugin(name: String, registry: FlutterPluginRegistry) {
+    static func registerPlugin(name: String, registry: FlutterPluginRegistry, module: String? = nil) {
         NSLog("🧪 [AppDelegate] Attempting to dynamically register: \(name)")
         
-        // Try direct class name, then module-prefixed names for Swift plugins
-        let potentialNames = [
-            name,
-            "path_provider_foundation.\(name)",
-            "shared_preferences_foundation.\(name)",
-            "sqflite_darwin.\(name)",
-            "geolocator_apple.\(name)",
-            "health.\(name)",
-            "live_activities.\(name)"
+        var potentialNames = [name]
+        if let mod = module {
+            potentialNames.insert("\(mod).\(name)", at: 0)
+        }
+        
+        // Default potential module prefixes
+        let defaultModules = [
+            "path_provider_foundation", "shared_preferences_foundation", 
+            "sqflite_darwin", "geolocator_apple", "health", 
+            "live_activities", "google_maps_flutter_ios", "pedometer", 
+            "workmanager_apple", "flutter_app_group_directory", "sensors_plus"
         ]
+        
+        for mod in defaultModules {
+            potentialNames.append("\(mod).\(name)")
+        }
         
         var foundClass: NSObject.Type? = nil
         for className in potentialNames {
@@ -37,12 +43,8 @@ class HealthKitBridge {
                 if pluginClass.responds(to: selector) {
                     pluginClass.perform(selector, with: registrar)
                     NSLog("✅ [AppDelegate] Successfully registered: \(name)")
-                } else {
-                    NSLog("⚠️ [AppDelegate] Class \(name) does not respond to registerWithRegistrar:")
                 }
             }
-        } else {
-            NSLog("❌ [AppDelegate] Could not find class: \(name)")
         }
     }
 
@@ -180,44 +182,52 @@ class HealthKitBridge {
   ) -> Bool {
     NSLog("🚀 [AppDelegate] application(_:didFinishLaunchingWithOptions:) started")
     
-    // 1. Google Maps 초기화
+    // 1. Google Maps Library 초기화
     if let googleMapsApiKey = Bundle.main.object(forInfoDictionaryKey: "GOOGLE_MAPS_API_KEY") as? String, !googleMapsApiKey.isEmpty && !googleMapsApiKey.contains("$") {
       GMSServices.provideAPIKey(googleMapsApiKey)
       NSLog("✅ [AppDelegate] Google Maps API Key provided")
     } else {
-      print("⚠️ Warning: Google Maps API Key not found or invalid in Info.plist. Maps may not load.")
+      NSLog("⚠️ [AppDelegate] Warning: Google Maps API Key not found or invalid in Info.plist")
     }
 
-    // 2. 동적 플러그인 등록 (격리 진단용)
-    // GeneratedPluginRegistrant.register(with: self)
-    
-    // 필수 인프라 및 기능 플러그인들 등록
-    let safePlugins = [
-        "SharedPreferencesPlugin",
-        "PathProviderPlugin",
-        "SqflitePlugin",
-        "GeolocatorPlugin",
-        "FPPDeviceInfoPlusPlugin",
-        "FPPPackageInfoPlusPlugin",
-        "FlutterAppGroupDirectoryPlugin",
-        "HealthPlugin",
-        "FilePickerPlugin",
-        "FLTImageCropperPlugin",
-        "ImageGallerySaverPlugin",
-        "FLTImagePickerPlugin",
-        "PedometerPlugin",
-        "PermissionHandlerPlugin",
-        "FPPSensorsPlusPlugin",
-        "FPPSharePlusPlugin",
-        "WorkmanagerPlugin"
+    // 2. PLAB (PaceLifter Advanced Boot) - 계층형 플러그인 등록
+    // Stage 1: Immediate (Critical Infrastructure)
+    let stage1 = [
+        ("SharedPreferencesPlugin", "shared_preferences_foundation"),
+        ("PathProviderPlugin", "path_provider_foundation"),
+        ("SqflitePlugin", "sqflite_darwin")
     ]
-    
-    for plugin in safePlugins {
-        HealthKitBridge.registerPlugin(name: plugin, registry: self)
+    for (name, mod) in stage1 {
+        HealthKitBridge.registerPlugin(name: name, registry: self, module: mod)
     }
 
-    // 🚩 LiveActivitiesPlugin은 여전히 제외합니다 (네이티브 행의 원인).
-    NSLog("ℹ️ [AppDelegate] All safe plugins registered. LiveActivities still excluded.")
+    // Stage 2: Deferred (Features & Utilities) - 500ms 지연하여 Watchdog 회피
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+        guard let self = self else { return }
+        let stage2 = [
+            ("GeolocatorPlugin", "geolocator_apple"),
+            ("FPPDeviceInfoPlusPlugin", "device_info_plus"),
+            ("FPPPackageInfoPlusPlugin", "package_info_plus"),
+            ("HealthPlugin", "health"),
+            ("FlutterAppGroupDirectoryPlugin", "flutter_app_group_directory"),
+            ("FilePickerPlugin", nil),
+            ("FLTImageCropperPlugin", nil),
+            ("ImageGallerySaverPlugin", nil),
+            ("FLTImagePickerPlugin", nil),
+            ("PedometerPlugin", "pedometer"),
+            ("PermissionHandlerPlugin", "permission_handler_apple"),
+            ("FPPSensorsPlusPlugin", "sensors_plus"),
+            ("FPPSharePlusPlugin", "share_plus"),
+            ("WorkmanagerPlugin", "workmanager_apple"),
+            ("FLTGoogleMapsPlugin", "google_maps_flutter_ios")
+        ]
+        for (name, mod) in stage2 {
+            HealthKitBridge.registerPlugin(name: name, registry: self, module: mod)
+        }
+        NSLog("✅ [AppDelegate] PLAB Stage 2 Registration Complete")
+    }
+
+    NSLog("ℹ️ [AppDelegate] PLAB Stage 1 Complete. Stage 2 Scheduled.")
 
     // 3. Method Channel 설정 (엔진 구동 확인 후)
     if let controller = window?.rootViewController as? FlutterViewController {
