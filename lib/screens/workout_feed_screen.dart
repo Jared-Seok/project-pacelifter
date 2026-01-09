@@ -75,6 +75,7 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
         dist = (workout.totalDistance ?? 0.0).toDouble();
       } else if (wrapper.session != null) {
         category = wrapper.session!.category;
+        dist = wrapper.session!.totalDistance ?? 0.0;
       }
 
       if (category == 'Strength') {
@@ -112,7 +113,7 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
                   children: [
                     Expanded(child: _buildStatItem(context, '총 운동', '${widget.unifiedWorkouts.length}회', null, svgPath: 'assets/images/pllogo.svg', iconSize: 36, color: Theme.of(context).colorScheme.primary)),
                     Expanded(child: _buildStatItem(context, 'Endurance', '$enduranceCount회', null, svgPath: 'assets/images/endurance/runner-icon.svg', color: Theme.of(context).colorScheme.tertiary)),
-                    Expanded(child: _buildStatItem(context, 'Strength', '$strengthCount회', null, svgPath: 'assets/images/strength/lifter-icon.svg', color: Theme.of(context).colorScheme.primary)),
+                    Expanded(child: _buildStatItem(context, 'Strength', '$strengthCount회', null, svgPath: 'assets/images/strength/lifter-icon.svg', color: Theme.of(context).colorScheme.secondary)),
                     if (totalDistance > 0 || totalTime > Duration.zero)
                       Expanded(child: _buildToggleableStatItem(context, totalDistance, totalTime)),
                   ],
@@ -202,11 +203,20 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
       workoutCategory = WorkoutUIUtils.getWorkoutCategory(type);
     } else if (session != null) {
       workoutCategory = session.category;
-      type = session.category == 'Strength' ? 'TRADITIONAL_STRENGTH_TRAINING' : 'OTHER';
+      distance = session.totalDistance ?? 0.0;
+      // WorkoutSession에 구체적인 activityType이 없으므로 카테고리에 기반한 기본값 설정
+      if (session.category == 'Strength') {
+        type = 'TRADITIONAL_STRENGTH_TRAINING';
+      } else if (session.category == 'Endurance') {
+        type = 'RUNNING';
+      } else {
+        type = 'OTHER';
+      }
     }
 
     final color = _getCategoryColor(workoutCategory, context);
     final upperType = type.toUpperCase();
+    final combinedName = (upperType + (session?.templateName ?? '')).toUpperCase();
 
     // 표시 이름 결정
     String displayName;
@@ -219,9 +229,10 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
     final Color backgroundColor;
     final Color iconColor;
 
-    if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
-      backgroundColor = Theme.of(context).colorScheme.primary.withValues(alpha: 0.2);
-      iconColor = Theme.of(context).colorScheme.primary;
+    if (combinedName.contains('CORE') || combinedName.contains('FUNCTIONAL') || 
+        combinedName.contains('코어') || combinedName.contains('기능성')) {
+      backgroundColor = Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2);
+      iconColor = Theme.of(context).colorScheme.secondary;
     } else {
       backgroundColor = color.withValues(alpha: 0.2);
       iconColor = color;

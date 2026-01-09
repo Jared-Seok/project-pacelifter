@@ -1804,6 +1804,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final color = _getCategoryColor(workoutCategory);
     final upperType = type.toUpperCase();
+    final combinedName = (upperType + (session?.templateName ?? '')).toUpperCase();
 
     // 표시 이름 결정 (유틸리티 사용)
     // 🚀 타이틀 중복 해결: 대시보드 피드 타이틀에는 활동명(러닝, 코어 강화 운동 등)만 표시하도록 activityOnly: true 설정
@@ -1812,7 +1813,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final Color backgroundColor;
     final Color iconColor;
 
-    if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
+    if (combinedName.contains('CORE') || combinedName.contains('FUNCTIONAL') || 
+        combinedName.contains('코어') || combinedName.contains('기능성')) {
       backgroundColor = Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2);
       iconColor = Theme.of(context).colorScheme.secondary;
     } else {
