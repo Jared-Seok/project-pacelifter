@@ -271,7 +271,7 @@ class _TopNotificationWidgetState extends State<_TopNotificationWidget> with Sin
                   ),
                 ],
                 border: Border.all(
-                  color: widget.isSuccess ? Theme.of(context).colorScheme.secondary.withValues(alpha: 0.5) : Colors.red.withValues(alpha: 0.5),
+                  color: widget.isSuccess ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.5) : Colors.red.withValues(alpha: 0.5),
                   width: 1,
                 ),
               ),
@@ -280,7 +280,7 @@ class _TopNotificationWidgetState extends State<_TopNotificationWidget> with Sin
                 children: [
                   Icon(
                     widget.isSuccess ? Icons.check_circle : Icons.error,
-                    color: widget.isSuccess ? Theme.of(context).colorScheme.secondary : Colors.red,
+                    color: widget.isSuccess ? Theme.of(context).colorScheme.primary : Colors.red,
                     size: 20,
                   ),
                   const SizedBox(width: 12),

@@ -253,7 +253,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               title: Row(children: [
                 Icon(Icons.health_and_safety,
-                    color: Theme.of(context).colorScheme.secondary),
+                    color: Theme.of(context).colorScheme.primary),
                 const SizedBox(width: 12),
                 const Text('전체 데이터 동기화'),
               ]),
@@ -268,7 +268,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       _startFullSyncProcess();
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.secondary,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
                       foregroundColor: Colors.black,
                     ),
                     child: const Text('동기화 시작')),
@@ -436,7 +436,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.secondary, // Neon Green
+                    color: Theme.of(context).colorScheme.primary, // Neon Green
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -890,7 +890,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           conditioningScore: _scores!.conditioningScore.toDouble(),
                           enduranceScore: _scores!.enduranceScore.toDouble(),
                           strengthScore: _scores!.strengthScore.toDouble(),
-                          primaryColor: Theme.of(context).colorScheme.secondary,
+                          primaryColor: Theme.of(context).colorScheme.primary,
                           gridColor: Colors.white.withOpacity(0.15),
                         ),
                         child: Container(),
@@ -961,7 +961,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.bolt, color: Theme.of(context).colorScheme.secondary, size: 20),
+                          Icon(Icons.bolt, color: Theme.of(context).colorScheme.primary, size: 20),
                           const SizedBox(width: 6),
                           const Text('밸런스', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                         ],
@@ -976,13 +976,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             child: CircularProgressIndicator(
                               value: _scores!.hybridBalanceScore / 100,
                               strokeWidth: 6,
-                              backgroundColor: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
-                              valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.secondary),
+                              backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                              valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
                             ),
                           ),
                           Text(
                             '${_scores!.hybridBalanceScore.toInt()}',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.secondary),
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary),
                           ),
                         ],
                       ),
@@ -1163,7 +1163,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildHybridBalancePage() {
     if (_scores == null) return const SizedBox.shrink();
     
-    final color = Theme.of(context).colorScheme.secondary;
+    final color = Theme.of(context).colorScheme.primary;
     final score = _scores!.hybridBalanceScore;
     
     return Card(
@@ -1372,7 +1372,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.secondary),
+                      color: Theme.of(context).colorScheme.primary),
                 ),
               ],
             ),
@@ -1448,7 +1448,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   borderRadius: BorderRadius.circular(6),
                   backgroundColor: Colors.white10,
                   valueColor: AlwaysStoppedAnimation<Color>(
-                      Theme.of(context).colorScheme.secondary),
+                      Theme.of(context).colorScheme.primary),
                 ),
               ],
             ),
@@ -1562,7 +1562,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         width: isActive ? 24.0 : 8.0,
         decoration: BoxDecoration(
             color: isActive
-                ? Theme.of(context).colorScheme.secondary // Neon Green
+                ? Theme.of(context).colorScheme.primary // Neon Green
                 : Colors.grey.withValues(alpha: 0.5),
             borderRadius: const BorderRadius.all(Radius.circular(12))));
   }
@@ -1662,7 +1662,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _calculateStatistics();
           });
         },
-        style: ButtonStyle(
+        style: const ButtonStyle(
             visualDensity: VisualDensity.compact,
             tapTargetSize: MaterialTapTargetSize.shrinkWrap));
   }
@@ -1675,7 +1675,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         sections: [
           PieChartSectionData(
               value: _strengthPercentage,
-              color: Theme.of(context).colorScheme.primary,
+              color: Theme.of(context).colorScheme.secondary,
               radius: 20,
               showTitle: false),
           PieChartSectionData(
@@ -1845,7 +1845,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.secondary, // Neon Green
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
           ),
@@ -1895,10 +1895,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
+                        color: color.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(4),
                         border: Border.all(
-                          color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.5),
+                          color: color.withValues(alpha: 0.5),
                           width: 0.5,
                         ),
                       ),
@@ -1906,7 +1906,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         session.templateName,
                         style: TextStyle(
                           fontSize: 11,
-                          color: Theme.of(context).colorScheme.secondary,
+                          color: color,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -2018,7 +2018,7 @@ class _StickyMonthHeaderDelegate extends SliverPersistentHeaderDelegate {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.secondary, // Neon Green
+                  color: Theme.of(context).colorScheme.primary, // Neon Green
                 ),
               ),
               const SizedBox(width: 8),
@@ -2028,13 +2028,13 @@ class _StickyMonthHeaderDelegate extends SliverPersistentHeaderDelegate {
                 child: Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(
                     Icons.calendar_month,
                     size: 20,
-                    color: Theme.of(context).colorScheme.secondary, // Neon Green
+                    color: Theme.of(context).colorScheme.primary, // Neon Green
                   ),
                 ),
               ),

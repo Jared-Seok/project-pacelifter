@@ -455,13 +455,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
               borderRadius: BorderRadius.circular(8),
               border: isSelected
                   ? Border.all(color: Colors.white, width: 2)
-                  : (isToday && dayType == 0 ? Border.all(color: Theme.of(context).colorScheme.secondary, width: 1) : null),
+                  : (isToday && dayType == 0 ? Border.all(color: Theme.of(context).colorScheme.primary, width: 1) : null),
             ),
             child: Center(
               child: Text(
                 '$day',
                 style: TextStyle(
-                  color: dayType != 0 ? (dayType == 1 ? Theme.of(context).colorScheme.onPrimary : (dayType == 2 ? Theme.of(context).colorScheme.onSecondary : Colors.black)) : Theme.of(context).colorScheme.onSurface,
+                  color: dayType != 0 ? (dayType == 1 ? Theme.of(context).colorScheme.onPrimary : (dayType == 2 ? Theme.of(context).colorScheme.onTertiary : Colors.black)) : Theme.of(context).colorScheme.onSurface,
                   fontWeight: isToday || isSelected ? FontWeight.bold : FontWeight.normal,
                 ),
               ),

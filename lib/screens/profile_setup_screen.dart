@@ -133,7 +133,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
             child: Text(
               '저장',
               style: TextStyle(
-                color: Theme.of(context).colorScheme.secondary,
+                color: Theme.of(context).colorScheme.primary,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -188,7 +188,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                   minHeight: 8,
                   backgroundColor: Colors.white10,
                   valueColor: AlwaysStoppedAnimation<Color>(
-                    Theme.of(context).colorScheme.secondary,
+                    Theme.of(context).colorScheme.primary,
                   ),
                 );
               },
@@ -261,12 +261,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
           const SizedBox(height: 8),
           TextField(
             keyboardType: TextInputType.number,
-            cursorColor: Theme.of(context).colorScheme.secondary,
+            cursorColor: Theme.of(context).colorScheme.primary,
             decoration: InputDecoration(
               hintText: '예: 175', 
               border: const OutlineInputBorder(),
               focusedBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: Theme.of(context).colorScheme.secondary, width: 2),
+                borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
               ),
             ),
             onChanged: (val) => setState(() => _userProfile = _userProfile.copyWith(height: double.tryParse(val))),
@@ -277,12 +277,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
           const SizedBox(height: 8),
           TextField(
             keyboardType: TextInputType.number,
-            cursorColor: Theme.of(context).colorScheme.secondary,
+            cursorColor: Theme.of(context).colorScheme.primary,
             decoration: InputDecoration(
               hintText: '예: 70', 
               border: const OutlineInputBorder(),
               focusedBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: Theme.of(context).colorScheme.secondary, width: 2),
+                borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
               ),
             ),
             onChanged: (val) => setState(() => _userProfile = _userProfile.copyWith(weight: double.tryParse(val))),
@@ -294,7 +294,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
             child: ElevatedButton(
               onPressed: (_userProfile.gender != null && _userProfile.birthDate != null && _userProfile.height != null && _userProfile.weight != null) ? _nextPage : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.secondary,
+                backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Colors.black,
               ),
               child: const Text('다음', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -454,7 +454,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
   }
 
   Widget _buildLevelSelector({String? current, required Function(String) onSelect, Color? activeColor}) {
-    final color = activeColor ?? Theme.of(context).colorScheme.secondary;
+    final color = activeColor ?? Theme.of(context).colorScheme.primary;
     return Column(
       children: [
         _levelTile('beginner', '초급', '기본기를 익히고 있는 단계', current, onSelect, color),
@@ -540,7 +540,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
   }
 
   Widget _buildTimeDialField(String label, Duration? value, Function(Duration) onChanged, {required int maxHours, int minHours = 0, Color? activeColor}) {
-    final focusColor = activeColor ?? Theme.of(context).colorScheme.secondary;
+    final focusColor = activeColor ?? Theme.of(context).colorScheme.primary;
     final displayValue = value != null 
         ? (maxHours > 0 
             ? "${value.inHours}:${(value.inMinutes % 60).toString().padLeft(2, '0')}:${(value.inSeconds % 60).toString().padLeft(2, '0')}"
@@ -676,7 +676,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
 
   // 공통 선택사항 빌더
   Widget _buildSelectionStep(String title, String desc, List<Widget> fields, {bool isLast = false, Color? activeColor}) {
-    final color = activeColor ?? Theme.of(context).colorScheme.secondary;
+    final color = activeColor ?? Theme.of(context).colorScheme.primary;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Column(
@@ -707,7 +707,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
   }
 
   Widget _buildNumericField(String label, Function(String) onChanged, {Color? activeColor}) {
-    final focusColor = activeColor ?? Theme.of(context).colorScheme.secondary;
+    final focusColor = activeColor ?? Theme.of(context).colorScheme.primary;
     return Padding(
       padding: const EdgeInsets.only(bottom: 24.0),
       child: Column(
@@ -732,7 +732,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
   }
 
   Widget _buildTimeField(String label, Function(String) onChanged, {Color? activeColor}) {
-    final focusColor = activeColor ?? Theme.of(context).colorScheme.secondary;
+    final focusColor = activeColor ?? Theme.of(context).colorScheme.primary;
     final controller = TextEditingController();
     
     return Padding(

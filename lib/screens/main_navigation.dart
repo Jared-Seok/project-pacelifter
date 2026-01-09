@@ -25,7 +25,7 @@ class _MainNavigationState extends State<MainNavigation> {
   ];
 
   // Brand Color (Hybrid & UI Core)
-  Color get brandColor => Theme.of(context).colorScheme.secondary;
+  Color get brandColor => Theme.of(context).colorScheme.primary;
 
   void _onTabTapped(int index) {
     setState(() {

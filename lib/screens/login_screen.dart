@@ -207,7 +207,7 @@ class _LoginScreenState extends State<LoginScreen>
                                 width: 100,
                                 height: 100,
                                 colorFilter: ColorFilter.mode(
-                                  Theme.of(context).colorScheme.secondary,
+                                  Theme.of(context).colorScheme.primary,
                                   BlendMode.srcIn,
                                 ),
                               ),
@@ -219,7 +219,7 @@ class _LoginScreenState extends State<LoginScreen>
                                   fontWeight: FontWeight.bold,
                                   color: Theme.of(
                                     context,
-                                  ).colorScheme.secondary,
+                                  ).colorScheme.primary,
                                   letterSpacing: 1.5,
                                 ),
                               ),
@@ -263,7 +263,7 @@ class _LoginScreenState extends State<LoginScreen>
                                     fontSize: 40,
                                     fontStyle: FontStyle.italic,
                                     fontWeight: FontWeight.w500,
-                                    color: Theme.of(context).colorScheme.secondary,
+                                    color: Theme.of(context).colorScheme.primary,
                                     height: 1.3,
                                   ),
                                 ),
@@ -307,7 +307,7 @@ class _LoginScreenState extends State<LoginScreen>
                               // 사용자 이름 입력 필드
                               TextField(
                                 controller: _usernameController,
-                                cursorColor: Theme.of(context).colorScheme.secondary,
+                                cursorColor: Theme.of(context).colorScheme.primary,
                                 selectionControls: MaterialTextSelectionControls(),
                                 decoration: InputDecoration(
                                   labelText: '애슬릿 이름',
@@ -319,7 +319,7 @@ class _LoginScreenState extends State<LoginScreen>
                                     Icons.person,
                                     color: Theme.of(
                                       context,
-                                    ).colorScheme.secondary,
+                                    ).colorScheme.primary,
                                   ),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
@@ -337,7 +337,7 @@ class _LoginScreenState extends State<LoginScreen>
                                     borderSide: BorderSide(
                                       color: Theme.of(
                                         context,
-                                      ).colorScheme.secondary,
+                                      ).colorScheme.primary,
                                       width: 2,
                                     ),
                                   ),
@@ -355,7 +355,7 @@ class _LoginScreenState extends State<LoginScreen>
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Theme.of(
                                       context,
-                                    ).colorScheme.secondary,
+                                    ).colorScheme.primary,
                                     foregroundColor: Theme.of(
                                       context,
                                     ).colorScheme.onSecondary,

@@ -425,8 +425,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                       final template = templates[index];
                       return ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
-                          child: Icon(Icons.bookmark_border, color: Theme.of(context).colorScheme.secondary),
+                          backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                          child: Icon(Icons.bookmark_border, color: Theme.of(context).colorScheme.primary),
                         ),
                         title: Text(template.name),
                         subtitle: Text(template.description, maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -767,13 +767,13 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: SvgPicture.asset(
                   'assets/images/strength/lifter-icon.svg',
                   width: 24, height: 24,
-                  colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.secondary, BlendMode.srcIn),
+                  colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.primary, BlendMode.srcIn),
                 ),
               ),
               title: Text(record.exerciseName, style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -857,7 +857,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             Polyline(
               polylineId: const PolylineId('detail_route'),
               points: points,
-              color: Theme.of(context).colorScheme.secondary,
+              color: Theme.of(context).colorScheme.primary,
               width: 4,
               jointType: JointType.round,
             ),
@@ -1098,7 +1098,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             Icon(
               Icons.speed,
               size: 40,
-              color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.6),
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.6),
             ),
             const SizedBox(height: 8),
             Text(
@@ -1114,7 +1114,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.secondary,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
             const SizedBox(height: 6),

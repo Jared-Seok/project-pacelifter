@@ -110,9 +110,9 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    Expanded(child: _buildStatItem(context, '총 운동', '${widget.unifiedWorkouts.length}회', null, svgPath: 'assets/images/pllogo.svg', iconSize: 36, color: Theme.of(context).colorScheme.secondary)),
+                    Expanded(child: _buildStatItem(context, '총 운동', '${widget.unifiedWorkouts.length}회', null, svgPath: 'assets/images/pllogo.svg', iconSize: 36, color: Theme.of(context).colorScheme.primary)),
                     Expanded(child: _buildStatItem(context, 'Endurance', '$enduranceCount회', null, svgPath: 'assets/images/endurance/runner-icon.svg', color: Theme.of(context).colorScheme.tertiary)),
-                    Expanded(child: _buildStatItem(context, 'Strength', '$strengthCount회', null, svgPath: 'assets/images/strength/lifter-icon.svg', color: Theme.of(context).colorScheme.secondary)),
+                    Expanded(child: _buildStatItem(context, 'Strength', '$strengthCount회', null, svgPath: 'assets/images/strength/lifter-icon.svg', color: Theme.of(context).colorScheme.primary)),
                     if (totalDistance > 0 || totalTime > Duration.zero)
                       Expanded(child: _buildToggleableStatItem(context, totalDistance, totalTime)),
                   ],
@@ -144,7 +144,7 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
   }
 
   Widget _buildStatItem(BuildContext context, String label, String value, IconData? icon, {String? svgPath, Color? color, double? iconSize}) {
-    final displayColor = color ?? Theme.of(context).colorScheme.secondary;
+    final displayColor = color ?? Theme.of(context).colorScheme.primary;
     final size = iconSize ?? 32.0;
     return Column(
       children: [
@@ -159,7 +159,7 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
   }
 
   Widget _buildToggleableStatItem(BuildContext context, double totalDistance, Duration totalTime) {
-    final displayColor = Theme.of(context).colorScheme.secondary;
+    final displayColor = Theme.of(context).colorScheme.primary;
     const size = 32.0;
 
     String formatDuration(Duration duration) {
@@ -220,8 +220,8 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
     final Color iconColor;
 
     if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
-      backgroundColor = Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2);
-      iconColor = Theme.of(context).colorScheme.secondary;
+      backgroundColor = Theme.of(context).colorScheme.primary.withValues(alpha: 0.2);
+      iconColor = Theme.of(context).colorScheme.primary;
     } else {
       backgroundColor = color.withValues(alpha: 0.2);
       iconColor = color;
@@ -255,8 +255,8 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
                 padding: const EdgeInsets.only(top: 6.0),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4), border: Border.all(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.5), width: 0.5)),
-                  child: Text(session.templateName, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.secondary, fontWeight: FontWeight.w600)),
+                  decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4), border: Border.all(color: color.withValues(alpha: 0.5), width: 0.5)),
+                  child: Text(session.templateName, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
                 ),
               ),
           ],
@@ -323,8 +323,9 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
                 itemCount: templates.length,
                 itemBuilder: (context, index) {
                   final template = templates[index];
+                  final tColor = WorkoutUIUtils.getWorkoutColor(context, template.category);
                   return ListTile(
-                    leading: CircleAvatar(backgroundColor: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1), child: Icon(Icons.bookmark_border, color: Theme.of(context).colorScheme.secondary)),
+                    leading: CircleAvatar(backgroundColor: tColor.withValues(alpha: 0.1), child: Icon(Icons.bookmark_border, color: tColor)),
                     title: Text(template.name),
                     subtitle: Text(template.description, maxLines: 1, overflow: TextOverflow.ellipsis),
                     onTap: () async {

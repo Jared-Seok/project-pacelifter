@@ -74,9 +74,9 @@ class HeartRateMonitorWidget extends StatelessWidget {
     switch (zone) {
       case 1: return Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.8); // Deep Teal
       case 2: return Theme.of(context).colorScheme.tertiary; // Deep Teal
-      case 3: return Theme.of(context).colorScheme.secondary; // Neon Green
-      case 4: return Theme.of(context).colorScheme.primary.withValues(alpha: 0.8); // Orange
-      case 5: return Theme.of(context).colorScheme.primary; // Orange
+      case 3: return Theme.of(context).colorScheme.primary; // Neon Green
+      case 4: return Theme.of(context).colorScheme.secondary.withValues(alpha: 0.8); // Orange
+      case 5: return Theme.of(context).colorScheme.secondary; // Orange
       default: return Colors.grey;
     }
   }

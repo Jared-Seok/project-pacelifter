@@ -63,7 +63,7 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
     final allExercises = TemplateService.getAllExercises();
     
     final filtered = allExercises.where((ex) {
-      final p = ex.primaryMuscles.first.toLowerCase();
+      final p = ex.secondaryMuscles.first.toLowerCase();
       final id = widget.muscleGroupId;
 
       if (id == 'chest') return p.contains('chest');

@@ -404,7 +404,7 @@ class _EnduranceTrackingScreenState extends State<EnduranceTrackingScreen> with 
                 Polyline(
                   polylineId: const PolylineId('workout_route'),
                   points: polylinePoints,
-                  color: Theme.of(context).colorScheme.secondary,
+                  color: Theme.of(context).colorScheme.primary,
                   width: 5,
                   jointType: JointType.round,
                   startCap: Cap.roundCap,
@@ -1010,7 +1010,7 @@ class WorkoutSummaryScreen extends StatelessWidget {
                 Navigator.popUntil(context, (route) => route.isFirst);
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.secondary, // Hybrid Color for main action
+                backgroundColor: Theme.of(context).colorScheme.primary, // Hybrid Color for main action
                 foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(vertical: 18),
                 shape: RoundedRectangleBorder(

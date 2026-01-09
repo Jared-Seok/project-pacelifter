@@ -71,8 +71,8 @@ class _AthleteScreenState extends State<AthleteScreen> with SingleTickerProvider
                     ),
                     bottom: TabBar(
                       controller: _tabController,
-                      indicatorColor: Theme.of(context).colorScheme.secondary,
-                      labelColor: Theme.of(context).colorScheme.secondary,
+                      indicatorColor: Theme.of(context).colorScheme.primary,
+                      labelColor: Theme.of(context).colorScheme.primary,
                       unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                       tabs: const [
                         Tab(text: '인사이트'),
@@ -102,7 +102,7 @@ class _AthleteScreenState extends State<AthleteScreen> with SingleTickerProvider
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2),
+            Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
             Theme.of(context).colorScheme.surface,
           ],
         ),
@@ -115,13 +115,13 @@ class _AthleteScreenState extends State<AthleteScreen> with SingleTickerProvider
             const SizedBox(height: 20),
             CircleAvatar(
               radius: 40,
-              backgroundColor: Theme.of(context).colorScheme.secondary,
+              backgroundColor: Theme.of(context).colorScheme.primary,
               child: const Icon(Icons.person, size: 40, color: Colors.black),
             ),
             const SizedBox(height: 16),
             Text(_username ?? '애슬릿', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
-            Text('Hybrid Athlete Pipeline', style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.secondary, fontWeight: FontWeight.w600, letterSpacing: 1.5)),
+            Text('Hybrid Athlete Pipeline', style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w600, letterSpacing: 1.5)),
           ],
         ),
       ),
@@ -306,7 +306,7 @@ class _AthleteScreenState extends State<AthleteScreen> with SingleTickerProvider
       Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
       const SizedBox(height: 4),
       Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-      Text(subValue, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.secondary, fontWeight: FontWeight.w600)),
+      Text(subValue, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w600)),
     ]);
   }
 
@@ -349,8 +349,8 @@ class _AthleteScreenState extends State<AthleteScreen> with SingleTickerProvider
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           child: Row(children: [
-            if (svgIcon != null) SvgPicture.asset(svgIcon, width: 18, height: 18, colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.secondary, BlendMode.srcIn))
-            else if (icon != null) Icon(icon, size: 18, color: Theme.of(context).colorScheme.secondary),
+            if (svgIcon != null) SvgPicture.asset(svgIcon, width: 18, height: 18, colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.primary, BlendMode.srcIn))
+            else if (icon != null) Icon(icon, size: 18, color: Theme.of(context).colorScheme.primary),
             const SizedBox(width: 8),
             Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
           ]),
@@ -369,7 +369,7 @@ class _AthleteScreenState extends State<AthleteScreen> with SingleTickerProvider
         child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           Text(label, style: const TextStyle(fontSize: 14)),
           Row(children: [
-            Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.secondary)),
+            Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
             const Icon(Icons.chevron_right, color: Colors.grey, size: 18),
           ]),
         ]),

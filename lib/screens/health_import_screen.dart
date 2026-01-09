@@ -150,7 +150,7 @@ class _HealthImportScreenState extends State<HealthImportScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('건강 데이터 연동'),
-        backgroundColor: Theme.of(context).colorScheme.secondary,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Theme.of(context).colorScheme.onSecondary,
       ),
       body: SingleChildScrollView(
@@ -184,7 +184,7 @@ class _HealthImportScreenState extends State<HealthImportScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.info_outline, color: Theme.of(context).colorScheme.secondary),
+                Icon(Icons.info_outline, color: Theme.of(context).colorScheme.primary),
                 const SizedBox(width: 8),
                 const Text(
                   'Apple Health 데이터 연동하기',
@@ -212,7 +212,7 @@ class _HealthImportScreenState extends State<HealthImportScreen> {
       icon: const Icon(Icons.sync),
       label: const Text('건강 앱 데이터 동기화'),
       style: ElevatedButton.styleFrom(
-        backgroundColor: Theme.of(context).colorScheme.secondary,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Theme.of(context).colorScheme.onSecondary,
         padding: const EdgeInsets.all(16),
         textStyle: const TextStyle(fontSize: 16),
@@ -294,7 +294,7 @@ class _HealthImportScreenState extends State<HealthImportScreen> {
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         children: [
-          Icon(icon, size: 24, color: Theme.of(context).colorScheme.secondary),
+          Icon(icon, size: 24, color: Theme.of(context).colorScheme.primary),
           const SizedBox(width: 12),
           Text(label, style: const TextStyle(fontSize: 14)),
           const Spacer(),
@@ -359,7 +359,7 @@ class _HealthImportScreenState extends State<HealthImportScreen> {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4.0),
       child: ListTile(
-        leading: Icon(_getWorkoutIcon(workout.workoutType), color: Theme.of(context).colorScheme.secondary),
+        leading: Icon(_getWorkoutIcon(workout.workoutType), color: Theme.of(context).colorScheme.primary),
         title: Text(_formatWorkoutType(workout.workoutType)),
         subtitle: Text('${_formatDate(workout.startDate)} • ${workout.duration.inMinutes} 분'),
         trailing: (workout.distance != null)
@@ -399,7 +399,7 @@ class WorkoutListScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text('전체 운동 기록 (${workouts.length}개)'),
-        backgroundColor: Theme.of(context).colorScheme.secondary,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Theme.of(context).colorScheme.onSecondary,
       ),
       body: ListView.builder(
@@ -416,7 +416,7 @@ class WorkoutListScreen extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
       child: ListTile(
-        leading: Icon(_getWorkoutIcon(workout.workoutType), color: Theme.of(context).colorScheme.secondary),
+        leading: Icon(_getWorkoutIcon(workout.workoutType), color: Theme.of(context).colorScheme.primary),
         title: Text(_formatWorkoutType(workout.workoutType)),
         subtitle: Text('${_formatDateTime(workout.startDate)} • ${workout.duration.inMinutes} 분'),
         trailing: (workout.distance != null)

@@ -109,7 +109,7 @@ class PerformanceAnalysisScreen extends StatelessWidget {
                       conditioningScore: scores.conditioningScore.toDouble(),
                       enduranceScore: scores.enduranceScore.toDouble(),
                       strengthScore: scores.strengthScore.toDouble(),
-                      primaryColor: Theme.of(context).colorScheme.secondary,
+                      primaryColor: Theme.of(context).colorScheme.primary,
                       gridColor: Colors.white.withOpacity(0.15),
                     ),
                     child: Container(),
@@ -138,9 +138,9 @@ class PerformanceAnalysisScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.3)),
+        border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -151,7 +151,7 @@ class PerformanceAnalysisScreen extends StatelessWidget {
                 'assets/images/pllogo.svg',
                 width: 20,
                 height: 20,
-                colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.secondary, BlendMode.srcIn),
+                colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.primary, BlendMode.srcIn),
               ),
               const SizedBox(width: 8),
               const Text('PaceLifter 코칭', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -207,7 +207,7 @@ class PerformanceAnalysisScreen extends StatelessWidget {
   }
 
   Widget _buildHybridBalanceAnalysis(BuildContext context) {
-    final color = Theme.of(context).colorScheme.secondary; // Neon Green for Hybrid
+    final color = Theme.of(context).colorScheme.primary; // Neon Green for Hybrid
     final score = scores.hybridBalanceScore;
     
     return Card(
@@ -280,7 +280,7 @@ class PerformanceAnalysisScreen extends StatelessWidget {
   }
 
   Widget _buildConditioningAnalysis(BuildContext context) {
-    final color = Theme.of(context).colorScheme.secondary;
+    final color = Theme.of(context).colorScheme.primary;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),

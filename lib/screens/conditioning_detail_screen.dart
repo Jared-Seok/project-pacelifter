@@ -8,7 +8,7 @@ class ConditioningDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final secondaryColor = Theme.of(context).colorScheme.secondary;
+    final secondaryColor = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -96,7 +96,7 @@ class ConditioningDetailScreen extends StatelessWidget {
   }
 
   Widget _buildACWRVisualizer(BuildContext context, num acwr) {
-    final secondaryColor = Theme.of(context).colorScheme.secondary;
+    final secondaryColor = Theme.of(context).colorScheme.primary;
     return Column(
       children: [
         Stack(
@@ -190,7 +190,7 @@ class ConditioningDetailScreen extends StatelessWidget {
   }
 
   Color _getACWRColor(BuildContext context, num acwr) {
-    return Theme.of(context).colorScheme.secondary;
+    return Theme.of(context).colorScheme.primary;
   }
 
   String _getACWRStatus(num acwr) {

@@ -358,8 +358,8 @@ class _StrengthRoutinePreviewScreenState extends State<StrengthRoutinePreviewScr
         actions: [
           TextButton.icon(
             onPressed: _saveCurrentRoutine,
-            icon: const Icon(Icons.save_alt, size: 20),
-            label: const Text('루틴 저장'),
+            icon: Icon(Icons.save_alt, size: 20, color: Theme.of(context).colorScheme.secondary),
+            label: Text('루틴 저장', style: TextStyle(color: Theme.of(context).colorScheme.secondary)),
           ),
           const SizedBox(width: 8),
         ],

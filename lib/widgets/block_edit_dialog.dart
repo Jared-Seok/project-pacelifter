@@ -226,7 +226,7 @@ class _BlockEditDialogState extends State<BlockEditDialog> {
                     )
                   ),
                   CupertinoButton(
-                    child: Text('확인', style: TextStyle(color: Theme.of(context).colorScheme.secondary)),
+                    child: Text('확인', style: TextStyle(color: Theme.of(context).colorScheme.primary)),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
@@ -311,7 +311,7 @@ class _BlockEditDialogState extends State<BlockEditDialog> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.secondary,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -341,7 +341,7 @@ class _BlockEditDialogState extends State<BlockEditDialog> {
             onPressed: BlockEditDialog._copiedBlock != null ? _pasteBlock : null,
             tooltip: '설정 붙여넣기',
             color: BlockEditDialog._copiedBlock != null 
-                ? Theme.of(context).colorScheme.secondary 
+                ? Theme.of(context).colorScheme.primary 
                 : Colors.grey,
           ),
         ],
@@ -382,7 +382,7 @@ class _BlockEditDialogState extends State<BlockEditDialog> {
         ElevatedButton(
           onPressed: _save,
           style: ElevatedButton.styleFrom(
-            backgroundColor: Theme.of(context).colorScheme.secondary,
+            backgroundColor: Theme.of(context).colorScheme.primary,
             foregroundColor: Theme.of(context).colorScheme.onSecondary,
           ),
           child: const Text('저장'),

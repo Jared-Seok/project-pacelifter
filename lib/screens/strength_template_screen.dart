@@ -237,8 +237,10 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen>
               },
             ),
           ],
-          bottom: const TabBar(
-            tabs: [
+          bottom: TabBar(
+            indicatorColor: Theme.of(context).colorScheme.secondary,
+            labelColor: Theme.of(context).colorScheme.secondary,
+            tabs: const [
               Tab(text: '운동 선택'),
               Tab(text: '내 루틴'),
             ],

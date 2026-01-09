@@ -56,7 +56,7 @@ class _HybridTemplateScreenState extends State<HybridTemplateScreen> {
       body: _isLoading
           ? Center(
               child: CircularProgressIndicator(
-                color: Theme.of(context).colorScheme.secondary,
+                color: Theme.of(context).colorScheme.primary,
               ),
             )
           : SafeArea(
@@ -72,7 +72,7 @@ class _HybridTemplateScreenState extends State<HybridTemplateScreen> {
                           width: 32,
                           height: 32,
                           colorFilter: ColorFilter.mode(
-                            Theme.of(context).colorScheme.secondary,
+                            Theme.of(context).colorScheme.primary,
                             BlendMode.srcIn,
                           ),
                         ),
@@ -173,7 +173,7 @@ class _HybridTemplateScreenState extends State<HybridTemplateScreen> {
           border: Border.all(
             color: Theme.of(context)
                 .colorScheme
-                .secondary
+                .primary
                 .withValues(alpha: 0.3),
             width: 1,
           ),
@@ -185,7 +185,7 @@ class _HybridTemplateScreenState extends State<HybridTemplateScreen> {
               decoration: BoxDecoration(
                 color: Theme.of(context)
                     .colorScheme
-                    .secondary
+                    .primary
                     .withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -194,7 +194,7 @@ class _HybridTemplateScreenState extends State<HybridTemplateScreen> {
                 width: 24,
                 height: 24,
                 colorFilter: ColorFilter.mode(
-                  Theme.of(context).colorScheme.secondary,
+                  Theme.of(context).colorScheme.primary,
                   BlendMode.srcIn,
                 ),
               ),
@@ -218,7 +218,7 @@ class _HybridTemplateScreenState extends State<HybridTemplateScreen> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        color: Theme.of(context).colorScheme.secondary,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     ),
                   const SizedBox(height: 4),
@@ -240,7 +240,7 @@ class _HybridTemplateScreenState extends State<HybridTemplateScreen> {
             const SizedBox(width: 12),
             Icon(
               Icons.arrow_forward_ios,
-              color: Theme.of(context).colorScheme.secondary,
+              color: Theme.of(context).colorScheme.primary,
               size: 16,
             ),
           ],

@@ -171,7 +171,7 @@ class _IntervalSetEditDialogState extends State<IntervalSetEditDialog> {
                     )
                   ),
                   CupertinoButton(
-                    child: Text('확인', style: TextStyle(color: Theme.of(context).colorScheme.secondary)),
+                    child: Text('확인', style: TextStyle(color: Theme.of(context).colorScheme.primary)),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
@@ -256,7 +256,7 @@ class _IntervalSetEditDialogState extends State<IntervalSetEditDialog> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.secondary,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -311,7 +311,7 @@ class _IntervalSetEditDialogState extends State<IntervalSetEditDialog> {
         ElevatedButton(
           onPressed: _save,
           style: ElevatedButton.styleFrom(
-            backgroundColor: Theme.of(context).colorScheme.secondary,
+            backgroundColor: Theme.of(context).colorScheme.primary,
             foregroundColor: Theme.of(context).colorScheme.onSecondary,
           ),
           child: const Text('적용'),

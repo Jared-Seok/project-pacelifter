@@ -93,13 +93,13 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
   Color _getThemeColor() {
     switch (_editableTemplate.category) {
       case 'Strength':
-        return Theme.of(context).colorScheme.primary;
+        return Theme.of(context).colorScheme.secondary;
       case 'Endurance':
         return Theme.of(context).colorScheme.tertiary;
       case 'Hybrid':
-        return Theme.of(context).colorScheme.secondary;
+        return Theme.of(context).colorScheme.primary;
       default:
-        return Theme.of(context).colorScheme.secondary;
+        return Theme.of(context).colorScheme.primary;
     }
   }
 
@@ -530,7 +530,7 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
                   child: FilledButton.icon(
                     onPressed: _startWorkout,
                     style: FilledButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.secondary,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
                       foregroundColor: Theme.of(context).colorScheme.onSecondary,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
@@ -679,7 +679,7 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     bool isCalculated = false,
     bool isSmall = false,
   }) {
-    final themeColor = Theme.of(context).colorScheme.secondary;
+    final themeColor = Theme.of(context).colorScheme.primary;
     
     return InkWell(
       onTap: onTap,
@@ -826,10 +826,10 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.3),
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
         ),
       ),
       child: Text(
@@ -837,7 +837,7 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.bold,
-          color: Theme.of(context).colorScheme.secondary,
+          color: Theme.of(context).colorScheme.primary,
         ),
       ),
     );
@@ -1233,7 +1233,7 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
 
   Widget _buildBlockIcon(TemplateBlock block, {double size = 24, Color? color}) {
     final type = block.type;
-    final effectiveColor = color ?? Theme.of(context).colorScheme.secondary;
+    final effectiveColor = color ?? Theme.of(context).colorScheme.primary;
     
     if (type == 'strength') {
       String iconPath = 'assets/images/strength/lifter-icon.svg';
@@ -1380,7 +1380,7 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
                         onPressed: () => setModalState(() => useKeyboard = !useKeyboard),
                       ),
                       CupertinoButton(
-                        child: Text('설정', style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.secondary)),
+                        child: Text('설정', style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
                         onPressed: () {
                           if (useKeyboard) {
                             km = int.tryParse(kmController.text) ?? 0;
@@ -1435,7 +1435,7 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
                         onPressed: () => setModalState(() => useKeyboard = !useKeyboard),
                       ),
                       CupertinoButton(
-                        child: Text('설정', style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.secondary)),
+                        child: Text('설정', style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
                         onPressed: () {
                           if (useKeyboard) {
                             min = int.tryParse(minController.text) ?? 0;
@@ -1489,7 +1489,7 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
                         onPressed: () => setModalState(() => useKeyboard = !useKeyboard),
                       ),
                       CupertinoButton(
-                        child: Text('설정', style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.secondary)),
+                        child: Text('설정', style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
                         onPressed: () {
                           if (useKeyboard) {
                             h = int.tryParse(hController.text) ?? 0;
@@ -1517,33 +1517,33 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
   }
 
   Widget _buildPickerInputTime(int hours, int minutes, Function(int) onChangedH, Function(int) onChangedM) {
-    final secondaryColor = Theme.of(context).colorScheme.secondary;
+    final primaryColor = Theme.of(context).colorScheme.primary;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Expanded(child: CupertinoPicker(itemExtent: 40, onSelectedItemChanged: onChangedH, scrollController: FixedExtentScrollController(initialItem: hours), children: List.generate(24, (index) => Center(child: Text('$index', style: const TextStyle(fontSize: 20)))))),
-        Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: Text('시간', style: TextStyle(fontSize: 20, color: secondaryColor, fontWeight: FontWeight.bold))),
+        Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: Text('시간', style: TextStyle(fontSize: 20, color: primaryColor, fontWeight: FontWeight.bold))),
         Expanded(child: CupertinoPicker(itemExtent: 40, onSelectedItemChanged: onChangedM, scrollController: FixedExtentScrollController(initialItem: minutes), children: List.generate(60, (index) => Center(child: Text(index.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 20)))))),
-        Padding(padding: const EdgeInsets.only(right: 20.0), child: Text('분', style: TextStyle(fontSize: 20, color: secondaryColor, fontWeight: FontWeight.bold))),
+        Padding(padding: const EdgeInsets.only(right: 20.0), child: Text('분', style: TextStyle(fontSize: 20, color: primaryColor, fontWeight: FontWeight.bold))),
       ],
     );
   }
 
   Widget _buildPickerInput(int value1, int value2, String unit, Function(int) onChanged1, Function(int) onChanged2) {
-    final secondaryColor = Theme.of(context).colorScheme.secondary;
+    final primaryColor = Theme.of(context).colorScheme.primary;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Expanded(child: CupertinoPicker(itemExtent: 40, onSelectedItemChanged: onChanged1, scrollController: FixedExtentScrollController(initialItem: value1), children: List.generate(100, (index) => Center(child: Text('$index', style: const TextStyle(fontSize: 20)))))),
-        Text(unit == 'km' ? '.' : "'", style: TextStyle(fontSize: 20, color: secondaryColor, fontWeight: FontWeight.bold)),
+        Text(unit == 'km' ? '.' : "'", style: TextStyle(fontSize: 20, color: primaryColor, fontWeight: FontWeight.bold)),
         Expanded(child: CupertinoPicker(itemExtent: 40, onSelectedItemChanged: onChanged2, scrollController: FixedExtentScrollController(initialItem: value2), children: List.generate(unit == 'km' ? 100 : 60, (index) => Center(child: Text(index.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 20)))))),
-        Padding(padding: const EdgeInsets.only(right: 20.0), child: Text(unit == 'km' ? 'km' : '"', style: TextStyle(fontSize: 20, color: secondaryColor, fontWeight: FontWeight.bold))),
+        Padding(padding: const EdgeInsets.only(right: 20.0), child: Text(unit == 'km' ? 'km' : '"', style: TextStyle(fontSize: 20, color: primaryColor, fontWeight: FontWeight.bold))),
       ],
     );
   }
 
   Widget _buildKeyboardInput(TextEditingController c1, TextEditingController c2, String unit) {
-    final secondaryColor = Theme.of(context).colorScheme.secondary;
+    final primaryColor = Theme.of(context).colorScheme.primary;
     String separator = unit == 'km' ? '.' : (unit == 'pace' ? "'" : '');
     String suffix1 = unit == 'time' ? '시간' : '';
     String suffix2 = unit == 'km' ? 'km' : (unit == 'pace' ? '"' : '분');
@@ -1553,11 +1553,11 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
       child: Row(
         children: [
           Expanded(child: CupertinoTextField(controller: c1, textAlign: TextAlign.center, keyboardType: TextInputType.number, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold))),
-          if (separator.isNotEmpty) Text(separator, style: TextStyle(fontSize: 32, color: secondaryColor, fontWeight: FontWeight.bold)),
-          if (suffix1.isNotEmpty) Text(suffix1, style: TextStyle(fontSize: 20, color: secondaryColor, fontWeight: FontWeight.bold)),
+          if (separator.isNotEmpty) Text(separator, style: TextStyle(fontSize: 32, color: primaryColor, fontWeight: FontWeight.bold)),
+          if (suffix1.isNotEmpty) Text(suffix1, style: TextStyle(fontSize: 20, color: primaryColor, fontWeight: FontWeight.bold)),
           const SizedBox(width: 8), 
           Expanded(child: CupertinoTextField(controller: c2, textAlign: TextAlign.center, keyboardType: TextInputType.number, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold))),
-          Text(suffix2, style: TextStyle(fontSize: 20, color: secondaryColor, fontWeight: FontWeight.bold)),
+          Text(suffix2, style: TextStyle(fontSize: 20, color: primaryColor, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -1615,13 +1615,13 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         decoration: BoxDecoration(
-          color: hasValue ? Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.1),
+          color: hasValue ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: hasValue ? Theme.of(context).colorScheme.secondary : Colors.grey, width: hasValue ? 2 : 1),
+          border: Border.all(color: hasValue ? Theme.of(context).colorScheme.primary : Colors.grey, width: hasValue ? 2 : 1),
         ),
         child: Column(
           children: [
-            Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, size: 16, color: hasValue ? Theme.of(context).colorScheme.secondary : Colors.grey), const SizedBox(width: 4), Text(label, style: TextStyle(fontSize: 12, color: hasValue ? Theme.of(context).colorScheme.secondary : Colors.grey)), if (isCalculated) Icon(Icons.auto_awesome, size: 12, color: Theme.of(context).colorScheme.primary)]),
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, size: 16, color: hasValue ? Theme.of(context).colorScheme.primary : Colors.grey), const SizedBox(width: 4), Text(label, style: TextStyle(fontSize: 12, color: hasValue ? Theme.of(context).colorScheme.primary : Colors.grey)), if (isCalculated) Icon(Icons.auto_awesome, size: 12, color: Theme.of(context).colorScheme.primary)]),
             const SizedBox(height: 8),
             Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: hasValue ? Theme.of(context).colorScheme.onSurface : Colors.grey, fontStyle: isCalculated ? FontStyle.italic : FontStyle.normal), textAlign: TextAlign.center),
           ],

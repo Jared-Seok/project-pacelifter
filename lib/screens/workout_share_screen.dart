@@ -140,7 +140,7 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
                     icon: const Icon(Icons.photo_library),
                     label: const Text('갤러리'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.secondary,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
                       foregroundColor: Colors.black,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
@@ -228,13 +228,13 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
                         decoration: BoxDecoration(
                           border: Border.all(
                             color: isSelected
-                                ? Theme.of(context).colorScheme.secondary
+                                ? Theme.of(context).colorScheme.primary
                                 : Colors.grey.shade300,
                             width: isSelected ? 2 : 1,
                           ),
                           borderRadius: BorderRadius.circular(12),
                           color: isSelected
-                              ? Theme.of(context).colorScheme.secondary.withValues(alpha: 0.15)
+                              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
                               : Colors.grey.shade50,
                         ),
                         child: Column(
@@ -247,7 +247,7 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
                                 height: 28,
                                 colorFilter: ColorFilter.mode(
                                   isSelected
-                                      ? Theme.of(context).colorScheme.secondary
+                                      ? Theme.of(context).colorScheme.primary
                                       : Colors.grey.shade600,
                                   BlendMode.srcIn,
                                 ),
@@ -256,7 +256,7 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
                               Icon(
                                 layout['icon'] as IconData,
                                 color: isSelected
-                                    ? Theme.of(context).colorScheme.secondary
+                                    ? Theme.of(context).colorScheme.primary
                                     : Colors.grey.shade600,
                                 size: 28,
                               ),
@@ -267,7 +267,7 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
                                 color: isSelected
-                                    ? Theme.of(context).colorScheme.secondary
+                                    ? Theme.of(context).colorScheme.primary
                                     : Colors.grey.shade800,
                               ),
                               textAlign: TextAlign.center,
@@ -377,7 +377,7 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
                     width: 32,
                     height: 32,
                     colorFilter: ColorFilter.mode(
-                      Theme.of(context).colorScheme.secondary,
+                      Theme.of(context).colorScheme.primary,
                       BlendMode.srcIn,
                     ),
                   ),
@@ -603,7 +603,7 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
             width: 32,
             height: 32,
             colorFilter: ColorFilter.mode(
-              Theme.of(context).colorScheme.secondary,
+              Theme.of(context).colorScheme.primary,
               BlendMode.srcIn,
             ),
           ),
@@ -940,7 +940,7 @@ class _WorkoutShareScreenState extends State<WorkoutShareScreen> {
               icon: const Icon(Icons.share),
               label: const Text('공유'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.secondary,
+                backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),

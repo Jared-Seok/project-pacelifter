@@ -166,7 +166,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     bool isDestructive = false,
   }) {
     final textColor = isDestructive ? Colors.red : Theme.of(context).colorScheme.onSurface;
-    final iconColor = isDestructive ? Colors.red : Theme.of(context).colorScheme.secondary;
+    final iconColor = isDestructive ? Colors.red : Theme.of(context).colorScheme.primary;
 
     return InkWell(
       onTap: onTap,
@@ -264,7 +264,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: const Text('동기화 완료'),
-                  backgroundColor: Theme.of(context).colorScheme.secondary,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
                 ),
               );
             },
