@@ -1,8 +1,8 @@
 {
   "id": "strength_core_stability",
-  "name": "Core Stability",
+  "name": "코어 강화 운동",
   "category": "Strength",
-  "subCategory": "Core",
+  "subCategory": "코어 강화 운동",
   "description": "복부, 허리, 골반 안정성을 강화하는 코어 훈련 프로그램입니다.",
   "imagePath": "assets/images/strength/core-icon.svg",
   "isCustom": false,

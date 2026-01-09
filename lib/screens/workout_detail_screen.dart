@@ -463,7 +463,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     final workoutType = workout?.workoutActivityType.name ?? _session?.category ?? 'Unknown';
     final workoutCategory = _session?.category ?? WorkoutUIUtils.getWorkoutCategory(workoutType);
     final color = WorkoutUIUtils.getWorkoutColor(context, workoutCategory);
-    final iconPath = WorkoutUIUtils.getWorkoutIconPath(workoutType);
+    final iconPath = WorkoutUIUtils.getWorkoutIconPath(workoutType, templateName: _session?.templateName);
     final isRunning = workoutType.toUpperCase().contains('RUNNING');
 
     return Scaffold(

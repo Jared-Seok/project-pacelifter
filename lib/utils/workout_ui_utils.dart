@@ -75,7 +75,8 @@ class WorkoutUIUtils {
     
     // Core/Functional은 Strength 계열 색상으로 고정 (사용자 요청)
     Color iconColor = color;
-    if (combinedName.contains('CORE') || combinedName.contains('FUNCTIONAL')) {
+    if (combinedName.contains('CORE') || combinedName.contains('FUNCTIONAL') || 
+        combinedName.contains('코어') || combinedName.contains('기능성')) {
       iconColor = Theme.of(context).colorScheme.primary;
     }
 
@@ -92,9 +93,9 @@ class WorkoutUIUtils {
     'RUNNING': '러닝',
     'WALKING': '걷기',
     'HIKING': '하이킹',
-    'TRADITIONAL_STRENGTH_TRAINING': '근력 웨이트',
-    'STRENGTH_TRAINING': '근력 웨이트',
-    'CORE_TRAINING': '코어 강화',
+    'TRADITIONAL_STRENGTH_TRAINING': '웨이트 트레이닝',
+    'STRENGTH_TRAINING': '웨이트 트레이닝',
+    'CORE_TRAINING': '코어 강화 운동',
     'FUNCTIONAL_STRENGTH_TRAINING': '기능성 훈련',
     'CROSS_TRAINING': '크로스 트레이닝',
     'YOGA': '요가',
@@ -114,35 +115,48 @@ class WorkoutUIUtils {
   };
 
   /// 운동 타입 이름 포맷팅 (한국어 전면 도입)
-  static String formatWorkoutType(String type, {String? templateName}) {
+  static String formatWorkoutType(String type, {String? templateName, bool activityOnly = false}) {
     // 1. 표시할 기본 이름 결정
     String baseName = (templateName != null && templateName.trim().isNotEmpty) 
         ? templateName 
         : type.toUpperCase().replaceAll('WORKOUT_ACTIVITY_TYPE_', '');
 
     final upper = baseName.toUpperCase();
+    final upperType = type.toUpperCase();
     
-    // 2. 레거시 영문 이름 및 특정 키워드 한국어 매핑 (템플릿 이름이 영문인 경우 포함)
-    if (upper.contains('TREADMILL') || upper.contains('INDOOR RUN')) {
-      return '실내 러닝';
+    // 2. 특정 키워드 한국어 매핑 (템플릿 이름이 영문인 경우 및 코어 우선순위 해결)
+    // ⚠️ 1순위: 코어 강화 (종류 불문 코어 키워드 포함 시)
+    if (upper.contains('CORE') || upper.contains('ABDOMINAL') || upper.contains('코어')) {
+      return '코어 강화 운동';
     }
-    if (upper.contains('TRAIL')) {
-      return '트레일 러닝';
-    }
-    if (upper == 'RUNNING' || upper == 'OUTDOOR RUN' || upper == 'BASIC RUN') {
+
+    // ⚠️ 2순위: 러닝 (Endurance 계열) - activityOnly일 경우 세부 템플릿명 숨김
+    if (upperType.contains('RUN') || upperType.contains('TRAIL') || upperType.contains('TREADMILL') ||
+        upper.contains('RUN') || upper.contains('러닝') || upper.contains('TRAIL') || 
+        upper.contains('LSD') || upper.contains('INTERVAL') || upper.contains('인터벌') || 
+        upper.contains('TEMPO') || upper.contains('템포')) {
+      
+      if (activityOnly) return '러닝';
+      
+      // 세부 템플릿명 매핑
+      if (upper.contains('TREADMILL') || upper.contains('INDOOR RUN')) return '실내 러닝';
+      if (upper.contains('TRAIL') || upper.contains('트레일')) return '트레일 러닝';
+      if (upper.contains('LSD')) return 'LSD (장거리)';
+      if (upper.contains('INTERVAL') || upper.contains('인터벌')) return '인터벌';
+      if (upper.contains('TEMPO') || upper.contains('템포')) return '템포';
       return '러닝';
     }
-    if (upper.contains('INTERVAL')) {
-      return '인터벌';
-    }
-    if (upper.contains('LSD')) {
-      return 'LSD (장거리)';
-    }
-    if (upper.contains('TEMPO')) {
-      return '템포';
+
+    // ⚠️ 3순위: 웨이트 트레이닝
+    if (upperType.contains('STRENGTH') || upperType.contains('WEIGHT') || 
+        upper.contains('STRENGTH') || upper.contains('WEIGHT') || upper.contains('웨이트') || upper.contains('근력')) {
+      return '웨이트 트레이닝';
     }
 
     // 3. 한국어 매핑 테이블 확인
+    if (_activityTypeToKorean.containsKey(upperType)) {
+      return _activityTypeToKorean[upperType]!;
+    }
     if (_activityTypeToKorean.containsKey(upper)) {
       return _activityTypeToKorean[upper]!;
     }

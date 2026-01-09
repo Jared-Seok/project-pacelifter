@@ -1806,8 +1806,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final upperType = type.toUpperCase();
 
     // 표시 이름 결정 (유틸리티 사용)
-    // 🚀 타이틀 중복 해결: 대시보드 피드 타이틀에는 템플릿명이 아닌 활동명(러닝 등)만 표시하도록 templateName 인자 제거
-    String displayName = WorkoutUIUtils.formatWorkoutType(type);
+    // 🚀 타이틀 중복 해결: 대시보드 피드 타이틀에는 활동명(러닝, 코어 강화 운동 등)만 표시하도록 activityOnly: true 설정
+    String displayName = WorkoutUIUtils.formatWorkoutType(type, templateName: session?.templateName, activityOnly: true);
 
     final Color backgroundColor;
     final Color iconColor;

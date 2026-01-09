@@ -26,11 +26,14 @@ class TemplateService {
       final exerciseBox = Hive.box<Exercise>(_exercisesBoxName);
 
       // 데이터 존재 여부 확인 (최소 기준치)
-      bool hasTemplates = templateBox.isNotEmpty;
-      bool hasExercises = exerciseBox.isNotEmpty;
+      bool hasTemplates = templateBox.length >= 30; // 정예화된 템플릿 최소 수
+      bool hasExercises = exerciseBox.length >= 50;
 
-      // 📦 UI Overhaul (2026-01-08): 항상 에셋을 새로 로드하여 변경된 템플릿 이름(한국어)과 구조가 반영되도록 함.
-      // (기존 skip 로직 제거)
+      if (hasTemplates && hasExercises) {
+        print('✅ TemplateService: Data already exists, skipping heavy load');
+        return;
+      }
+
       print('📦 TemplateService: Starting data import from assets...');
 
       // 1. 운동 라이브러리 로드 (병렬 로딩 시도)
