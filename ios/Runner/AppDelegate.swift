@@ -181,12 +181,10 @@ class HealthKitBridge {
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     // 1. PLAB v3 (Engine-First) - 즉시 제어권 반환
-    // super.application을 최상단에서 호출하여 엔진이 즉시 렌더링을 시작하게 함
     NSLog("🚀 [BOOT] [PLAB v3] application(_:didFinishLaunchingWithOptions:) started")
     let result = super.application(application, didFinishLaunchingWithOptions: launchOptions)
     
     // 2. 모든 초기화 작업을 다음 런루프로 미룸 (비동기)
-    // 0ms 지연이지만 async를 사용함으로써 엔진이 윈도우와 루트 뷰 컨트롤러를 잡을 시간을 줌
     DispatchQueue.main.async { [weak self] in
         guard let self = self else { return }
         self.performTieredRegistration()

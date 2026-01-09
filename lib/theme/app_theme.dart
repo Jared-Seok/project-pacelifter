@@ -44,7 +44,7 @@ class AppTheme {
         circularTrackColor: AppColors.surfaceLight,
       ),
 
-      tabBarTheme: const TabBarTheme(
+      tabBarTheme: const TabBarThemeData(
         indicatorColor: AppColors.primary,
         labelColor: AppColors.primary,
         unselectedLabelColor: AppColors.textSecondary,
