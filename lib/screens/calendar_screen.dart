@@ -9,6 +9,7 @@ import 'package:pacelifter/services/health_service.dart';
 import 'package:health/health.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:pacelifter/utils/workout_ui_utils.dart';
+import 'package:pacelifter/widgets/workout_item_card.dart';
 
 class _MonthStats {
   final int enduranceDays;
@@ -503,88 +504,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Widget _buildEventItem(WorkoutDataWrapper wrapper) {
-    String category = "Unknown";
-    String type = "OTHER";
-    String? environmentType;
-
-    final session = wrapper.session;
-    final healthData = wrapper.healthData;
-
-    if (healthData != null && healthData.value is WorkoutHealthValue) {
-      final workout = healthData.value as WorkoutHealthValue;
-      type = workout.workoutActivityType.name;
-      category = WorkoutUIUtils.getWorkoutCategory(type);
-    } else if (session != null) {
-      category = session.category;
-      // WorkoutSession에는 activityType 필드가 없으므로 카테고리에 따라 기본값 설정
-      type = session.category == 'Strength' ? 'TRADITIONAL_STRENGTH_TRAINING' : 
-             (session.category == 'Endurance' ? 'RUNNING' : 'OTHER');
-      environmentType = session.environmentType;
-    }
-
-    // 중앙 집중화된 유틸리티 사용 (Dashboard와 동일)
-    String title = WorkoutUIUtils.formatWorkoutType(type, templateName: session?.templateName);
-    
-    String subtitle = "";
-    if (category == 'Endurance') {
-      final dist = (session?.totalDistance ?? (wrapper.healthData?.value as WorkoutHealthValue?)?.totalDistance ?? 0).toDouble();
-      if (dist > 0) subtitle = "${(dist / 1000).toStringAsFixed(2)}K 러닝";
-      else subtitle = "유산소 운동";
-    } else {
-      subtitle = (category == 'Strength' || category == 'Hybrid') ? "근력 트레이닝" : "운동 기록";
-    }
-
-    final Color categoryColor = _getCategoryColor(category); 
-
-    final Color backgroundColor;
-    final Color iconColor;
-
-    final upperType = type.toUpperCase();
-    final combinedName = (upperType + (session?.templateName ?? '')).toUpperCase();
-    
-    // Core/Functional은 특별 색상 적용 (WorkoutUIUtils와 일관성 유지)
-    if (combinedName.contains('CORE') || combinedName.contains('FUNCTIONAL')) {
-      backgroundColor = Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2);
-      iconColor = Theme.of(context).colorScheme.secondary; 
-    } else {
-      backgroundColor = categoryColor.withValues(alpha: 0.2);
-      iconColor = categoryColor;
-    }
-
-    // 세부 운동 아이콘이 있는지 확인 (배경 제거 로직용)
-    bool hasSpecificIcon = false;
-    if (session != null && session.templateId.isNotEmpty) {
-      final template = TemplateService.getTemplateById(session.templateId);
-      if (template != null && template.phases.isNotEmpty) {
-        final firstBlock = template.phases.first.blocks.isNotEmpty ? template.phases.first.blocks.first : null;
-        if (firstBlock != null && firstBlock.exerciseId != null) {
-          final exercise = TemplateService.getExerciseById(firstBlock.exerciseId!);
-          if (exercise?.imagePath != null) hasSpecificIcon = true;
-        }
-      }
-    }
-
-    return ListTile(
-      leading: Container(
-        padding: hasSpecificIcon ? EdgeInsets.zero : const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: hasSpecificIcon ? Colors.transparent : backgroundColor,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: WorkoutUIUtils.getWorkoutIconWidget(
-          context: context,
-          type: type,
-          color: iconColor,
-          environmentType: environmentType,
-          session: wrapper.session,
-        ),
-      ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-      subtitle: Text(subtitle),
+    return WorkoutItemCard(
+      wrapper: wrapper,
+      margin: EdgeInsets.zero,
       onTap: () {
         _navigateToDetail(wrapper);
       },
-      trailing: const Icon(Icons.chevron_right),
     );
   }
 
@@ -597,18 +522,5 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
       ),
     );
-  }
-
-  Color _getCategoryColor(String category) {
-    switch (category) {
-      case 'Strength':
-        return Theme.of(context).colorScheme.secondary; // Orange
-      case 'Endurance':
-        return Theme.of(context).colorScheme.tertiary; // Deep Teal
-      case 'Hybrid':
-        return Theme.of(context).colorScheme.primary; // Neon Green
-      default:
-        return Theme.of(context).colorScheme.primary;
-    }
   }
 }

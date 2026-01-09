@@ -1,8 +1,100 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:intl/intl.dart';
+import 'package:health/health.dart';
 import '../models/sessions/workout_session.dart';
+import '../models/workout_data_wrapper.dart';
+import '../models/workout_display_info.dart';
+import '../services/template_service.dart';
 
 class WorkoutUIUtils {
+  /// UI 표시를 위한 가공된 통합 정보 반환 (대시보드 표준 로직)
+  static WorkoutDisplayInfo getWorkoutDisplayInfo(
+    BuildContext context,
+    WorkoutDataWrapper wrapper, {
+    bool activityOnly = false,
+  }) {
+    String type = 'UNKNOWN';
+    double distance = 0.0;
+    String workoutCategory = 'Unknown';
+    final session = wrapper.session;
+    final healthData = wrapper.healthData;
+
+    // 1. 데이터 소스 기반 카테고리 및 활동 타입 판별
+    if (healthData != null && healthData.value is WorkoutHealthValue) {
+      final workout = healthData.value as WorkoutHealthValue;
+      type = workout.workoutActivityType.name;
+      distance = (workout.totalDistance ?? 0.0).toDouble();
+      workoutCategory = getWorkoutCategory(type);
+    } else if (session != null) {
+      workoutCategory = session.category;
+      distance = session.totalDistance ?? 0.0;
+      // WorkoutSession에 activityType 필드가 없으므로 카테고리에 따라 기본값 설정
+      if (session.category == 'Strength') {
+        type = 'TRADITIONAL_STRENGTH_TRAINING';
+      } else if (session.category == 'Endurance') {
+        type = 'RUNNING';
+      } else {
+        type = 'OTHER';
+      }
+    }
+
+    // 2. 카테고리 표준 색상 추출
+    final color = getWorkoutColor(context, workoutCategory);
+    final upperType = type.toUpperCase();
+    final combinedName = (upperType + (session?.templateName ?? '')).toUpperCase();
+
+    // 3. 표시 이름 결정 (한국어 포맷팅 및 템플릿 우선순위 적용)
+    String displayName = formatWorkoutType(
+      type, 
+      templateName: session?.templateName, 
+      activityOnly: activityOnly,
+    );
+
+    // 4. 아이콘 및 배경 색상 결정 (Core/Functional 특수 케이스 포함)
+    final Color backgroundColor;
+    final Color iconColor;
+
+    if (combinedName.contains('CORE') || combinedName.contains('FUNCTIONAL') || 
+        combinedName.contains('코어') || combinedName.contains('기능성')) {
+      backgroundColor = Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2);
+      iconColor = Theme.of(context).colorScheme.secondary;
+    } else {
+      backgroundColor = color.withValues(alpha: 0.2);
+      iconColor = color;
+    }
+
+    // 5. 세부 운동 아이콘(상세 이미지) 존재 여부 확인
+    bool hasSpecificIcon = false;
+    if (session != null && session.templateId.isNotEmpty) {
+      final template = TemplateService.getTemplateById(session.templateId);
+      if (template != null && template.phases.isNotEmpty) {
+        final firstBlock = template.phases.first.blocks.isNotEmpty ? template.phases.first.blocks.first : null;
+        if (firstBlock != null && firstBlock.exerciseId != null) {
+          final exercise = TemplateService.getExerciseById(firstBlock.exerciseId!);
+          if (exercise?.imagePath != null) hasSpecificIcon = true;
+        }
+      }
+    }
+
+    // 6. 부가 정보 포맷팅
+    final dateStr = DateFormat('yyyy-MM-dd').format(wrapper.dateFrom);
+    final distanceStr = distance > 0 ? '${(distance / 1000).toStringAsFixed(2)} km' : null;
+
+    return WorkoutDisplayInfo(
+      category: workoutCategory,
+      displayName: displayName,
+      dateStr: dateStr,
+      templateName: (session != null && session.templateId.isNotEmpty && session.templateId != 'health_kit_import') ? session.templateName : null,
+      distanceStr: distanceStr,
+      color: color,
+      backgroundColor: backgroundColor,
+      iconColor: iconColor,
+      hasSpecificIcon: hasSpecificIcon,
+      type: type,
+    );
+  }
+
   /// 운동 유형에 따른 카테고리 반환
   static String getWorkoutCategory(String activityType) {
     final type = activityType.toUpperCase();

@@ -24,6 +24,7 @@ import 'package:pacelifter/services/scoring_engine.dart';
 import 'package:pacelifter/models/scoring/performance_scores.dart';
 import 'package:pacelifter/models/workout_data_wrapper.dart';
 import 'package:pacelifter/utils/workout_ui_utils.dart';
+import 'package:pacelifter/widgets/workout_item_card.dart';
 import 'package:uuid/uuid.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -1827,60 +1828,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _unifiedWorkouts[index - 1].dateFrom.month != date.month ||
         _unifiedWorkouts[index - 1].dateFrom.year != date.year;
 
-    // 데이터 추출
-    String type = 'UNKNOWN';
-    double distance = 0.0;
-    String workoutCategory = 'Unknown';
-    final session = wrapper.session;
-    final healthData = wrapper.healthData;
-
-    if (healthData != null && healthData.value is WorkoutHealthValue) {
-      final workout = healthData.value as WorkoutHealthValue;
-      type = workout.workoutActivityType.name;
-      distance = (workout.totalDistance ?? 0.0).toDouble();
-      workoutCategory = WorkoutUIUtils.getWorkoutCategory(type);
-    } else if (session != null) {
-      workoutCategory = session.category;
-      distance = session.totalDistance ?? 0.0; // 거리 할당 추가 (누락 해결)
-      // WorkoutSession에는 activityType 필드가 없으므로 카테고리에 따라 기본값 설정
-      // 실제 아이콘/명칭은 WorkoutUIUtils에서 templateName을 통해 더 구체적으로 정해짐
-      type = session.category == 'Strength' ? 'TRADITIONAL_STRENGTH_TRAINING' : 
-             (session.category == 'Endurance' ? 'RUNNING' : 'OTHER');
-    }
-
-    final color = _getCategoryColor(workoutCategory);
-    final upperType = type.toUpperCase();
-    final combinedName = (upperType + (session?.templateName ?? '')).toUpperCase();
-
-    // 표시 이름 결정 (유틸리티 사용)
-    // 🚀 타이틀 중복 해결: 대시보드 피드 타이틀에는 활동명(러닝, 코어 강화 운동 등)만 표시하도록 activityOnly: true 설정
-    String displayName = WorkoutUIUtils.formatWorkoutType(type, templateName: session?.templateName, activityOnly: true);
-
-    final Color backgroundColor;
-    final Color iconColor;
-
-    if (combinedName.contains('CORE') || combinedName.contains('FUNCTIONAL') || 
-        combinedName.contains('코어') || combinedName.contains('기능성')) {
-      backgroundColor = Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2);
-      iconColor = Theme.of(context).colorScheme.secondary;
-    } else {
-      backgroundColor = color.withValues(alpha: 0.2);
-      iconColor = color;
-    }
-
-    // 세부 운동 아이콘 확인
-    bool hasSpecificIcon = false;
-    if (session != null && session.templateId != null) {
-      final template = TemplateService.getTemplateById(session.templateId!);
-      if (template != null && template.phases.isNotEmpty) {
-        final firstBlock = template.phases.first.blocks.isNotEmpty ? template.phases.first.blocks.first : null;
-        if (firstBlock != null && firstBlock.exerciseId != null) {
-          final exercise = TemplateService.getExerciseById(firstBlock.exerciseId!);
-          if (exercise?.imagePath != null) hasSpecificIcon = true;
-        }
-      }
-    }
-
     return Column(
       key: isFirstOfMonth ? _monthKeyMap[monthKey] : null,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1897,84 +1844,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
           ),
-        Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            onTap: () async {
-              await Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => WorkoutDetailScreen(
-                    dataWrapper: wrapper,
-                  ),
+        WorkoutItemCard(
+          wrapper: wrapper,
+          activityOnly: true, // 대시보드 피드 요구사항
+          onTap: () async {
+            await Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => WorkoutDetailScreen(
+                  dataWrapper: wrapper,
                 ),
-              );
-              _loadHealthData(); // 데이터 새로고침
-            },
-            onLongPress: session != null ? () => _showDeleteWorkoutDialog(wrapper) : null,
-            leading: Container(
-              padding: hasSpecificIcon ? EdgeInsets.zero : const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: hasSpecificIcon ? Colors.transparent : backgroundColor,
-                borderRadius: BorderRadius.circular(8),
               ),
-              child: WorkoutUIUtils.getWorkoutIconWidget(
-                context: context,
-                type: type,
-                color: iconColor,
-                environmentType: session?.environmentType,
-                session: session,
-              ),
-            ),
-            title: Text(displayName,
-                style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  DateFormat('yyyy-MM-dd').format(date),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
-                ),
-                if (session != null && session.templateId.isNotEmpty && session.templateId != 'health_kit_import')
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6.0),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: color.withValues(alpha: 0.5),
-                          width: 0.5,
-                        ),
-                      ),
-                      child: Text(
-                        session.templateName,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: color,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            trailing: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                if (distance > 0)
-                  Text('${(distance / 1000).toStringAsFixed(2)} km',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 14)),
-                Text(workoutCategory,
-                    style: TextStyle(fontSize: 12, color: color)),
-              ],
-            ),
-          ),
+            );
+            _loadHealthData(); // 데이터 새로고침
+          },
+          onLongPress: wrapper.session != null ? () => _showDeleteWorkoutDialog(wrapper) : null,
         ),
       ],
     );

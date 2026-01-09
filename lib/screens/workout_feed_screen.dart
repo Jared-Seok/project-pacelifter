@@ -10,6 +10,7 @@ import 'package:pacelifter/models/sessions/workout_session.dart';
 import 'package:pacelifter/services/template_service.dart';
 import 'package:health/health.dart';
 import 'package:pacelifter/utils/workout_ui_utils.dart';
+import 'package:pacelifter/widgets/workout_item_card.dart';
 
 class WorkoutFeedScreen extends StatefulWidget {
   final List<WorkoutDataWrapper> allWorkouts; // 전체 데이터를 받아 필터링
@@ -487,95 +488,14 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
   }
 
   Widget _buildWorkoutItem(BuildContext context, WorkoutDataWrapper wrapper) {
-    String type = 'UNKNOWN';
-    double distance = 0.0;
-    String workoutCategory = 'Unknown';
-    final session = wrapper.session;
-    final healthData = wrapper.healthData;
-
-    if (healthData != null && healthData.value is WorkoutHealthValue) {
-      final workout = healthData.value as WorkoutHealthValue;
-      type = workout.workoutActivityType.name;
-      distance = (workout.totalDistance ?? 0.0).toDouble();
-      workoutCategory = WorkoutUIUtils.getWorkoutCategory(type);
-    } else if (session != null) {
-      workoutCategory = session.category;
-      distance = session.totalDistance ?? 0.0;
-      if (session.category == 'Strength') {
-        type = 'TRADITIONAL_STRENGTH_TRAINING';
-      } else if (session.category == 'Endurance') {
-        type = 'RUNNING';
-      } else {
-        type = 'OTHER';
-      }
-    }
-
-    final color = _getCategoryColor(workoutCategory, context);
-    final upperType = type.toUpperCase();
-    final combinedName = (upperType + (session?.templateName ?? '')).toUpperCase();
-
-    String displayName;
-    if (session != null && session.templateId.isNotEmpty && session.templateId != 'health_kit_import') {
-      displayName = session.templateName;
-    } else {
-      displayName = WorkoutUIUtils.formatWorkoutType(type);
-    }
-
-    final Color backgroundColor;
-    final Color iconColor;
-
-    if (combinedName.contains('CORE') || combinedName.contains('FUNCTIONAL') || 
-        combinedName.contains('코어') || combinedName.contains('기능성')) {
-      backgroundColor = Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2);
-      iconColor = Theme.of(context).colorScheme.secondary;
-    } else {
-      backgroundColor = color.withValues(alpha: 0.2);
-      iconColor = color;
-    }
-
-    bool hasSpecificIcon = false;
-    if (session != null) {
-      final template = TemplateService.getTemplateById(session.templateId);
-      if (template?.imagePath != null) hasSpecificIcon = true;
-    }
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        onTap: () {
-          Navigator.of(context).push(MaterialPageRoute(builder: (context) => WorkoutDetailScreen(dataWrapper: wrapper)));
-        },
-        onLongPress: session != null ? () => _showDeleteWorkoutDialog(context, wrapper) : (healthData != null ? () => _showTemplateSelectionDialog(context, healthData) : null),
-        leading: Container(
-          padding: hasSpecificIcon ? EdgeInsets.zero : const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: hasSpecificIcon ? Colors.transparent : backgroundColor, borderRadius: BorderRadius.circular(8)),
-          child: WorkoutUIUtils.getWorkoutIconWidget(context: context, type: type, color: iconColor, environmentType: session?.environmentType, session: session),
-        ),
-        title: Text(displayName, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(DateFormat('yyyy-MM-dd HH:mm').format(wrapper.dateFrom)),
-            if (session != null && session.templateId.isNotEmpty && session.templateId != 'health_kit_import')
-              Padding(
-                padding: const EdgeInsets.only(top: 6.0),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4), border: Border.all(color: color.withValues(alpha: 0.5), width: 0.5)),
-                  child: Text(session.templateName, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
-                ),
-              ),
-          ],
-        ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            if (distance > 0) Text('${(distance / 1000).toStringAsFixed(2)} km', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-            Text(workoutCategory, style: TextStyle(fontSize: 12, color: color)),
-          ],
-        ),
-      ),
+    return WorkoutItemCard(
+      wrapper: wrapper,
+      onTap: () {
+        Navigator.of(context).push(MaterialPageRoute(builder: (context) => WorkoutDetailScreen(dataWrapper: wrapper)));
+      },
+      onLongPress: wrapper.session != null 
+          ? () => _showDeleteWorkoutDialog(context, wrapper) 
+          : (wrapper.healthData != null ? () => _showTemplateSelectionDialog(context, wrapper.healthData!) : null),
     );
   }
 
