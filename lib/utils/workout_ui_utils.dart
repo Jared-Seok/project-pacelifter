@@ -19,13 +19,13 @@ class WorkoutUIUtils {
   static Color getWorkoutColor(BuildContext context, String category) {
     switch (category) {
       case 'Strength':
-        return Theme.of(context).colorScheme.primary; // Orange
+        return Theme.of(context).colorScheme.secondary; // Strong Orange
       case 'Endurance':
-        return Theme.of(context).colorScheme.tertiary; // Deep Teal
+        return Theme.of(context).colorScheme.tertiary; // Teal Blue
       case 'Hybrid':
-        return Theme.of(context).colorScheme.secondary; // Neon Green
+        return Theme.of(context).colorScheme.primary; // Neon Green
       default:
-        return Theme.of(context).colorScheme.secondary;
+        return Theme.of(context).colorScheme.primary;
     }
   }
 
@@ -77,7 +77,7 @@ class WorkoutUIUtils {
     Color iconColor = color;
     if (combinedName.contains('CORE') || combinedName.contains('FUNCTIONAL') || 
         combinedName.contains('코어') || combinedName.contains('기능성')) {
-      iconColor = Theme.of(context).colorScheme.primary;
+      iconColor = Theme.of(context).colorScheme.secondary;
     }
 
     return SvgPicture.asset(

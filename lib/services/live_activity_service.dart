@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:live_activities/live_activities.dart';
+import 'package:pacelifter/services/native_activation_service.dart';
 
 /// 실시간 현황(Live Activities - iOS) 및 알림 트래킹(Android) 서비스
 class LiveActivityService {
@@ -10,7 +11,7 @@ class LiveActivityService {
   LiveActivityService._internal();
 
   final _liveActivitiesPlugin = LiveActivities();
-  static const _controlChannel = MethodChannel("com.jared.pacelifter/live_activities_control");
+  static const _controlChannel = MethodChannel("com.jared.pacelifter/control");
   String? _latestActivityId;
   bool _isInitialized = false;
   
@@ -21,14 +22,7 @@ class LiveActivityService {
 
   /// 네이티브 플러그인 동적 활성화 요청
   Future<void> _activateNativePlugin() async {
-    if (!Platform.isIOS) return;
-    try {
-      print('🚀 LiveActivityService: Requesting on-demand native registration...');
-      await _controlChannel.invokeMethod("activateLiveActivities");
-      print('✅ LiveActivityService: Native plugin registered');
-    } catch (e) {
-      print('⚠️ LiveActivityService: Native registration failed (might already be registered): $e');
-    }
+    await NativeActivationService().activateLiveActivities();
   }
 
   /// 초기화 (App Group 연결)

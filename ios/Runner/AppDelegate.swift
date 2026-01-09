@@ -174,110 +174,149 @@ class HealthKitBridge {
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
-  private let healthKitBridge = HealthKitBridge()
+  private lazy var healthKitBridge = HealthKitBridge()
 
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    NSLog("🚀 [AppDelegate] application(_:didFinishLaunchingWithOptions:) started")
+    // 1. PLAB v3 (Engine-First) - 즉시 제어권 반환
+    // super.application을 최상단에서 호출하여 엔진이 즉시 렌더링을 시작하게 함
+    NSLog("🚀 [BOOT] [PLAB v3] application(_:didFinishLaunchingWithOptions:) started")
+    let result = super.application(application, didFinishLaunchingWithOptions: launchOptions)
     
-    // 1. Google Maps Library 초기화
-    if let googleMapsApiKey = Bundle.main.object(forInfoDictionaryKey: "GOOGLE_MAPS_API_KEY") as? String, !googleMapsApiKey.isEmpty && !googleMapsApiKey.contains("$") {
-      GMSServices.provideAPIKey(googleMapsApiKey)
-      NSLog("✅ [AppDelegate] Google Maps API Key provided")
-    } else {
-      NSLog("⚠️ [AppDelegate] Warning: Google Maps API Key not found or invalid in Info.plist")
+    // 2. 모든 초기화 작업을 다음 런루프로 미룸 (비동기)
+    // 0ms 지연이지만 async를 사용함으로써 엔진이 윈도우와 루트 뷰 컨트롤러를 잡을 시간을 줌
+    DispatchQueue.main.async { [weak self] in
+        guard let self = self else { return }
+        self.performTieredRegistration()
     }
+    
+    return result
+  }
 
-    // 2. PLAB (PaceLifter Advanced Boot) - 계층형 플러그인 등록
-    // Stage 1: Immediate (Critical Infrastructure)
-    let stage1 = [
+  private func performTieredRegistration() {
+    NSLog("📍 [BOOT] Starting Tiered Registration...")
+
+    // Stage 0: Infrastructure (No Delay)
+    let stage0 = [
         ("SharedPreferencesPlugin", "shared_preferences_foundation"),
         ("PathProviderPlugin", "path_provider_foundation"),
         ("SqflitePlugin", "sqflite_darwin")
     ]
-    for (name, mod) in stage1 {
+    for (name, mod) in stage0 {
         HealthKitBridge.registerPlugin(name: name, registry: self, module: mod)
     }
+    NSLog("📍 [BOOT] Stage 0 Complete (Infrastructure)")
 
-    // Stage 2: Deferred (Features & Utilities) - 500ms 지연하여 Watchdog 회피
+    // Stage 1: Core Features (Short Delay)
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+        guard let self = self else { return }
+        let stage1 = [
+            ("GeolocatorPlugin", "geolocator_apple"),
+            ("HealthPlugin", "health"),
+            ("PermissionHandlerPlugin", "permission_handler_apple")
+        ]
+        for (name, mod) in stage1 {
+            HealthKitBridge.registerPlugin(name: name, registry: self, module: mod)
+        }
+        self.setupMethodChannels()
+        NSLog("📍 [BOOT] Stage 1 Complete (Core & Channels)")
+    }
+
+    // Stage 2: Essential Utilities (Deferred)
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
         guard let self = self else { return }
         let stage2 = [
-            ("GeolocatorPlugin", "geolocator_apple"),
             ("FPPDeviceInfoPlusPlugin", "device_info_plus"),
             ("FPPPackageInfoPlusPlugin", "package_info_plus"),
-            ("HealthPlugin", "health"),
             ("FlutterAppGroupDirectoryPlugin", "flutter_app_group_directory"),
-            ("FilePickerPlugin", nil),
-            ("FLTImageCropperPlugin", nil),
-            ("ImageGallerySaverPlugin", nil),
-            ("FLTImagePickerPlugin", nil),
             ("PedometerPlugin", "pedometer"),
-            ("PermissionHandlerPlugin", "permission_handler_apple"),
             ("FPPSensorsPlusPlugin", "sensors_plus"),
-            ("FPPSharePlusPlugin", "share_plus"),
-            ("WorkmanagerPlugin", "workmanager_apple"),
-            ("FLTGoogleMapsPlugin", "google_maps_flutter_ios")
+            ("WorkmanagerPlugin", "workmanager_apple")
         ]
         for (name, mod) in stage2 {
             HealthKitBridge.registerPlugin(name: name, registry: self, module: mod)
         }
-        NSLog("✅ [AppDelegate] PLAB Stage 2 Registration Complete")
+        NSLog("📍 [BOOT] Stage 2 Complete (Essential Utilities)")
+    }
+  }
+
+  private func setupMethodChannels() {
+    guard let controller = window?.rootViewController as? FlutterViewController else {
+        NSLog("⚠️ [BOOT] Missing rootViewController during channel setup")
+        return
     }
 
-    NSLog("ℹ️ [AppDelegate] PLAB Stage 1 Complete. Stage 2 Scheduled.")
-
-    // 3. Method Channel 설정 (엔진 구동 확인 후)
-    if let controller = window?.rootViewController as? FlutterViewController {
-        NSLog("🚀 [AppDelegate] Setting up HealthKit Method Channel")
-        let healthKitChannel = FlutterMethodChannel(
-          name: "com.jared.pacelifter/healthkit",
-          binaryMessenger: controller.binaryMessenger
-        )
-
-        healthKitChannel.setMethodCallHandler { [weak self] (call, result) in
-          guard let self = self else { return }
-          switch call.method {
-          case "getWorkoutDuration":
-            guard let args = call.arguments as? [String: Any],
-                  let uuid = args["uuid"] as? String else {
-              result(FlutterError(code: "INVALID_ARGS", message: "Missing uuid", details: nil))
-              return
-            }
-            self.healthKitBridge.getWorkoutDuration(uuid: uuid, result: result)
-          case "getWorkoutDetails":
-            guard let args = call.arguments as? [String: Any],
-                  let uuid = args["uuid"] as? String else {
-              result(FlutterError(code: "INVALID_ARGS", message: "Missing uuid", details: nil))
-              return
-            }
-            self.healthKitBridge.getWorkoutDetails(uuid: uuid, result: result)
-          default:
-            result(FlutterMethodNotImplemented)
-          }
-        }
-
-        // LiveActivities 제어를 위한 별도 채널
-        let liveActivitiesChannel = FlutterMethodChannel(
-          name: "com.jared.pacelifter/live_activities_control",
-          binaryMessenger: controller.binaryMessenger
-        )
-        
-        liveActivitiesChannel.setMethodCallHandler { [weak self] (call, result) in
-          guard let self = self else { return }
-          if call.method == "activateLiveActivities" {
-             NSLog("🚀 [AppDelegate] On-demand registration for LiveActivitiesPlugin requested")
-             HealthKitBridge.registerPlugin(name: "LiveActivitiesPlugin", registry: self)
-             result(true)
+    // Control Channel (On-Demand Activation)
+    let controlChannel = FlutterMethodChannel(
+      name: "com.jared.pacelifter/control",
+      binaryMessenger: controller.binaryMessenger
+    )
+    
+    controlChannel.setMethodCallHandler { [weak self] (call, result) in
+      guard let self = self else { return }
+      
+      switch call.method {
+      case "activateLiveActivities":
+          NSLog("🚀 [ON-DEMAND] Activating LiveActivitiesPlugin")
+          HealthKitBridge.registerPlugin(name: "LiveActivitiesPlugin", registry: self)
+          result(true)
+          
+      case "activateGoogleMaps":
+          NSLog("🚀 [ON-DEMAND] Activating GoogleMaps")
+          if let apiKey = Bundle.main.object(forInfoDictionaryKey: "GOOGLE_MAPS_API_KEY") as? String, !apiKey.isEmpty {
+              GMSServices.provideAPIKey(apiKey)
+              HealthKitBridge.registerPlugin(name: "FLTGoogleMapsPlugin", registry: self, module: "google_maps_flutter_ios")
+              NSLog("✅ [ON-DEMAND] Google Maps Activated Successfully")
+              result(true)
           } else {
-             result(FlutterMethodNotImplemented)
+              result(FlutterError(code: "NO_API_KEY", message: "Google Maps API Key missing", details: nil))
           }
-        }
+
+      case "activateMediaPicker":
+          NSLog("🚀 [ON-DEMAND] Activating Media & Share Plugins")
+          let mediaPlugins = [
+              ("FilePickerPlugin", nil),
+              ("FLTImageCropperPlugin", nil),
+              ("ImageGallerySaverPlugin", nil),
+              ("FLTImagePickerPlugin", nil),
+              ("FPPSharePlusPlugin", "share_plus")
+          ]
+          for (name, mod) in mediaPlugins {
+              HealthKitBridge.registerPlugin(name: name, registry: self, module: mod)
+          }
+          result(true)
+          
+      default:
+          result(FlutterMethodNotImplemented)
+      }
     }
 
-    NSLog("🚀 [AppDelegate] Calling super.application()")
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    // HealthKit Channel
+    let healthKitChannel = FlutterMethodChannel(
+      name: "com.jared.pacelifter/healthkit",
+      binaryMessenger: controller.binaryMessenger
+    )
+    
+    healthKitChannel.setMethodCallHandler { [weak self] (call, result) in
+      guard let self = self else { return }
+      switch call.method {
+      case "getWorkoutDuration":
+        guard let args = call.arguments as? [String: Any], let uuid = args["uuid"] as? String else {
+          result(FlutterError(code: "INVALID_ARGS", message: "Missing uuid", details: nil))
+          return
+        }
+        self.healthKitBridge.getWorkoutDuration(uuid: uuid, result: result)
+      case "getWorkoutDetails":
+        guard let args = call.arguments as? [String: Any], let uuid = args["uuid"] as? String else {
+          result(FlutterError(code: "INVALID_ARGS", message: "Missing uuid", details: nil))
+          return
+        }
+        self.healthKitBridge.getWorkoutDetails(uuid: uuid, result: result)
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
   }
 }

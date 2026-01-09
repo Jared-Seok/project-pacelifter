@@ -11,6 +11,8 @@ import 'screens/add_workout_screen.dart';
 import 'screens/main_navigation.dart';
 import 'screens/login_screen.dart';
 import 'providers/strength_routine_provider.dart';
+import 'theme/app_theme.dart';
+import 'theme/app_colors.dart';
 
 // Hive 모델 임포트
 import 'models/templates/workout_template.dart';
@@ -43,7 +45,7 @@ void main() {
   
   // 3. 엔진이 구동된 직후(다음 프레임) 초기화 시작
   WidgetsBinding.instance.addPostFrameCallback((_) {
-    print('🚀 [App] Engine started. Triggering AppInitializer...');
+    print('📍 [DART_BOOT] Engine started. Initializing App...');
     AppInitializer.init();
   });
 }
@@ -93,10 +95,10 @@ class AppInitializer {
       }
 
       // 4. 데이터 로드 (Batch 최적화 버전)
-      print('📦 [AppInitializer] TemplateService.loadAllTemplatesAndExercises()...');
+      print('📍 [DART_BOOT] Loading templates and exercises...');
       await TemplateService.loadAllTemplatesAndExercises().timeout(
-        const Duration(seconds: 5),
-        onTimeout: () => print('⚠️ [AppInitializer] Template loading timed out'),
+        const Duration(seconds: 10),
+        onTimeout: () => print('⚠️ [DART_BOOT] Template loading slow/timeout'),
       );
       
       _isInitialized = true;
@@ -178,18 +180,7 @@ class _MyAppState extends State<MyApp> {
       ],
       supportedLocales: const [Locale('ko', 'KR'), Locale('en', 'US')],
       locale: const Locale('ko', 'KR'),
-      theme: ThemeData(
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFFFF9100),
-          secondary: Color(0xFFD4E157),
-          tertiary: Color(0xFF00BFA5),
-          surface: Color(0xFF121212),
-        ),
-        useMaterial3: true,
-        progressIndicatorTheme: const ProgressIndicatorThemeData(
-          color: Color(0xFFD4E157), // Neon Green (Highlight)
-        ),
-      ),
+      theme: AppTheme.darkTheme,
       // 초기화 전에는 Splash, 후에는 Router 표시
       home: _initialized 
           ? const InitialNavigationRouter() 
@@ -212,7 +203,7 @@ class InitialNavigationRouter extends StatelessWidget {
       future: AuthService().isLoggedIn(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(backgroundColor: Color(0xFF121212));
+          return const Scaffold(backgroundColor: AppColors.background);
         }
         return snapshot.data == true ? const MainNavigation() : const LoginScreen();
       },

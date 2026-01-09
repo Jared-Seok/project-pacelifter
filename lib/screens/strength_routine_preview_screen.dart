@@ -111,7 +111,7 @@ class _ExerciseVariationEditSheetState extends State<_ExerciseVariationEditSheet
                                     }
                                   });
                                 },
-                                selectedColor: Theme.of(context).colorScheme.primaryContainer,
+                                selectedColor: Theme.of(context).colorScheme.secondaryContainer,
                               );
                             }).toList(),
                           ),
@@ -139,7 +139,7 @@ class _ExerciseVariationEditSheetState extends State<_ExerciseVariationEditSheet
                               }
                             });
                           },
-                          selectedColor: Theme.of(context).colorScheme.primaryContainer,
+                          selectedColor: Theme.of(context).colorScheme.secondaryContainer,
                         );
                       }).toList(),
                     ),
@@ -411,8 +411,8 @@ class _StrengthRoutinePreviewScreenState extends State<StrengthRoutinePreviewScr
                     child: ElevatedButton(
                       onPressed: totalExercises > 0 ? _handleStartWorkout : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.primary,
-                        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                        backgroundColor: Theme.of(context).colorScheme.secondary,
+                        foregroundColor: Colors.black,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         elevation: 4,
                       ),
@@ -463,9 +463,9 @@ class _StrengthRoutinePreviewScreenState extends State<StrengthRoutinePreviewScr
                 ),
                 Container(
                   width: 40, height: 44,
-                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
                   padding: const EdgeInsets.all(6),
-                  child: SvgPicture.asset(exercise?.imagePath ?? 'assets/images/strength/lifter-icon.svg', colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.primary, BlendMode.srcIn)),
+                  child: SvgPicture.asset(exercise?.imagePath ?? 'assets/images/strength/lifter-icon.svg', colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.secondary, BlendMode.srcIn)),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -485,7 +485,7 @@ class _StrengthRoutinePreviewScreenState extends State<StrengthRoutinePreviewScr
                           (block.selectedVariations?.isNotEmpty == true)
                               ? block.selectedVariations!.map((v) => v.contains(': ') ? v.split(': ')[1] : v).join(', ')
                               : (block.name.contains(' (') ? block.name.substring(block.name.indexOf(' (') + 2, block.name.length - 1) : '기본 설정'),
-                          style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.primary),
+                          style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.secondary),
                         ),
                       ],
                     ),
@@ -535,6 +535,6 @@ class _StrengthRoutinePreviewScreenState extends State<StrengthRoutinePreviewScr
   }
 
   Widget _buildMiniStepBtn(IconData icon, VoidCallback onTap) {
-    return InkWell(onTap: onTap, borderRadius: BorderRadius.circular(8), child: Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8), child: Icon(icon, size: 14, color: Theme.of(context).colorScheme.primary)));
+    return InkWell(onTap: onTap, borderRadius: BorderRadius.circular(8), child: Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8), child: Icon(icon, size: 14, color: Theme.of(context).colorScheme.secondary)));
   }
 }

@@ -147,15 +147,15 @@ class _ExerciseConfigSheetState extends State<ExerciseConfigSheet> {
                                         }
                                       });
                                     },
-                                    selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                                    selectedColor: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2),
                                     side: BorderSide(
                                       color: isSelected 
-                                          ? Theme.of(context).colorScheme.primary 
+                                          ? Theme.of(context).colorScheme.secondary 
                                           : Colors.grey.shade700,
                                     ),
                                     labelStyle: TextStyle(
                                       color: isSelected 
-                                          ? Theme.of(context).colorScheme.primary
+                                          ? Theme.of(context).colorScheme.secondary
                                           : Theme.of(context).colorScheme.onSurface,
                                       fontSize: 12,
                                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -185,15 +185,15 @@ class _ExerciseConfigSheetState extends State<ExerciseConfigSheet> {
                                   }
                                 });
                               },
-                              selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                              selectedColor: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2),
                               side: BorderSide(
                                 color: isSelected 
-                                    ? Theme.of(context).colorScheme.primary 
+                                    ? Theme.of(context).colorScheme.secondary 
                                     : Colors.grey.shade700,
                               ),
                               labelStyle: TextStyle(
                                 color: isSelected 
-                                    ? Theme.of(context).colorScheme.primary
+                                    ? Theme.of(context).colorScheme.secondary
                                     : Theme.of(context).colorScheme.onSurface,
                                 fontSize: 12,
                                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -215,8 +215,8 @@ class _ExerciseConfigSheetState extends State<ExerciseConfigSheet> {
             ElevatedButton(
               onPressed: _isLoading ? null : _addToRoutine,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                backgroundColor: Theme.of(context).colorScheme.secondary,
+                foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),

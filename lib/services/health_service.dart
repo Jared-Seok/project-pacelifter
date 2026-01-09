@@ -3,6 +3,10 @@ import 'package:health/health.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class HealthService {
+  static final HealthService _instance = HealthService._internal();
+  factory HealthService() => _instance;
+  HealthService._internal();
+
   final Health health = Health();
 
   // 읽기 권한 데이터 타입 (P0 - MVP 필수)
@@ -113,6 +117,7 @@ class HealthService {
   }
 
   static const String _lastSyncKey = 'last_health_sync_time';
+  bool _isFetching = false;
 
   Future<DateTime?> getLastSyncTime() async {
     final prefs = await SharedPreferences.getInstance();
@@ -127,14 +132,20 @@ class HealthService {
 
   /// 마지막 동기화 시간 기반 증분 업데이트 지원
   Future<List<HealthDataPoint>> fetchWorkoutData({int days = 30, DateTime? lastSyncTime}) async {
-    final now = DateTime.now();
-    // 마지막 동기화 시간이 지정되지 않았다면 저장된 시간 확인
-    final effectiveLastSync = lastSyncTime ?? await getLastSyncTime();
-    final startDate = effectiveLastSync ?? now.subtract(Duration(days: days));
+    if (_isFetching) {
+      debugPrint('ℹ️ [HealthService] Fetch already in progress. Ignoring redundant request.');
+      return [];
+    }
+    
+    _isFetching = true;
+    try {
+      final now = DateTime.now();
+      // 마지막 동기화 시간이 지정되지 않았다면 저장된 시간 확인
+      final effectiveLastSync = lastSyncTime ?? await getLastSyncTime();
+      final startDate = effectiveLastSync ?? now.subtract(Duration(days: days));
 
-    bool granted = await requestAuthorization();
-    if (granted) {
-      try {
+      bool granted = await requestAuthorization();
+      if (granted) {
         debugPrint('🔄 [HealthService] Fetching workouts from $startDate to $now');
         List<HealthDataPoint> healthData = await health.getHealthDataFromTypes(
           types: [HealthDataType.WORKOUT],
@@ -149,12 +160,14 @@ class HealthService {
         );
 
         return health.removeDuplicates(healthData);
-      } catch (e) {
-        debugPrint('❌ Error fetching workout data: $e');
+      } else {
         return [];
       }
-    } else {
+    } catch (e) {
+      debugPrint('❌ Error fetching workout data: $e');
       return [];
+    } finally {
+      _isFetching = false;
     }
   }
 

@@ -43,10 +43,10 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
 
   Color _getCategoryColor(String category, BuildContext context) {
     switch (category) {
-      case 'Strength': return Theme.of(context).colorScheme.primary; // Orange
+      case 'Strength': return Theme.of(context).colorScheme.secondary; // Orange
       case 'Endurance': return Theme.of(context).colorScheme.tertiary; // Deep Teal
-      case 'Hybrid': return Theme.of(context).colorScheme.secondary; // Neon Green
-      default: return Theme.of(context).colorScheme.secondary;
+      case 'Hybrid': return Theme.of(context).colorScheme.primary; // Neon Green
+      default: return Theme.of(context).colorScheme.primary;
     }
   }
 
@@ -112,7 +112,7 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
                   children: [
                     Expanded(child: _buildStatItem(context, '총 운동', '${widget.unifiedWorkouts.length}회', null, svgPath: 'assets/images/pllogo.svg', iconSize: 36, color: Theme.of(context).colorScheme.secondary)),
                     Expanded(child: _buildStatItem(context, 'Endurance', '$enduranceCount회', null, svgPath: 'assets/images/endurance/runner-icon.svg', color: Theme.of(context).colorScheme.tertiary)),
-                    Expanded(child: _buildStatItem(context, 'Strength', '$strengthCount회', null, svgPath: 'assets/images/strength/lifter-icon.svg', color: Theme.of(context).colorScheme.primary)),
+                    Expanded(child: _buildStatItem(context, 'Strength', '$strengthCount회', null, svgPath: 'assets/images/strength/lifter-icon.svg', color: Theme.of(context).colorScheme.secondary)),
                     if (totalDistance > 0 || totalTime > Duration.zero)
                       Expanded(child: _buildToggleableStatItem(context, totalDistance, totalTime)),
                   ],
@@ -144,7 +144,7 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
   }
 
   Widget _buildStatItem(BuildContext context, String label, String value, IconData? icon, {String? svgPath, Color? color, double? iconSize}) {
-    final displayColor = color ?? Theme.of(context).colorScheme.primary;
+    final displayColor = color ?? Theme.of(context).colorScheme.secondary;
     final size = iconSize ?? 32.0;
     return Column(
       children: [
@@ -220,8 +220,8 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
     final Color iconColor;
 
     if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
-      backgroundColor = Theme.of(context).colorScheme.primary.withValues(alpha: 0.2);
-      iconColor = Theme.of(context).colorScheme.primary;
+      backgroundColor = Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2);
+      iconColor = Theme.of(context).colorScheme.secondary;
     } else {
       backgroundColor = color.withValues(alpha: 0.2);
       iconColor = color;

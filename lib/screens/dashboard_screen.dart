@@ -806,7 +806,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 width: 40,
                 height: 40,
                 colorFilter: ColorFilter.mode(
-                  Theme.of(context).colorScheme.secondary,
+                  Theme.of(context).colorScheme.primary,
                   BlendMode.srcIn,
                 ),
               ),
@@ -815,7 +815,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   style: GoogleFonts.anton(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.secondary)),
+                      color: Theme.of(context).colorScheme.primary)),
             ],
           ),
           Row(
@@ -900,11 +900,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Expanded(
                       child: Column(
                         children: [
-                          _buildScoreTile('Conditioning', _scores!.conditioningScore, Theme.of(context).colorScheme.secondary),
+                          _buildScoreTile('Strength', _scores!.strengthScore, Theme.of(context).colorScheme.secondary),
                           const Divider(height: 12),
                           _buildScoreTile('Endurance', _scores!.enduranceScore, Theme.of(context).colorScheme.tertiary),
                           const Divider(height: 12),
-                          _buildScoreTile('Strength', _scores!.strengthScore, Theme.of(context).colorScheme.primary),
+                          _buildScoreTile('Conditioning', _scores!.conditioningScore, Theme.of(context).colorScheme.primary),
                         ],
                       ),
                     ),
@@ -1419,7 +1419,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
+                    color: Theme.of(context).colorScheme.secondary,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -1428,7 +1428,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   width: 36,
                   height: 36,
                   colorFilter: ColorFilter.mode(
-                    Theme.of(context).colorScheme.primary,
+                    Theme.of(context).colorScheme.secondary,
                     BlendMode.srcIn,
                   ),
                 ),
@@ -1604,7 +1604,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             width: 46,
             height: 46,
             colorFilter: ColorFilter.mode(
-              Theme.of(context).colorScheme.primary,
+              Theme.of(context).colorScheme.secondary,
               BlendMode.srcIn,
             ),
           ),
@@ -1616,7 +1616,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.primary))
+                  color: Theme.of(context).colorScheme.secondary))
         ]))
       ]),
       const SizedBox(height: 16),
@@ -1813,8 +1813,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final Color iconColor;
 
     if (upperType.contains('CORE') || upperType.contains('FUNCTIONAL')) {
-      backgroundColor = Theme.of(context).colorScheme.primary.withValues(alpha: 0.2);
-      iconColor = Theme.of(context).colorScheme.primary;
+      backgroundColor = Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2);
+      iconColor = Theme.of(context).colorScheme.secondary;
     } else {
       backgroundColor = color.withValues(alpha: 0.2);
       iconColor = color;
@@ -1935,13 +1935,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Color _getCategoryColor(String category) {
     switch (category) {
       case 'Strength':
-        return Theme.of(context).colorScheme.primary; // Orange
+        return Theme.of(context).colorScheme.secondary; // Strong Orange
       case 'Endurance':
-        return Theme.of(context).colorScheme.tertiary; // Deep Teal
+        return Theme.of(context).colorScheme.tertiary; // Teal Blue
       case 'Hybrid':
-        return Theme.of(context).colorScheme.secondary; // Neon Green
+        return Theme.of(context).colorScheme.primary; // Neon Green
       default:
-        return Theme.of(context).colorScheme.secondary;
+        return Theme.of(context).colorScheme.primary;
     }
   }
 

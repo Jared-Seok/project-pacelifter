@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:pacelifter/services/native_activation_service.dart';
 import 'endurance_environment_screen.dart';
 import 'strength_template_screen.dart';
 import 'hybrid_template_screen.dart';
@@ -19,6 +20,10 @@ enum WorkoutType { none, endurance, strength, hybrid }
 
 class _WorkoutStartScreenState extends State<WorkoutStartScreen> {
   void _selectWorkoutType(WorkoutType type) {
+    if (type == WorkoutType.endurance || type == WorkoutType.hybrid) {
+      NativeActivationService().activateGoogleMaps();
+    }
+    
     if (type == WorkoutType.endurance) {
       Navigator.push(
         context,
@@ -78,7 +83,7 @@ class _WorkoutStartScreenState extends State<WorkoutStartScreen> {
                       title: 'Strength',
                       subtitle: '웨이트 & 근력',
                       iconPath: 'assets/images/strength/lifter-icon.svg',
-                      color: Theme.of(context).colorScheme.primary, // Orange
+                      color: Theme.of(context).colorScheme.secondary, // Orange
                       backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                     ),
                   ),
@@ -94,7 +99,7 @@ class _WorkoutStartScreenState extends State<WorkoutStartScreen> {
                 title: 'Hybrid',
                 subtitle: 'Endurance + Strength\n복합 훈련',
                 iconPath: 'assets/images/pllogo.svg',
-                color: Theme.of(context).colorScheme.secondary, // Neon Green
+                color: Theme.of(context).colorScheme.primary, // Neon Green
                 backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                 iconSize: 56,
                 isHorizontal: true, // 가로형 레이아웃

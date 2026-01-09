@@ -62,9 +62,6 @@ class TrianglePerformanceChartPainter extends CustomPainter {
     final dataScale2 = minScale + (enduranceScore / 100) * (maxScale - minScale);    // 좌측 하단
     final dataScale3 = minScale + (strengthScore / 100) * (maxScale - minScale);     // 우측 하단
 
-    debugPrint('📊 [Triangle Chart] Scores: C=$conditioningScore, E=$enduranceScore, S=$strengthScore');
-    debugPrint('📊 [Triangle Chart] Scales: C=${dataScale1.toStringAsFixed(3)}, E=${dataScale2.toStringAsFixed(3)}, S=${dataScale3.toStringAsFixed(3)}');
-
     final dataPoint1 = _getScaledPoint(center, topVertex, dataScale1);
     final dataPoint2 = _getScaledPoint(center, bottomLeftVertex, dataScale2);
     final dataPoint3 = _getScaledPoint(center, bottomRightVertex, dataScale3);

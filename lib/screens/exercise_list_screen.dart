@@ -353,7 +353,7 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
+                    color: Theme.of(context).colorScheme.secondary,
                   ),
                 ),
               ),
@@ -394,14 +394,13 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
               width: 66,
               height: 66,
               colorFilter: ColorFilter.mode(
-                Theme.of(context).colorScheme.primary,
+                Theme.of(context).colorScheme.secondary,
                 BlendMode.srcIn,
               ),
             )
           : Container(
-              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: SvgPicture.asset(
@@ -409,7 +408,7 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                 width: 40,
                 height: 40,
                 colorFilter: ColorFilter.mode(
-                  Theme.of(context).colorScheme.primary,
+                  Theme.of(context).colorScheme.secondary,
                   BlendMode.srcIn,
                 ),
               ),
@@ -424,7 +423,7 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
         ),
         trailing: IconButton(
           icon: const Icon(Icons.add_circle_outline),
-          color: Theme.of(context).colorScheme.primary,
+          color: Theme.of(context).colorScheme.secondary,
           onPressed: () => _onExerciseTap(exercise),
         ),
         onTap: () => _onExerciseTap(exercise),
@@ -494,7 +493,7 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                                   color: Theme.of(context).colorScheme.surface,
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
-                                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
+                                    color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.8),
                                     width: 2.5,
                                   ),
                                 ),
@@ -505,7 +504,7 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                                       imagePath ?? 'assets/images/strength/lifter-icon.svg',
                                       fit: BoxFit.contain,
                                       colorFilter: ColorFilter.mode(
-                                        Theme.of(context).colorScheme.primary,
+                                        Theme.of(context).colorScheme.secondary,
                                         BlendMode.srcIn,
                                       ),
                                     ),
@@ -547,7 +546,7 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                   color: hasSelection 
-                                      ? Theme.of(context).colorScheme.primary 
+                                      ? Theme.of(context).colorScheme.secondary 
                                       : Colors.grey,
                                 ),
                               ),

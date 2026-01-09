@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:pacelifter/services/native_activation_service.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
@@ -66,6 +67,7 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
 
     // 맵이 필요한 환경인지 확인 (Outdoor, Track)
     if (_shouldShowMap()) {
+      NativeActivationService().activateGoogleMaps();
       _getCurrentLocation();
     } else {
       _isLoadingLocation = false;

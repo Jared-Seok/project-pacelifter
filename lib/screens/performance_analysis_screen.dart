@@ -48,7 +48,7 @@ class PerformanceAnalysisScreen extends StatelessWidget {
                   _buildCategoryAnalysis(
                     context, 
                     title: '근력 분석 (Strength)',
-                    color: Theme.of(context).colorScheme.primary,
+                    color: Theme.of(context).colorScheme.secondary,
                     score: scores.strengthScore,
                     metricLabel: '최근 7일 누적 볼륨',
                     metricValue: '${scores.totalVolumeTon.toStringAsFixed(2)} t',
@@ -91,7 +91,7 @@ class PerformanceAnalysisScreen extends StatelessWidget {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Theme.of(context).colorScheme.secondary.withValues(alpha: 0.15),
+                    Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                     Theme.of(context).colorScheme.surface,
                   ],
                 ),
@@ -243,7 +243,7 @@ class PerformanceAnalysisScreen extends StatelessWidget {
               children: [
                 _buildSimpleBar('지구력', scores.enduranceScore, Theme.of(context).colorScheme.tertiary),
                 const SizedBox(width: 12),
-                _buildSimpleBar('근력', scores.strengthScore, Theme.of(context).colorScheme.primary),
+                _buildSimpleBar('근력', scores.strengthScore, Theme.of(context).colorScheme.secondary),
               ],
             ),
           ],

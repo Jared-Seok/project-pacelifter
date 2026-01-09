@@ -378,7 +378,7 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen>
                     width: 66,
                     height: 66,
                     colorFilter: ColorFilter.mode(
-                      Theme.of(context).colorScheme.primary,
+                      Theme.of(context).colorScheme.secondary,
                       BlendMode.srcIn,
                     ),
                   )
@@ -387,7 +387,7 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen>
                     decoration: BoxDecoration(
                       color: Theme.of(
                         context,
-                      ).colorScheme.primary.withValues(alpha: 0.1),
+                      ).colorScheme.secondary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: SvgPicture.asset(
@@ -395,7 +395,7 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen>
                       width: 40,
                       height: 40,
                       colorFilter: ColorFilter.mode(
-                        Theme.of(context).colorScheme.primary,
+                        Theme.of(context).colorScheme.secondary,
                         BlendMode.srcIn,
                       ),
                     ),
@@ -475,13 +475,13 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen>
             leading: CircleAvatar(
               backgroundColor: Theme.of(
                 context,
-              ).colorScheme.primary.withValues(alpha: 0.1),
+              ).colorScheme.secondary.withValues(alpha: 0.1),
               child: SvgPicture.asset(
                 'assets/images/strength/lifter-icon.svg',
                 width: 24,
                 height: 24,
                 colorFilter: ColorFilter.mode(
-                  Theme.of(context).colorScheme.primary,
+                  Theme.of(context).colorScheme.secondary,
                   BlendMode.srcIn,
                 ),
               ),
@@ -493,7 +493,7 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen>
             subtitle: Text('${routine.phases.first.blocks.length}개 운동'),
             trailing: IconButton(
               icon: const Icon(Icons.play_arrow),
-              color: Theme.of(context).colorScheme.primary,
+              color: Theme.of(context).colorScheme.secondary,
               onPressed: () {
                 Navigator.push(
                   context,
@@ -554,7 +554,7 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen>
           ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+            color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2),
             width: 1,
           ),
         ),
@@ -648,9 +648,7 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen>
                                   ).colorScheme.surface,
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
-                                    color: isLast 
-                                      ? Theme.of(context).colorScheme.secondary
-                                      : Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+                                    color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.5),
                                     width: isLast ? 3.0 : 2.0,
                                   ),
                                 ),
@@ -662,7 +660,7 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen>
                                           'assets/images/strength/lifter-icon.svg',
                                       fit: BoxFit.contain,
                                       colorFilter: ColorFilter.mode(
-                                        isLast ? Theme.of(context).colorScheme.secondary : Theme.of(context).colorScheme.primary,
+                                        Theme.of(context).colorScheme.secondary,
                                         BlendMode.srcIn,
                                       ),
                                     ),
@@ -709,7 +707,7 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen>
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                   color: hasSelection
-                                      ? Theme.of(context).colorScheme.primary
+                                      ? Theme.of(context).colorScheme.secondary
                                       : Colors.grey,
                                 ),
                               ),
@@ -728,10 +726,8 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen>
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Theme.of(
                               context,
-                            ).colorScheme.primary,
-                            foregroundColor: Theme.of(
-                              context,
-                            ).colorScheme.onPrimary,
+                            ).colorScheme.secondary,
+                            foregroundColor: Colors.black,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 24,
                               vertical: 12,

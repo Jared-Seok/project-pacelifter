@@ -284,8 +284,8 @@ class _StrengthTrackingScreenState extends State<StrengthTrackingScreen> {
             height: 6,
             decoration: BoxDecoration(
               color: isCurrent 
-                ? Theme.of(context).colorScheme.primary 
-                : (isCompleted ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.4) : Colors.grey[800]),
+                ? Theme.of(context).colorScheme.secondary 
+                : (isCompleted ? Theme.of(context).colorScheme.secondary.withValues(alpha: 0.4) : Colors.grey[800]),
               borderRadius: BorderRadius.circular(3),
             ),
           );
@@ -312,7 +312,7 @@ class _StrengthTrackingScreenState extends State<StrengthTrackingScreen> {
           // 1. 현재 운동 정보 (상단 고정)
           Text(
             'SET ${_currentSetIndex + 1} OF ${sets.length}',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary, letterSpacing: 1.5),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.secondary, letterSpacing: 1.5),
           ),
           const SizedBox(height: 8),
           Text(
@@ -329,7 +329,7 @@ class _StrengthTrackingScreenState extends State<StrengthTrackingScreen> {
                 const Text('SET TIMER', style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)),
                 Text(
                   _formatDurationShort(_setElapsed),
-                  style: TextStyle(fontSize: 100, fontWeight: FontWeight.w900, fontFamily: 'monospace', color: Theme.of(context).colorScheme.primary),
+                  style: TextStyle(fontSize: 100, fontWeight: FontWeight.w900, fontFamily: 'monospace', color: Theme.of(context).colorScheme.secondary),
                 ),
               ],
             )
@@ -398,7 +398,7 @@ class _StrengthTrackingScreenState extends State<StrengthTrackingScreen> {
           const SizedBox(height: 24),
           const Divider(indent: 40, endIndent: 40),
           const SizedBox(height: 16),
-          Text('다음 세트 편집', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+          Text('다음 세트 편집', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.secondary)),
           const SizedBox(height: 12),
           _buildExerciseHeader(exercise, nextBlock, small: true),
           const SizedBox(height: 16),
@@ -449,9 +449,9 @@ class _StrengthTrackingScreenState extends State<StrengthTrackingScreen> {
         Container(
           width: small ? 50 : 80, height: small ? 50 : 80,
           padding: EdgeInsets.all(small ? 10 : 16),
-          decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1), shape: BoxShape.circle),
+          decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1), shape: BoxShape.circle),
           child: SvgPicture.asset(exercise?.imagePath ?? 'assets/images/strength/lifter-icon.svg', 
-            colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.primary, BlendMode.srcIn)),
+            colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.secondary, BlendMode.srcIn)),
         ),
         SizedBox(height: small ? 10 : 20),
         Text(exercise?.nameKo ?? block.name.split(' (')[0], 
@@ -459,7 +459,7 @@ class _StrengthTrackingScreenState extends State<StrengthTrackingScreen> {
         if (!small) ...[
           const SizedBox(height: 6),
           Text(block.name.contains(' (') ? block.name.substring(block.name.indexOf(' (') + 1, block.name.length - 1) : (block.selectedVariations?.join(', ') ?? '기본 설정'),
-            style: TextStyle(fontSize: 15, color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w500)),
+            style: TextStyle(fontSize: 15, color: Theme.of(context).colorScheme.secondary, fontWeight: FontWeight.w500)),
         ]
       ],
     );
@@ -556,7 +556,7 @@ class _StrengthTrackingScreenState extends State<StrengthTrackingScreen> {
       case WorkoutStatus.ready: label = "세트 시작"; onPressed = _startSet; break;
       case WorkoutStatus.active: label = "세트 완료"; onPressed = _completeSet; color = Colors.green; break;
       case WorkoutStatus.rest: label = "휴식 건너뛰기"; onPressed = () => setState(() { _restTimer?.cancel(); _goToNextSet(); }); color = Colors.orange; break;
-      case WorkoutStatus.finished: label = "기록 저장 및 종료"; onPressed = _finishWorkout; color = Theme.of(context).colorScheme.primary; break;
+      case WorkoutStatus.finished: label = "기록 저장 및 종료"; onPressed = _finishWorkout; color = Theme.of(context).colorScheme.secondary; break;
     }
 
     return Container(
@@ -603,7 +603,7 @@ class StrengthWorkoutSummaryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeColor = Theme.of(context).colorScheme.primary;
+    final themeColor = Theme.of(context).colorScheme.secondary;
     final totalVol = session.totalVolume ?? 0;
 
     return Scaffold(

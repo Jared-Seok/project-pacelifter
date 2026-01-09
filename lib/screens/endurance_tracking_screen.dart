@@ -10,6 +10,7 @@ import '../widgets/heart_rate_monitor_widget.dart';
 import 'tracking/components/free_run_body.dart';
 import 'tracking/components/interval_tracking_body.dart';
 import 'tracking/components/steady_state_tracking_body.dart';
+import 'package:pacelifter/services/native_activation_service.dart';
 import 'dart:async';
 
 /// 실시간 운동 추적 화면
@@ -41,6 +42,7 @@ class _EnduranceTrackingScreenState extends State<EnduranceTrackingScreen> with 
   @override
   void initState() {
     super.initState();
+    _activateMaps();
     _service = Provider.of<WorkoutTrackingService>(context, listen: false);
 
     // 템플릿 모드 확인
@@ -106,6 +108,10 @@ class _EnduranceTrackingScreenState extends State<EnduranceTrackingScreen> with 
         }
       });
     });
+  }
+
+  Future<void> _activateMaps() async {
+    await NativeActivationService().activateGoogleMaps();
   }
 
   @override

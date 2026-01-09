@@ -13,6 +13,7 @@ import 'package:pacelifter/models/workout_data_wrapper.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:pacelifter/models/sessions/route_point.dart';
 import 'package:pacelifter/utils/workout_ui_utils.dart';
+import 'package:pacelifter/services/native_activation_service.dart';
 import 'dart:math';
 
 /// 운동 세부 정보 화면
@@ -66,6 +67,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   }
 
   Future<void> _initializeData() async {
+    // Ensure Google Maps is activated on-demand
+    await NativeActivationService().activateGoogleMaps();
+
     // Fetch linked session
     await _fetchLinkedSession();
 
@@ -763,13 +767,13 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                  color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: SvgPicture.asset(
                   'assets/images/strength/lifter-icon.svg',
                   width: 24, height: 24,
-                  colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.primary, BlendMode.srcIn),
+                  colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.secondary, BlendMode.srcIn),
                 ),
               ),
               title: Text(record.exerciseName, style: const TextStyle(fontWeight: FontWeight.bold)),

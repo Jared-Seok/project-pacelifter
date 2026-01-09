@@ -193,11 +193,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Color _getDayColor(int type, ColorScheme colorScheme) {
     switch (type) {
       case 1: // Strength
-        return colorScheme.primary; // Orange
+        return colorScheme.secondary; // Orange
       case 2: // Endurance
         return colorScheme.tertiary; // Deep Teal
       case 3: // Hybrid
-        return colorScheme.secondary; // Neon Green
+        return colorScheme.primary; // Neon Green
       default:
         return Colors.transparent;
     }
@@ -275,7 +275,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         ),
                       if (stats.strengthDays > 0)
                         PieChartSectionData(
-                          color: colorScheme.primary, // Orange
+                          color: colorScheme.secondary, // Orange
                           value: stats.strengthDays.toDouble(),
                           title: '',
                           radius: 20,
@@ -283,7 +283,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         ),
                       if (stats.hybridDays > 0)
                         PieChartSectionData(
-                          color: colorScheme.secondary, // Neon Green
+                          color: colorScheme.primary, // Neon Green
                           value: stats.hybridDays.toDouble(),
                           title: '',
                           radius: 20,
@@ -310,9 +310,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   children: [
                     _buildStatRow('Endurance', stats.enduranceDays, colorScheme.tertiary),
                     const SizedBox(height: 6),
-                    _buildStatRow('Strength', stats.strengthDays, colorScheme.primary),
+                    _buildStatRow('Strength', stats.strengthDays, colorScheme.secondary),
                     const SizedBox(height: 6),
-                    _buildStatRow('Hybrid', stats.hybridDays, colorScheme.secondary),
+                    _buildStatRow('Hybrid', stats.hybridDays, colorScheme.primary),
                     const SizedBox(height: 6),
                     _buildStatRow('Rest Day', stats.restDays, colorScheme.onSurface.withValues(alpha: 0.5), isRest: true),
                   ],
@@ -544,8 +544,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     
     // Core/Functional은 특별 색상 적용 (WorkoutUIUtils와 일관성 유지)
     if (combinedName.contains('CORE') || combinedName.contains('FUNCTIONAL')) {
-      backgroundColor = Theme.of(context).colorScheme.primary.withValues(alpha: 0.2);
-      iconColor = Theme.of(context).colorScheme.primary; 
+      backgroundColor = Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2);
+      iconColor = Theme.of(context).colorScheme.secondary; 
     } else {
       backgroundColor = categoryColor.withValues(alpha: 0.2);
       iconColor = categoryColor;
@@ -602,13 +602,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Color _getCategoryColor(String category) {
     switch (category) {
       case 'Strength':
-        return Theme.of(context).colorScheme.primary; // Orange
+        return Theme.of(context).colorScheme.secondary; // Orange
       case 'Endurance':
         return Theme.of(context).colorScheme.tertiary; // Deep Teal
       case 'Hybrid':
-        return Theme.of(context).colorScheme.secondary; // Neon Green
+        return Theme.of(context).colorScheme.primary; // Neon Green
       default:
-        return Theme.of(context).colorScheme.secondary;
+        return Theme.of(context).colorScheme.primary;
     }
   }
 }
