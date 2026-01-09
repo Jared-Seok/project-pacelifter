@@ -7,7 +7,6 @@ class WorkoutItemCard extends StatelessWidget {
   final WorkoutDataWrapper wrapper;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
-  final bool activityOnly;
   final EdgeInsets? margin;
 
   const WorkoutItemCard({
@@ -15,17 +14,15 @@ class WorkoutItemCard extends StatelessWidget {
     required this.wrapper,
     this.onTap,
     this.onLongPress,
-    this.activityOnly = false,
     this.margin,
   });
 
   @override
   Widget build(BuildContext context) {
-    // 중앙 엔진으로부터 가공된 표시 정보 획득
+    // 중앙 엔진으로부터 가공된 표시 정보 획득 (정책이 강제됨)
     final info = WorkoutUIUtils.getWorkoutDisplayInfo(
       context, 
       wrapper, 
-      activityOnly: activityOnly,
     );
 
     return Card(

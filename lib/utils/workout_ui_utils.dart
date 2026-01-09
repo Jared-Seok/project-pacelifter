@@ -11,9 +11,8 @@ class WorkoutUIUtils {
   /// UI 표시를 위한 가공된 통합 정보 반환 (대시보드 표준 로직)
   static WorkoutDisplayInfo getWorkoutDisplayInfo(
     BuildContext context,
-    WorkoutDataWrapper wrapper, {
-    bool activityOnly = false,
-  }) {
+    WorkoutDataWrapper wrapper,
+  ) {
     String type = 'UNKNOWN';
     double distance = 0.0;
     String workoutCategory = 'Unknown';
@@ -44,12 +43,8 @@ class WorkoutUIUtils {
     final upperType = type.toUpperCase();
     final combinedName = (upperType + (session?.templateName ?? '')).toUpperCase();
 
-    // 3. 표시 이름 결정 (한국어 포맷팅 및 템플릿 우선순위 적용)
-    String displayName = formatWorkoutType(
-      type, 
-      templateName: session?.templateName, 
-      activityOnly: activityOnly,
-    );
+    // 3. 표시 이름 결정 (정책의 중앙화: 제목은 항상 활동명으로 고정)
+    String displayName = formatWorkoutType(type);
 
     // 4. 아이콘 및 배경 색상 결정 (Core/Functional 특수 케이스 포함)
     final Color backgroundColor;
@@ -206,67 +201,33 @@ class WorkoutUIUtils {
     'FLEXIBILITY': '스트레칭',
   };
 
-  /// 운동 타입 이름 포맷팅 (한국어 전면 도입)
-  static String formatWorkoutType(String type, {String? templateName, bool activityOnly = false}) {
-    // 1. 표시할 기본 이름 결정
-    String baseName = (templateName != null && templateName.trim().isNotEmpty) 
-        ? templateName 
-        : type.toUpperCase().replaceAll('WORKOUT_ACTIVITY_TYPE_', '');
-
-    final upper = baseName.toUpperCase();
+  /// 운동 타입 이름 포맷팅 (한국어 전면 도입 - 정책의 중앙화 버전)
+  static String formatWorkoutType(String type) {
     final upperType = type.toUpperCase();
     
-    // 2. 특정 키워드 한국어 매핑 (템플릿 이름이 영문인 경우 및 코어 우선순위 해결)
-    // ⚠️ 1순위: 코어 강화 (종류 불문 코어 키워드 포함 시)
-    if (upper.contains('CORE') || upper.contains('ABDOMINAL') || upper.contains('코어')) {
+    // ⚠️ 1순위: 코어 강화
+    if (upperType.contains('CORE') || upperType.contains('ABDOMINAL')) {
       return '코어 강화 운동';
     }
 
-    // ⚠️ 2순위: 러닝 (Endurance 계열) - activityOnly일 경우 세부 템플릿명 숨김
-    if (upperType.contains('RUN') || upperType.contains('TRAIL') || upperType.contains('TREADMILL') ||
-        upper.contains('RUN') || upper.contains('러닝') || upper.contains('TRAIL') || 
-        upper.contains('LSD') || upper.contains('INTERVAL') || upper.contains('인터벌') || 
-        upper.contains('TEMPO') || upper.contains('템포')) {
-      
-      if (activityOnly) return '러닝';
-      
-      // 세부 템플릿명 매핑
-      if (upper.contains('TREADMILL') || upper.contains('INDOOR RUN')) return '실내 러닝';
-      if (upper.contains('TRAIL') || upper.contains('트레일')) return '트레일 러닝';
-      if (upper.contains('LSD')) return 'LSD (장거리)';
-      if (upper.contains('INTERVAL') || upper.contains('인터벌')) return '인터벌';
-      if (upper.contains('TEMPO') || upper.contains('템포')) return '템포';
+    // ⚠️ 2순위: 러닝 (Endurance 계열)
+    if (upperType.contains('RUN') || upperType.contains('TRAIL') || upperType.contains('TREADMILL')) {
       return '러닝';
     }
 
     // ⚠️ 3순위: 웨이트 트레이닝
-    if (upperType.contains('STRENGTH') || upperType.contains('WEIGHT') || 
-        upper.contains('STRENGTH') || upper.contains('WEIGHT') || upper.contains('웨이트') || upper.contains('근력')) {
+    if (upperType.contains('STRENGTH') || upperType.contains('WEIGHT')) {
       return '웨이트 트레이닝';
     }
 
-    // 3. 한국어 매핑 테이블 확인
+    // 4. 한국어 매핑 테이블 확인
     if (_activityTypeToKorean.containsKey(upperType)) {
       return _activityTypeToKorean[upperType]!;
     }
-    if (_activityTypeToKorean.containsKey(upper)) {
-      return _activityTypeToKorean[upper]!;
-    }
 
-    // 4. 매핑 테이블 부분 일치 확인
-    for (var entry in _activityTypeToKorean.entries) {
-      if (upper.contains(entry.key)) {
-        return entry.value;
-      }
-    }
-    
     // 5. 기본 변환 logic (영문일 경우만 포맷팅)
-    if (RegExp(r'[a-zA-Z]').hasMatch(baseName)) {
-      String name = upper.replaceAll('_', ' ');
-      return name[0].toUpperCase() + name.substring(1).toLowerCase();
-    }
-    
-    return baseName;
+    String name = upperType.replaceAll('WORKOUT_ACTIVITY_TYPE_', '').replaceAll('_', ' ');
+    return name[0].toUpperCase() + name.substring(1).toLowerCase();
   }
 
   /// 화면 상단에 세련된 알림 표시 (Top Toast)

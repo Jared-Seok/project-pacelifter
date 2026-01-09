@@ -1846,7 +1846,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         WorkoutItemCard(
           wrapper: wrapper,
-          activityOnly: true, // 대시보드 피드 요구사항
           onTap: () async {
             await Navigator.of(context).push(
               MaterialPageRoute(
