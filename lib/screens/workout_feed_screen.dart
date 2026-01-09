@@ -110,62 +110,104 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
   }
 
   void _showMonthYearPicker() {
+    final now = DateTime.now();
+    // 데이터가 있는 가장 오래된 연도 추출
+    int startYear = now.year;
+    if (widget.allWorkouts.isNotEmpty) {
+      for (var w in widget.allWorkouts) {
+        if (w.dateFrom.year < startYear) startYear = w.dateFrom.year;
+      }
+    }
+    
+    // 연도 목록 생성 (최근 순)
+    final List<int> years = List.generate(now.year - startYear + 1, (index) => now.year - index);
+    
     showCupertinoModalPopup(
       context: context,
       builder: (context) {
-        int selectedYear = _currentBaseDate.year;
-        int selectedMonth = _currentBaseDate.month;
-        return Container(
-          height: 300,
-          color: Theme.of(context).colorScheme.surface,
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        int tempYear = _currentBaseDate.year;
+        int tempMonth = _currentBaseDate.month;
+        
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            // 현재 선택된 연도에 따라 가능한 월 목록 생성 (미래 제외)
+            int maxMonth = (tempYear == now.year) ? now.month : 12;
+            final List<int> months = List.generate(maxMonth, (index) => maxMonth - index);
+            if (!months.contains(tempMonth)) tempMonth = months.first;
+
+            return Container(
+              height: 300,
+              color: Theme.of(context).colorScheme.surface,
+              child: Column(
                 children: [
-                  CupertinoButton(child: const Text('취소'), onPressed: () => Navigator.pop(context)),
-                  CupertinoButton(
-                    child: const Text('확인'),
-                    onPressed: () {
-                      setState(() {
-                        _currentBaseDate = DateTime(selectedYear, selectedMonth);
-                        _calculateFilteredData();
-                      });
-                      Navigator.pop(context);
-                    },
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      CupertinoButton(child: const Text('취소'), onPressed: () => Navigator.pop(context)),
+                      CupertinoButton(
+                        child: const Text('확인'),
+                        onPressed: () {
+                          setState(() {
+                            _currentBaseDate = DateTime(tempYear, tempMonth);
+                            _calculateFilteredData();
+                          });
+                          Navigator.pop(context);
+                        },
+                      ),
+                    ],
+                  ),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        // 연도 선택
+                        Expanded(
+                          child: CupertinoPicker(
+                            scrollController: FixedExtentScrollController(initialItem: years.indexOf(tempYear)),
+                            itemExtent: 40,
+                            onSelectedItemChanged: (index) {
+                              setModalState(() {
+                                tempYear = years[index];
+                              });
+                            },
+                            children: years.map((y) => Center(child: Text('${y}년'))).toList(),
+                          ),
+                        ),
+                        // 월 선택
+                        Expanded(
+                          child: CupertinoPicker(
+                            key: ValueKey('month_picker_$tempYear'), // 연도 변경 시 월 목록 갱신 강제
+                            scrollController: FixedExtentScrollController(initialItem: months.indexOf(tempMonth)),
+                            itemExtent: 40,
+                            onSelectedItemChanged: (index) {
+                              setModalState(() {
+                                tempMonth = months[index];
+                              });
+                            },
+                            children: months.map((m) => Center(child: Text('${m}월'))).toList(),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
-              Expanded(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: CupertinoPicker(
-                        scrollController: FixedExtentScrollController(initialItem: selectedYear - 2020),
-                        itemExtent: 40,
-                        onSelectedItemChanged: (index) => selectedYear = 2020 + index,
-                        children: List.generate(11, (index) => Center(child: Text('${2020 + index}년'))),
-                      ),
-                    ),
-                    Expanded(
-                      child: CupertinoPicker(
-                        scrollController: FixedExtentScrollController(initialItem: selectedMonth - 1),
-                        itemExtent: 40,
-                        onSelectedItemChanged: (index) => selectedMonth = index + 1,
-                        children: List.generate(12, (index) => Center(child: Text('${index + 1}월'))),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
   }
 
   void _showYearPicker() {
+    final now = DateTime.now();
+    int startYear = now.year;
+    if (widget.allWorkouts.isNotEmpty) {
+      for (var w in widget.allWorkouts) {
+        if (w.dateFrom.year < startYear) startYear = w.dateFrom.year;
+      }
+    }
+    final List<int> years = List.generate(now.year - startYear + 1, (index) => now.year - index);
+
     showCupertinoModalPopup(
       context: context,
       builder: (context) {
@@ -193,10 +235,10 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
               ),
               Expanded(
                 child: CupertinoPicker(
-                  scrollController: FixedExtentScrollController(initialItem: selectedYear - 2020),
+                  scrollController: FixedExtentScrollController(initialItem: years.indexOf(selectedYear)),
                   itemExtent: 40,
-                  onSelectedItemChanged: (index) => selectedYear = 2020 + index,
-                  children: List.generate(11, (index) => Center(child: Text('${2020 + index}년'))),
+                  onSelectedItemChanged: (index) => selectedYear = years[index],
+                  children: years.map((y) => Center(child: Text('${y}년'))).toList(),
                 ),
               ),
             ],
