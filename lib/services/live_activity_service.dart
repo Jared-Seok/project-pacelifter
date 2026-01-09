@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:async';
+import 'package:flutter/services.dart';
 import 'package:live_activities/live_activities.dart';
 
 /// 실시간 현황(Live Activities - iOS) 및 알림 트래킹(Android) 서비스
@@ -9,6 +10,7 @@ class LiveActivityService {
   LiveActivityService._internal();
 
   final _liveActivitiesPlugin = LiveActivities();
+  static const _controlChannel = MethodChannel("com.jared.pacelifter/live_activities_control");
   String? _latestActivityId;
   bool _isInitialized = false;
   
@@ -17,10 +19,25 @@ class LiveActivityService {
   static const String _appGroupId = "group.com.jared.pacelifter";
   static const String _workoutActivityId = "workout_tracking";
 
+  /// 네이티브 플러그인 동적 활성화 요청
+  Future<void> _activateNativePlugin() async {
+    if (!Platform.isIOS) return;
+    try {
+      print('🚀 LiveActivityService: Requesting on-demand native registration...');
+      await _controlChannel.invokeMethod("activateLiveActivities");
+      print('✅ LiveActivityService: Native plugin registered');
+    } catch (e) {
+      print('⚠️ LiveActivityService: Native registration failed (might already be registered): $e');
+    }
+  }
+
   /// 초기화 (App Group 연결)
   Future<void> init() async {
     if (!Platform.isIOS || _isInitialized) return;
     try {
+      // 1. 네이티브 플러그인부터 활성화 (시작 시 행 방지를 위해 여기서 호출)
+      await _activateNativePlugin();
+
       print('🚀 LiveActivityService: Initializing with Group ID: $_appGroupId');
       // Add a 5 second timeout to prevent native hang from blocking the app
       await _liveActivitiesPlugin.init(appGroupId: _appGroupId).timeout(

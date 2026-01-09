@@ -86,8 +86,11 @@ class WorkoutHistoryService {
     await indexBox.delete(sessionId);
   }
 
-  /// 내부 박스 접근 도우미 (동기화 모드 대응)
+  /// 내부 박스 접근 도우미 (동기화 모드 대응 + 지연 로딩 지원)
   Future<BoxBase<WorkoutSession>> _getBox() async {
+    const timeout = Duration(seconds: 5);
+    
+    // 1. 이미 열려있는지 확인
     if (Hive.isBoxOpen(_sessionBoxName)) {
       if (_isSyncMode) {
         try {
@@ -98,20 +101,22 @@ class WorkoutHistoryService {
           return Hive.lazyBox<WorkoutSession>(_sessionBoxName);
         } catch (_) {}
       }
-      // 모드 불일치 시 닫기 (setSyncMode에서 미리 처리하지만 안전을 위해)
-      if (Hive.isBoxOpen(_sessionBoxName)) {
-         try {
-            await Hive.box(_sessionBoxName).close();
-         } catch (_) {
-            await Hive.lazyBox(_sessionBoxName).close();
-         }
+      // 모드 불일치 시 닫기
+      try {
+        await Hive.box(_sessionBoxName).close();
+      } catch (_) {
+        try {
+          await Hive.lazyBox(_sessionBoxName).close();
+        } catch (_) {}
       }
     }
     
+    // 2. 새로 열기 (지연 로딩의 핵심)
+    print('📦 [WorkoutHistoryService] Lazy opening $_sessionBoxName (SyncMode: $_isSyncMode)');
     if (_isSyncMode) {
-      return await Hive.openBox<WorkoutSession>(_sessionBoxName);
+      return await Hive.openBox<WorkoutSession>(_sessionBoxName).timeout(timeout);
     } else {
-      return await Hive.openLazyBox<WorkoutSession>(_sessionBoxName);
+      return await Hive.openLazyBox<WorkoutSession>(_sessionBoxName).timeout(timeout);
     }
   }
 
@@ -136,27 +141,40 @@ class WorkoutHistoryService {
   }
 
   /// 인덱스 재빌드 (전체 세션 기반)
+  static bool _isRebuilding = false;
   Future<void> rebuildIndex() async {
-    final indexBox = Hive.box<SessionMetadata>(_indexBoxName);
-    await indexBox.clear();
+    if (_isRebuilding) return;
+    _isRebuilding = true;
 
-    final box = await _getBox();
-    if (box is Box<WorkoutSession>) {
+    try {
+      final indexBox = Hive.box<SessionMetadata>(_indexBoxName);
+      final box = await _getBox();
       final Map<String, SessionMetadata> indexMap = {};
-      for (var session in box.values) {
-        indexMap[session.id] = SessionMetadata.fromSession(session);
-      }
-      await indexBox.putAll(indexMap);
-    } else {
-      final lazyBox = box as LazyBox<WorkoutSession>;
-      final Map<String, SessionMetadata> indexMap = {};
-      for (var key in lazyBox.keys) {
-        final session = await lazyBox.get(key);
-        if (session != null) {
+
+      print('🔍 [WorkoutHistoryService] Starting index rebuild for ${box.length} items...');
+
+      if (box is Box<WorkoutSession>) {
+        for (var session in box.values) {
           indexMap[session.id] = SessionMetadata.fromSession(session);
         }
+      } else {
+        final lazyBox = box as LazyBox<WorkoutSession>;
+        // LazyBox는 하나씩 비동기로 가져와야 함 하지만 한꺼번에 Map에 담아 putAll 처리
+        for (var key in lazyBox.keys) {
+          final session = await lazyBox.get(key);
+          if (session != null) {
+            indexMap[session.id] = SessionMetadata.fromSession(session);
+          }
+        }
       }
-      await indexBox.putAll(indexMap);
+
+      if (indexMap.isNotEmpty) {
+        await indexBox.clear();
+        await indexBox.putAll(indexMap);
+        print('✅ [WorkoutHistoryService] Index rebuild complete: ${indexMap.length} items');
+      }
+    } finally {
+      _isRebuilding = false;
     }
   }
 

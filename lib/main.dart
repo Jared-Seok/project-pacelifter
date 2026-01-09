@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
@@ -25,16 +26,11 @@ import 'models/scoring/performance_scores.dart';
 import 'models/sessions/session_metadata.dart';
 import 'services/workout_history_service.dart';
 
-void main() async {
-  // 1. 엔진 및 최소 필수 초기화
-  print('🚀 [App] Starting main()...');
+void main() {
+  // 1. 엔진 초기화만 수행
   WidgetsFlutterBinding.ensureInitialized();
   
-  // 2. 중요 리소스(Hive) 순차적 초기화 (Recommendation 1)
-  // 서비스 Provider들이 생성되기 전에 Hive 박스가 준비되어야 데드락을 방지할 수 있습니다.
-  await AppInitializer.init();
-
-  // 3. 앱 실행
+  // 2. 즉시 앱 실행 (어떠한 초기화 대기도 없음)
   runApp(
     MultiProvider(
       providers: [
@@ -44,71 +40,90 @@ void main() async {
       child: const MyApp(),
     ),
   );
+  
+  // 3. 엔진이 구동된 직후(다음 프레임) 초기화 시작
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    print('🚀 [App] Engine started. Triggering AppInitializer...');
+    AppInitializer.init();
+  });
 }
 
 class AppInitializer {
   static bool _isInitialized = false;
+  static bool _isInitializing = false;
+  static Completer<void>? _initCompleter;
 
   static Future<void> init() async {
     if (_isInitialized) return;
     
+    // 이미 초기화 진행 중이면 완료될 때까지 대기
+    if (_isInitializing) {
+      return _initCompleter?.future;
+    }
+    
+    _isInitializing = true;
+    _initCompleter = Completer<void>();
+    final stopwatch = Stopwatch()..start();
+    
     try {
-      print('📦 [AppInitializer] Starting initialization...');
+      print('📦 [AppInitializer] Starting initialization sequence...');
       
-      // 1. Hive 초기화
-      print('📦 [AppInitializer] Initializing Hive...');
-      await Hive.initFlutter();
-      
-      // 2. 어댑터 등록
+      // 1. Hive 기초 초기화
+      print('📦 [AppInitializer] Hive.initFlutter()...');
+      await Hive.initFlutter().timeout(const Duration(seconds: 3));
       _registerHiveAdapters();
 
-      // 3. 박스 오픈 (타임아웃 적용 및 강제 복구 로직)
-      print('📦 [AppInitializer] Opening Boxes...');
-      const boxTimeout = Duration(seconds: 5);
+      // 2. 박스 오픈 (최소 필수 데이터만 - 타입 명시)
+      print('📦 [AppInitializer] Opening essential boxes...');
+      const timeout = Duration(seconds: 2);
 
-      await _forceOpenBox<WorkoutTemplate>('workout_templates', timeout: boxTimeout);
-      await _forceOpenBox<CustomPhasePreset>('custom_phase_presets', timeout: boxTimeout);
-      await _forceOpenBox<Exercise>('exercises', timeout: boxTimeout);
-      await _forceOpenBox<PerformanceScores>('user_scores', timeout: boxTimeout);
-      await _forceOpenBox<SessionMetadata>('session_metadata_index', timeout: boxTimeout);
-      await _forceOpenLazyBox<WorkoutSession>('user_workout_history', timeout: boxTimeout);
-      await _forceOpenLazyBox<ExerciseRecord>('user_exercise_records', timeout: boxTimeout);
+      await _forceOpenBox<WorkoutTemplate>('workout_templates', timeout: timeout);
+      await _forceOpenBox<Exercise>('exercises', timeout: timeout);
+      await _forceOpenBox<PerformanceScores>('user_scores', timeout: timeout);
+      await _forceOpenBox<SessionMetadata>('session_metadata_index', timeout: timeout);
+      
+      // 🚨 'user_workout_history'와 'user_exercise_records'는 여기서 열지 않습니다. (Lazy Loading)
 
-      // 인덱스 자가 복구: 기존 데이터가 있는데 인덱스가 비어있는 경우 재빌드
+      // 3. 인덱스 자가 복구는 비동기로만 시도
+      print('🔍 [AppInitializer] Checking index status...');
       final indexBox = Hive.box<SessionMetadata>('session_metadata_index');
       if (indexBox.isEmpty) {
-        print('🔍 [AppInitializer] Index empty. Rebuilding...');
-        await WorkoutHistoryService().rebuildIndex();
+        print('🔍 [AppInitializer] Index empty, scheduling background rebuild...');
+        WorkoutHistoryService().rebuildIndex().catchError((e) => print('⚠️ Index Rebuild Error: $e'));
       }
 
-      // 4. 데이터 로드 (TemplateService)
-      print('📦 [AppInitializer] Loading Templates...');
+      // 4. 데이터 로드 (Batch 최적화 버전)
+      print('📦 [AppInitializer] TemplateService.loadAllTemplatesAndExercises()...');
       await TemplateService.loadAllTemplatesAndExercises().timeout(
-        const Duration(seconds: 15),
+        const Duration(seconds: 5),
         onTimeout: () => print('⚠️ [AppInitializer] Template loading timed out'),
       );
       
       _isInitialized = true;
-      print('✅ [AppInitializer] Completed Successfully');
+      print('✅ [AppInitializer] Initialization sequence completed in ${stopwatch.elapsedMilliseconds}ms');
+      _initCompleter?.complete();
     } catch (e, stack) {
-      print('❌ [AppInitializer] Critical Failure: $e');
+      print('❌ [AppInitializer] Critical Failure during setup: $e');
       print(stack);
-      _isInitialized = true; // 에러가 나더라도 앱은 띄우도록 설정
+      _initCompleter?.completeError(e, stack);
+    } finally {
+      _isInitializing = false;
     }
   }
 
   static Future<void> _forceOpenBox<T>(String name, {required Duration timeout}) async {
     try {
       if (Hive.isBoxOpen(name)) return;
-      print('📦 Opening Box: $name');
       await Hive.openBox<T>(name).timeout(timeout);
     } catch (e) {
-      print('🚨 Box $name corrupted. Recreating...');
-      try {
-        await Hive.deleteBoxFromDisk(name);
-        await Hive.openBox<T>(name).timeout(timeout);
-      } catch (e2) {
-        print('❌ Failed to open box $name: $e2');
+      print('🚨 [AppInitializer] Box $name failed to open: $e');
+      // 복구 가능한 에러인 경우에만 삭제 후 재시도
+      if (e.toString().contains('corrupted')) {
+        try {
+          print('🚨 [AppInitializer] Deleting corrupted box: $name');
+          await Hive.deleteBoxFromDisk(name);
+          await Hive.openBox<T>(name).timeout(timeout);
+        } catch (_) {}
       }
     }
   }
@@ -116,14 +131,9 @@ class AppInitializer {
   static Future<void> _forceOpenLazyBox<T>(String name, {required Duration timeout}) async {
     try {
       if (Hive.isBoxOpen(name)) return;
-      print('📦 Opening LazyBox: $name');
       await Hive.openLazyBox<T>(name).timeout(timeout);
     } catch (e) {
-      print('🚨 LazyBox $name corrupted. Recreating...');
-      try {
-        await Hive.deleteBoxFromDisk(name);
-        await Hive.openLazyBox<T>(name).timeout(timeout);
-      } catch (_) {}
+      print('🚨 [AppInitializer] LazyBox $name failed: $e');
     }
   }
 

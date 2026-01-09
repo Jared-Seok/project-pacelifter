@@ -78,8 +78,10 @@ class TemplateService {
         'assets/data/exercises/core_exercises.json',
       ];
 
-      // 각 파일을 병렬로 로드하여 속도 개선
-      await Future.wait(libraryFiles.map((filePath) async {
+      // 각 파일을 로드하여 Map으로 변환 후 일괄 처리 (Batch Load)
+      final allExercises = <String, Exercise>{};
+      
+      for (var filePath in libraryFiles) {
         try {
           final String jsonString = await rootBundle.loadString(filePath);
           final Map<String, dynamic> jsonData = json.decode(jsonString);
@@ -87,14 +89,17 @@ class TemplateService {
 
           for (var exerciseJson in exercisesList) {
             final exercise = Exercise.fromJson(exerciseJson as Map<String, dynamic>);
-            await box.put(exercise.id, exercise);
+            allExercises[exercise.id] = exercise;
           }
         } catch (e) {
           print('⚠️ Failed to load exercise file $filePath: $e');
         }
-      }));
+      }
 
-      print('✅ TemplateService: Loaded ${box.length} exercises');
+      if (allExercises.isNotEmpty) {
+        await box.putAll(allExercises);
+        print('✅ TemplateService: Batch loaded ${allExercises.length} exercises');
+      }
     } catch (e) {
       print('❌ TemplateService: Exercise library load failed: $e');
     }
@@ -196,7 +201,7 @@ class TemplateService {
     String category,
   ) async {
     final box = Hive.box<WorkoutTemplate>(_templatesBoxName);
-    int loadedCount = 0;
+    final templatesToLoad = <String, WorkoutTemplate>{};
 
     for (var filename in files) {
       try {
@@ -207,15 +212,17 @@ class TemplateService {
 
         // 기본 템플릿만 로드 (isCustom == false)
         if (!template.isCustom) {
-          await box.put(template.id, template);
-          loadedCount++;
+          templatesToLoad[template.id] = template;
         }
       } catch (e) {
         print('❌ Error loading $filename: $e');
       }
     }
 
-    print('✅ Loaded $loadedCount $category templates');
+    if (templatesToLoad.isNotEmpty) {
+      await box.putAll(templatesToLoad);
+      print('✅ Batch loaded ${templatesToLoad.length} $category templates');
+    }
   }
 
   /// 카테고리별 템플릿 조회
