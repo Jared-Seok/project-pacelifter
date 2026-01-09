@@ -60,9 +60,9 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
             .add(const Duration(hours: 23, minutes: 59, seconds: 59));
 
         if (startDate.year != endDate.year) {
-          _dateRangeText = '${startDate.year}년 ${startDate.month}월 ${startDate.day}일 ~ ${endDate.year}년 ${endDate.month}월 ${endDate.day}일';
+          _dateRangeText = '${startDate.year}년 ${startDate.month}월 ${startDate.day}일\n~ ${endDate.year}년 ${endDate.month}월 ${endDate.day}일';
         } else if (startDate.month != endDate.month) {
-          _dateRangeText = '${startDate.year}년 ${startDate.month}월 ${startDate.day}일 ~ ${endDate.month}월 ${endDate.day}일';
+          _dateRangeText = '${startDate.year}년 ${startDate.month}월 ${startDate.day}일\n~ ${endDate.month}월 ${endDate.day}일';
         } else {
           _dateRangeText = '${startDate.year}년 ${startDate.month}월 ${startDate.day}일 ~ ${endDate.day}일';
         }
@@ -88,25 +88,91 @@ class _WorkoutFeedScreenState extends State<WorkoutFeedScreen> {
 
   void _showDatePicker() {
     if (widget.period == TimePeriod.week) {
-      // 주간은 일반 DatePicker 사용 (선택한 날짜가 포함된 주를 계산)
-      showDatePicker(
-        context: context,
-        initialDate: _currentBaseDate,
-        firstDate: DateTime(2020),
-        lastDate: DateTime.now().add(const Duration(days: 365)),
-      ).then((selected) {
-        if (selected != null) {
-          setState(() {
-            _currentBaseDate = selected;
-            _calculateFilteredData();
-          });
-        }
-      });
+      _showWeekPicker();
     } else if (widget.period == TimePeriod.month) {
       _showMonthYearPicker();
     } else {
       _showYearPicker();
     }
+  }
+
+  void _showWeekPicker() {
+    final now = DateTime.now();
+    // 데이터가 있는 가장 오래된 날짜 추출
+    DateTime startDate = now;
+    if (widget.allWorkouts.isNotEmpty) {
+      for (var w in widget.allWorkouts) {
+        if (w.dateFrom.isBefore(startDate)) startDate = w.dateFrom;
+      }
+    }
+
+    // 해당 주의 월요일로 맞춤
+    startDate = DateTime(startDate.year, startDate.month, startDate.day).subtract(Duration(days: startDate.weekday - 1));
+    DateTime currentWeekMon = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
+
+    // 주 목록 생성 (최근 순)
+    final List<DateTime> weeks = [];
+    DateTime temp = currentWeekMon;
+    while (temp.isAfter(startDate.subtract(const Duration(days: 1)))) {
+      weeks.add(temp);
+      temp = temp.subtract(const Duration(days: 7));
+    }
+
+    // 현재 선택된 주가 목록의 몇 번째인지 계산
+    DateTime selectedWeekMon = DateTime(_currentBaseDate.year, _currentBaseDate.month, _currentBaseDate.day)
+        .subtract(Duration(days: _currentBaseDate.weekday - 1));
+    int initialIndex = weeks.indexWhere((w) => w.year == selectedWeekMon.year && w.month == selectedWeekMon.month && w.day == selectedWeekMon.day);
+    if (initialIndex == -1) initialIndex = 0;
+
+    showCupertinoModalPopup(
+      context: context,
+      builder: (context) {
+        return Container(
+          height: 300,
+          color: Theme.of(context).colorScheme.surface,
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  CupertinoButton(child: const Text('취소'), onPressed: () => Navigator.pop(context)),
+                  const Text('주간 선택', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white, decoration: TextDecoration.none)),
+                  CupertinoButton(
+                    child: const Text('확인'),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              Expanded(
+                child: CupertinoPicker(
+                  scrollController: FixedExtentScrollController(initialItem: initialIndex),
+                  itemExtent: 45,
+                  onSelectedItemChanged: (index) {
+                    setState(() {
+                      _currentBaseDate = weeks[index];
+                      _calculateFilteredData();
+                    });
+                  },
+                  children: weeks.map((mon) {
+                    final sun = mon.add(const Duration(days: 6));
+                    // "1월 2주차" 계산 (해당 월의 몇 번째 월요일인지)
+                    int weekNum = ((mon.day - 1) / 7).floor() + 1;
+                    String label = '${mon.year}년 ${mon.month}월 ${weekNum}주차';
+                    String range = '(${mon.month}.${mon.day} ~ ${sun.month}.${sun.day})';
+                    return Center(
+                      child: Text(
+                        '$label $range',
+                        style: const TextStyle(fontSize: 16, color: Colors.white),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _showMonthYearPicker() {

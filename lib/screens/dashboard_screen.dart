@@ -762,9 +762,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           _buildHeader(),
                           const SizedBox(height: 16),
                           _buildSwipableCardsSection(),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 8),
                           _buildPerformanceMetricsSection(),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 8),
                         ],
                       ),
                     ),
@@ -847,7 +847,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8), // 12 -> 8
         SizedBox(
           height: 200, // 삼각형 차트를 고려해 높이 약간 조정
           child: PageView(
@@ -860,7 +860,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: pages,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4), // 8 -> 4
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(
@@ -886,7 +886,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             );
           },
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Row(
               children: [
                 SizedBox(
@@ -956,7 +956,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             );
           },
           child: Padding(
-            padding: const EdgeInsets.all(20.0),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
             child: Row(
               children: [
                 Stack(
@@ -1025,7 +1025,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             );
           },
           child: Padding(
-            padding: const EdgeInsets.all(20.0),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
             child: Row(
               children: [
                 Column(
@@ -1109,32 +1109,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // 1. 헤더 영역 높이 고정 (48px)
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 8.0),
-                child: Text(
+          child: SizedBox(
+            height: 48,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center, // Center로 변경하여 jitter 방지
+              children: [
+                Text(
                   titles[_currentPage],
-                  style:
-                      const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-              ),
-              if (_currentPage == 1) // '준비중인 레이스' 페이지일 때만 + 버튼 표시
-                IconButton(
-                  icon: const Icon(Icons.add_circle_outline),
-                  onPressed: _showAddRaceDialog,
-                  tooltip: '레이스 추가',
+                SizedBox(
+                  height: 40, // 버튼들 높이 제한
+                  child: _currentPage == 1
+                      ? IconButton(
+                          padding: EdgeInsets.zero,
+                          icon: const Icon(Icons.add_circle_outline),
+                          onPressed: _showAddRaceDialog,
+                          tooltip: '레이스 추가',
+                        )
+                      : _buildPeriodSelector(),
                 ),
-              if (_currentPage == 0) // '운동 요약' 페이지일 때만 기간 선택 버튼 표시
-                _buildPeriodSelector(),
-            ],
+              ],
+            ),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8), // 12 -> 8
+        // 2. 카드 영역 (230px 고정)
         SizedBox(
           height: 230,
           child: Stack(
@@ -1152,8 +1156,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 8),
-        // 페이지 인디케이터 및 더보기 버튼
+        const SizedBox(height: 4), // 8 -> 4
+        // 3. 페이지 인디케이터
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -1163,17 +1167,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ],
         ),
-        if (_currentPage == 1 && _races.length > 1)
-          Center(
-            child: TextButton(
-              onPressed: () {
-                Navigator.of(context).push(MaterialPageRoute(
-                  builder: (context) => RaceListScreen(races: _races),
-                ));
-              },
-              child: const Text('모든 레이스 보기'),
-            ),
-          ),
+        // 4. 하단 더보기 영역 높이 고정 (16px)
+        // 레이스 페이지에서만 버튼이 보이지만 공간은 요약 페이지에서도 차지하게 함
+        SizedBox(
+          height: 16,
+          child: (_currentPage == 1 && _races.length > 1)
+              ? Center(
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.of(context).push(MaterialPageRoute(
+                        builder: (context) => RaceListScreen(races: _races),
+                      ));
+                    },
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: const Size(0, 16),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: const Text('모든 레이스 보기', style: TextStyle(fontSize: 11)),
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
       ],
     );
   }
@@ -1184,7 +1199,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: InkWell(
         onTap: _scrollToCurrentPeriod,
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           child: _buildStrengthEndurancePage(),
         ),
       ),
@@ -1276,7 +1291,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     // 여러 레이스를 상하 스와이프로 전환 가능하도록 PageView 사용
     return SizedBox(
-      height: 240, // 카드 높이 + 인디케이터 공간
+      height: 230, // 240에서 230으로 수정하여 요약 카드와 일치시킴
       child: Stack(
         children: [
           PageView.builder(
@@ -1376,11 +1391,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 0), // 마진 조정
       child: InkWell(
         onTap: () => _navigateToRaceTrainingFeed(race),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8), // 하단 패딩을 요약 카드와 동일하게 8로 조정
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -1400,11 +1415,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4), // 8에서 4로 축소
             Text(
                 '훈련 기간: ${DateFormat('yy.MM.dd').format(race.trainingStartDate)} ~ ${DateFormat('yy.MM.dd').format(race.raceDate)}',
                 style: const TextStyle(fontSize: 12, color: Colors.grey)),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16), // 20에서 16으로 축소
             // 운동 횟수 - 중앙에 크게 배치
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -1413,8 +1428,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 // Endurance
                 SvgPicture.asset(
                   'assets/images/endurance/runner-icon.svg',
-                  width: 36,
-                  height: 36,
+                  width: 32, // 36에서 32로 축소
+                  height: 32,
                   colorFilter: ColorFilter.mode(
                     Theme.of(context).colorScheme.tertiary, // Deep Teal
                     BlendMode.srcIn,
@@ -1424,7 +1439,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Text(
                   '$enduranceCount회',
                   style: TextStyle(
-                    fontSize: 28,
+                    fontSize: 24, // 28에서 24로 축소
                     fontWeight: FontWeight.bold,
                     color: Theme.of(context).colorScheme.tertiary, // Deep Teal
                   ),
@@ -1433,7 +1448,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Container(
                     width: 2,
-                    height: 32,
+                    height: 24, // 32에서 24로 축소
                     color: Colors.grey[300],
                   ),
                 ),
@@ -1441,7 +1456,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Text(
                   '$strengthCount회',
                   style: TextStyle(
-                    fontSize: 28,
+                    fontSize: 24, // 28에서 24로 축소
                     fontWeight: FontWeight.bold,
                     color: Theme.of(context).colorScheme.secondary,
                   ),
@@ -1449,8 +1464,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(width: 8),
                 SvgPicture.asset(
                   'assets/images/strength/lifter-icon.svg',
-                  width: 36,
-                  height: 36,
+                  width: 32, // 36에서 32로 축소
+                  height: 32,
                   colorFilter: ColorFilter.mode(
                     Theme.of(context).colorScheme.secondary,
                     BlendMode.srcIn,
@@ -1458,17 +1473,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16), // 20에서 16으로 축소
             // 훈련 진행률 - 하단에 배치
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('훈련 진행률: ${(progress * 100).toStringAsFixed(0)}%',
-                    style: const TextStyle(fontSize: 13)),
-                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('훈련 진행률: ${(progress * 100).toStringAsFixed(0)}%',
+                        style: const TextStyle(fontSize: 13)),
+                    // 날짜 범위 표시줄과 높이를 맞추기 위한 빈 공간 확보용 텍스트 (옵션)
+                  ],
+                ),
+                const SizedBox(height: 6), // 8에서 6으로 축소
                 LinearProgressIndicator(
                   value: progress,
-                  minHeight: 12,
+                  minHeight: 10, // 12에서 10으로 축소
                   borderRadius: BorderRadius.circular(6),
                   backgroundColor: Colors.white10,
                   valueColor: AlwaysStoppedAnimation<Color>(
