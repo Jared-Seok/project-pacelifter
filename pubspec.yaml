@@ -51,7 +51,7 @@ dependencies:
 
 
   # 워치 연동 (iOS만 지원 - Apple Watch)
-  # watch_connectivity: ^2.0.0  # 나중에 필요시 추가
+  watch_connectivity: ^0.2.4
 
   # 백그라운드 실행
   workmanager: ^0.9.0+3
