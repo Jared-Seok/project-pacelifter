@@ -10,6 +10,7 @@ import 'live_activity_service.dart';
 import 'workout_history_service.dart';
 import '../models/sessions/workout_session.dart';
 import 'package:uuid/uuid.dart';
+import 'watch_connectivity_service.dart';
 
 /// 운동 추적 서비스
 ///
@@ -131,11 +132,20 @@ class WorkoutTrackingService extends ChangeNotifier {
     // 1.3 GPS 추적 시작
     _startGPSTracking();
 
-    // 1.3.5 심박수 스트림 구독
+    // 1.3.5 심박수 스트림 구독 (Watch 우선, 실패시 폰 센서)
     _heartRateSubscription?.cancel();
-    _heartRateSubscription = HeartRateService().heartRateStream.listen((bpm) {
+    
+    // 1. Watch 연결 서비스로부터 심박수 수신
+    final watchService = WatchConnectivityService();
+    _heartRateSubscription = watchService.heartRateStream.map((bpm) => bpm.toDouble()).listen((bpm) {
+      debugPrint('⌚ Heart rate from Watch: $bpm');
       _latestHeartRate = bpm.toInt();
     });
+
+    // 2. Watch에게 운동 시작 명령 전송
+    await watchService.startWatchWorkout(
+      activityType: _isStructured && _activeTemplate?.category == 'Strength' ? 'Strength' : 'Running',
+    );
 
     // 1.4 실시간 업데이트 타이머 (1초마다)
     _startUpdateTimer();
@@ -559,6 +569,9 @@ class WorkoutTrackingService extends ChangeNotifier {
 
     // 11.4 HealthKit에 저장
     await _saveToHealthKit(summary);
+
+    // Watch 운동 종료
+    await WatchConnectivityService().stopWatchWorkout();
 
     // Live Activity 종료
     LiveActivityService().endActivity();

@@ -27,12 +27,19 @@ import 'models/scoring/performance_scores.dart';
 
 import 'models/sessions/session_metadata.dart';
 import 'services/workout_history_service.dart';
+import 'services/profile_service.dart';
+import 'services/watch_connectivity_service.dart';
 
-void main() {
+Future<void> main() async {
   // 1. 엔진 초기화만 수행
   WidgetsFlutterBinding.ensureInitialized();
   
-  // 2. 즉시 앱 실행 (어떠한 초기화 대기도 없음)
+  // 서비스 초기화
+  // ProfileService는 별도의 init이 필요 없습니다.
+  
+  // Watch 연결 서비스 초기화
+  await WatchConnectivityService().init();
+  
   runApp(
     MultiProvider(
       providers: [
