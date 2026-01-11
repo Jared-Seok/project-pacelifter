@@ -37,8 +37,10 @@ Future<void> main() async {
   // 서비스 초기화
   // ProfileService는 별도의 init이 필요 없습니다.
   
-  // Watch 연결 서비스 초기화
-  await WatchConnectivityService().init();
+  // Watch 연결 서비스 초기화 (에러가 발생해도 앱 실행을 방해하지 않음)
+  WatchConnectivityService().init().catchError((e) {
+    debugPrint('⚠️ Failed to init watch connectivity: $e');
+  });
   
   runApp(
     MultiProvider(

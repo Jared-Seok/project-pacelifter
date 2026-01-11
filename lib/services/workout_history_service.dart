@@ -308,4 +308,27 @@ class WorkoutHistoryService {
       await saveSession(newSession);
     }
   }
+
+  /// 운동 세션의 운동 기록 리스트를 업데이트하고 통계를 재계산합니다.
+  Future<void> updateSessionExerciseRecords({
+    required String sessionId,
+    required List<ExerciseRecord> exerciseRecords,
+  }) async {
+    final session = await getSessionById(sessionId);
+    if (session == null) return;
+
+    // 총 합계 재계산
+    final totalVolume = exerciseRecords.fold<double>(0.0, (sum, r) => sum + r.totalVolume);
+    final totalSets = exerciseRecords.fold<int>(0, (sum, r) => sum + r.sets.length);
+    final totalReps = exerciseRecords.fold<int>(0, (sum, r) => sum + r.totalReps);
+
+    final updatedSession = session.copyWith(
+      exerciseRecords: exerciseRecords,
+      totalVolume: totalVolume,
+      totalSets: totalSets,
+      totalReps: totalReps,
+    );
+
+    await saveSession(updatedSession);
+  }
 }

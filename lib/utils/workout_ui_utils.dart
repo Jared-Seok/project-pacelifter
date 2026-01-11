@@ -202,16 +202,19 @@ class WorkoutUIUtils {
   };
 
   /// 운동 타입 이름 포맷팅 (한국어 전면 도입 - 정책의 중앙화 버전)
-  static String formatWorkoutType(String type) {
+  static String formatWorkoutType(String type, {String? templateName}) {
     final upperType = type.toUpperCase();
+    final upperTemplate = (templateName ?? '').toUpperCase();
     
-    // ⚠️ 1순위: 코어 강화
-    if (upperType.contains('CORE') || upperType.contains('ABDOMINAL')) {
+    // ⚠️ 1순위: 코어 강화 (활동 타입 또는 템플릿 이름에 포함된 경우)
+    if (upperType.contains('CORE') || upperType.contains('ABDOMINAL') || 
+        upperTemplate.contains('CORE') || upperTemplate.contains('코어')) {
       return '코어 강화 운동';
     }
 
     // ⚠️ 2순위: 러닝 (Endurance 계열)
-    if (upperType.contains('RUN') || upperType.contains('TRAIL') || upperType.contains('TREADMILL')) {
+    if (upperType.contains('RUN') || upperType.contains('TRAIL') || upperType.contains('TREADMILL') ||
+        upperTemplate.contains('RUN') || upperTemplate.contains('러닝')) {
       return '러닝';
     }
 

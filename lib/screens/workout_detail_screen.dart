@@ -14,6 +14,11 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:pacelifter/models/sessions/route_point.dart';
 import 'package:pacelifter/utils/workout_ui_utils.dart';
 import 'package:pacelifter/services/native_activation_service.dart';
+import 'package:pacelifter/models/sessions/exercise_record.dart';
+import 'package:pacelifter/providers/strength_routine_provider.dart';
+import 'package:pacelifter/screens/exercise_list_screen.dart';
+import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 import 'dart:math';
 
 /// 운동 세부 정보 화면
@@ -507,7 +512,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                       Text(
                         _session != null && _session!.templateName.isNotEmpty
                             ? _session!.templateName
-                            : WorkoutUIUtils.formatWorkoutType(workoutType),
+                            : WorkoutUIUtils.formatWorkoutType(workoutType, templateName: _session?.templateName),
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -602,6 +607,12 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                   children: [
                     if (workoutCategory == 'Strength' && _session != null && _session!.exerciseRecords != null && _session!.exerciseRecords!.isNotEmpty) ...[
                       _buildStrengthSummary(_session!),
+                      const Divider(height: 32),
+                    ],
+                    // 운동 정보 보강 섹션 추가 (Strength/Hybrid 이고 기록이 없는 경우)
+                    if ((workoutCategory == 'Strength' || workoutCategory == 'Hybrid') && 
+                        (_session == null || _session!.exerciseRecords == null || _session!.exerciseRecords!.isEmpty)) ...[
+                      _buildEnrichmentCard(color),
                       const Divider(height: 32),
                     ],
                     const Text(
@@ -1393,23 +1404,137 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
   Widget _buildStrengthSummary(WorkoutSession session) {
     final vol = session.totalVolume ?? 0;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: [
-        _buildSummaryStat('총 볼륨', vol >= 1000 ? '${(vol / 1000).toStringAsFixed(2)}t' : '${vol.toInt()}kg'),
-        _buildSummaryStat('총 세트', '${session.totalSets ?? 0}회'),
-        _buildSummaryStat('총 횟수', '${session.totalReps ?? 0}회'),
-      ],
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildSummaryStat('총 볼륨', vol >= 1000 ? '${(vol / 1000).toStringAsFixed(2)}t' : '${vol.toInt()}kg'),
+          _buildSummaryStat('총 세트', '${session.totalSets ?? 0}'),
+          _buildSummaryStat('총 횟수', '${session.totalReps ?? 0}'),
+        ],
+      ),
     );
   }
 
   Widget _buildSummaryStat(String label, String value) {
     return Column(
       children: [
-        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-        const SizedBox(height: 4),
-        Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+        Text(
+          label, 
+          style: TextStyle(
+            fontSize: 12, 
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+            fontWeight: FontWeight.w500,
+          )
+        ),
+        const SizedBox(height: 6),
+        Text(
+          value, 
+          style: TextStyle(
+            fontSize: 22, 
+            fontWeight: FontWeight.w900, // 더 두꺼운 폰트 적용
+            color: Theme.of(context).colorScheme.secondary, // 오렌지색 계열 (Strength 컬러)
+            letterSpacing: -0.5,
+          )
+        ),
       ],
+    );
+  }
+
+  Widget _buildEnrichmentCard(Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(Icons.lightbulb_outline, color: color, size: 20),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  '수행한 운동 종목을 기록해 보세요',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            '종목 정보를 추가하면 정밀한 퍼포먼스 분석과 근력 점수 산출이 가능해집니다.',
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _startRetroactiveLogging,
+              icon: const Icon(Icons.add_task),
+              label: const Text('운동 종목 추가하기'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: color,
+                foregroundColor: Colors.black,
+                elevation: 0,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _startRetroactiveLogging() {
+    // 1. 현재 세션이 없으면 (Raw HealthKit 데이터면) 먼저 껍데기 세션을 생성해야 함
+    // 2. 운동 부위 선택 화면으로 이동
+    // 3. 이동 시 "보강 모드"임을 알리고, 현재 세션 ID 전달
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => _StrengthCategorySelectionView(
+          onExercisesSelected: (records) async {
+            // 결과 수신 시 DB 업데이트
+            String sessionId = _session?.id ?? '';
+            
+            // 세션이 없는 경우 새로 생성 후 ID 확보
+            if (sessionId.isEmpty) {
+              final workout = _workoutData?.value as WorkoutHealthValue?;
+              final newSession = WorkoutSession(
+                id: Uuid().v4(),
+
+                templateId: 'imported_${widget.dataWrapper.uuid}',
+                templateName: WorkoutUIUtils.formatWorkoutType(workout?.workoutActivityType.name ?? 'Strength'),
+                category: WorkoutUIUtils.getWorkoutCategory(workout?.workoutActivityType.name ?? 'Strength'),
+                startTime: widget.dataWrapper.dateFrom,
+                endTime: widget.dataWrapper.dateTo,
+                activeDuration: widget.dataWrapper.dateTo.difference(widget.dataWrapper.dateFrom).inSeconds,
+                totalDuration: widget.dataWrapper.dateTo.difference(widget.dataWrapper.dateFrom).inSeconds,
+                totalDistance: (workout?.totalDistance ?? 0).toDouble(),
+                calories: (workout?.totalEnergyBurned ?? 0).toDouble(),
+                healthKitWorkoutId: widget.dataWrapper.uuid,
+                exerciseRecords: [],
+              );
+              await WorkoutHistoryService().saveSession(newSession);
+              sessionId = newSession.id;
+            }
+
+            await WorkoutHistoryService().updateSessionExerciseRecords(
+              sessionId: sessionId,
+              exerciseRecords: records,
+            );
+
+            if (mounted) {
+              _fetchLinkedSession(); // 화면 갱신
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('운동 기록이 성공적으로 보강되었습니다.')),
+              );
+            }
+          },
+        ),
+      ),
     );
   }
 
@@ -1492,7 +1617,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
   // Placeholder to remove duplicated methods replaced by WorkoutUIUtils
 
-  String _formatWorkoutType(String type) => WorkoutUIUtils.formatWorkoutType(type);
+  String _formatWorkoutType(String type) => WorkoutUIUtils.formatWorkoutType(type, templateName: _session?.templateName);
 
   String _formatDuration(Duration duration) {
     final hours = duration.inHours;
@@ -1501,5 +1626,148 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     if (hours > 0) return '$hours시간 $minutes분 $seconds초';
     if (minutes > 0) return '$minutes분 $seconds초';
     return '$seconds초';
+  }
+}
+
+/// 운동 정보 보강을 위한 부위 선택 화면
+class _StrengthCategorySelectionView extends StatelessWidget {
+  final Function(List<ExerciseRecord>) onExercisesSelected;
+
+  const _StrengthCategorySelectionView({required this.onExercisesSelected});
+
+  @override
+  Widget build(BuildContext context) {
+    final categories = [
+      {'id': 'chest', 'name': '가슴', 'icon': 'assets/images/strength/category/chest.svg'},
+      {'id': 'back', 'name': '등', 'icon': 'assets/images/strength/category/back.svg'},
+      {'id': 'shoulders', 'name': '어깨', 'icon': 'assets/images/strength/category/shoulder.svg'},
+      {'id': 'legs', 'name': '하체', 'icon': 'assets/images/strength/category/leg.svg'},
+      {'id': 'biceps', 'name': '이두', 'icon': 'assets/images/strength/category/biceps.svg'},
+      {'id': 'triceps', 'name': '삼두', 'icon': 'assets/images/strength/category/triceps.svg'},
+      {'id': 'core', 'name': '코어', 'icon': 'assets/images/strength/category/core.svg'},
+      {'id': 'compound', 'name': '복합', 'icon': 'assets/images/strength/lifter-icon.svg'},
+    ];
+
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      appBar: AppBar(
+        title: const Text('수행 부위 선택'),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+      ),
+      body: Column(
+        children: [
+          const Padding(
+            padding: EdgeInsets.all(24.0),
+            child: Text(
+              '오늘 수행하신 운동 부위를 선택하고\n세부 종목을 추가해 보세요.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+          ),
+          Expanded(
+            child: GridView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                childAspectRatio: 1.3,
+              ),
+              itemCount: categories.length,
+              itemBuilder: (context, index) {
+                final cat = categories[index];
+                return _CategoryCard(
+                  name: cat['name']!,
+                  iconPath: cat['icon']!,
+                  onTap: () {
+                    // ExerciseListScreen으로 이동
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ExerciseListScreen(
+                          muscleGroupId: cat['id']!,
+                          title: cat['name']!,
+                          isEnrichmentMode: true, // 보강 모드 활성화
+                        ),
+                      ),
+                    ).then((_) {
+                      // ExerciseListScreen에서 돌아왔을 때, 
+                      // StrengthRoutineProvider에 쌓인 블록들을 확인
+                      final provider = Provider.of<StrengthRoutineProvider>(context, listen: false);
+                      if (provider.blocks.isNotEmpty) {
+                        // 선택된 블록들을 ExerciseRecord로 변환
+                        final records = provider.blocks.map((block) {
+                          // 사용자가 설정한 수치 반영 (없으면 기본값)
+                          final int sets = block.sets ?? 3;
+                          final int reps = block.reps ?? 10;
+                          final double weight = block.weight ?? 0.0;
+
+                          return ExerciseRecord(
+                            id: Uuid().v4(),
+                            exerciseId: block.exerciseId ?? 'manual',
+                            exerciseName: block.name,
+                            sets: List.generate(sets, (i) => SetRecord(
+                              setNumber: i + 1,
+                              weight: weight,
+                              repsTarget: reps,
+                              repsCompleted: reps,
+                            )),
+                            order: 0,
+                            timestamp: DateTime.now(),
+                          );
+                        }).toList();
+                        
+                        onExercisesSelected(records);
+                        provider.clear(); // 프로바이더 초기화
+                        Navigator.pop(context); // 선택 화면 닫기
+                      }
+                    });
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CategoryCard extends StatelessWidget {
+  final String name;
+  final String iconPath;
+  final VoidCallback onTap;
+
+  const _CategoryCard({
+    required this.name,
+    required this.iconPath,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.secondary;
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SvgPicture.asset(
+              iconPath,
+              width: 40,
+              height: 40,
+              colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              name,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

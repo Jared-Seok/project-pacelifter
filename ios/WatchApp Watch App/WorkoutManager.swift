@@ -2,6 +2,7 @@ import Foundation
 import HealthKit
 import Combine
 
+#if os(watchOS)
 class WorkoutManager: NSObject, ObservableObject {
     static let shared = WorkoutManager()
     
@@ -93,7 +94,6 @@ extension WorkoutManager: HKLiveWorkoutBuilderDelegate {
                 
                 DispatchQueue.main.async {
                     self.heartRate = value
-                    // 폰으로 즉시 전송
                     ConnectivityProvider.shared.sendHeartRate(value)
                 }
             }
@@ -102,3 +102,4 @@ extension WorkoutManager: HKLiveWorkoutBuilderDelegate {
     
     func workoutBuilderDidCollectEvent(_ workoutBuilder: HKLiveWorkoutBuilder) {}
 }
+#endif

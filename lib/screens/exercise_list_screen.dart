@@ -16,11 +16,13 @@ import 'strength_routine_preview_screen.dart';
 class ExerciseListScreen extends StatefulWidget {
   final String muscleGroupId;
   final String title;
+  final bool isEnrichmentMode; // 보강 모드 여부
 
   const ExerciseListScreen({
     super.key,
     required this.muscleGroupId,
     required this.title,
+    this.isEnrichmentMode = false, // 기본값은 false
   });
 
   @override
@@ -60,102 +62,110 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
   }
 
   Future<void> _loadExercises() async {
-    final allExercises = TemplateService.getAllExercises();
-    
-    final filtered = allExercises.where((ex) {
-      final p = ex.secondaryMuscles.first.toLowerCase();
-      final id = widget.muscleGroupId;
-
-      if (id == 'chest') return p.contains('chest');
-      if (id == 'back') return (p.contains('back') && !p.contains('lower')) || p == 'lats' || p == 'traps';
-      if (id == 'shoulders') return p == 'shoulders' || p.contains('delt') || p == 'rotator_cuff' || p == 'traps';
-      if (id == 'legs') return p == 'quads' || p == 'hamstrings' || p == 'calves' || p == 'legs';
-      if (id == 'arms') return p == 'biceps' || p == 'triceps' || p == 'forearms' || p == 'arms';
-      if (id == 'biceps') return p.contains('biceps') || p.contains('brachialis');
-      if (id == 'triceps') return p.contains('triceps');
-      if (id == 'forearms') return p.contains('forearm') || p.contains('brachioradialis');
-      if (id == 'core') return p == 'core' || p.contains('abs') || p == 'obliques' || p.contains('lower_back') || p == 'erector_spinae' || p == 'glutes' || p.contains('gluteus');
-      if (id == 'compound') return ex.isCompound;
+    try {
+      var allExercises = TemplateService.getAllExercises();
       
-      return false;
-    }).toList();
-
-    _allFilteredExercises = filtered;
-
-    final Map<String, List<Exercise>> grouped = {};
-    for (var ex in filtered) {
-      final groupName = ex.group ?? '기타';
-      if (!grouped.containsKey(groupName)) {
-        grouped[groupName] = [];
+      // 데이터가 아직 로드되지 않았다면 최대 3초간 대기하며 재시도
+      int retryCount = 0;
+      while (allExercises.isEmpty && retryCount < 10) {
+        await Future.delayed(const Duration(milliseconds: 300));
+        allExercises = TemplateService.getAllExercises();
+        retryCount++;
+        debugPrint('⏳ Waiting for exercise data... (Attempt $retryCount)');
       }
-      grouped[groupName]!.add(ex);
+      
+      final filtered = allExercises.where((ex) {
+        // 모든 관련 근육 리스트를 합쳐서 검사 (대소문자 무시)
+        final allMuscles = [
+          ...ex.primaryMuscles.map((m) => m.toLowerCase()),
+          ...ex.secondaryMuscles.map((m) => m.toLowerCase()),
+        ];
+        
+        final id = widget.muscleGroupId.toLowerCase();
+
+        if (id == 'chest') return allMuscles.any((m) => m.contains('chest'));
+        if (id == 'back') return allMuscles.any((m) => (m.contains('back') && !m.contains('lower')) || m == 'lats' || m == 'traps');
+        if (id == 'shoulders') return allMuscles.any((m) => m == 'shoulders' || m.contains('delt') || m == 'rotator_cuff' || m == 'traps');
+        if (id == 'legs') return allMuscles.any((m) => m == 'quads' || m == 'hamstrings' || m == 'calves' || m == 'legs');
+        if (id == 'arms') return allMuscles.any((m) => m == 'biceps' || m == 'triceps' || m == 'forearms' || m == 'arms');
+        if (id == 'biceps') return allMuscles.any((m) => m.contains('biceps') || m.contains('brachialis'));
+        if (id == 'triceps') return allMuscles.any((m) => m.contains('triceps'));
+        if (id == 'forearms') return allMuscles.any((m) => m.contains('forearm') || m.contains('brachioradialis'));
+        if (id == 'core') return allMuscles.any((m) => m == 'core' || m.contains('abs') || m.contains('oblique') || m.contains('lower_back') || m == 'erector_spinae' || m.contains('glute'));
+        if (id == 'compound') return ex.isCompound;
+        
+        return false;
+      }).toList();
+
+      _allFilteredExercises = filtered;
+
+      final Map<String, List<Exercise>> grouped = {};
+      for (var ex in filtered) {
+        final groupName = ex.group ?? '기타';
+        if (!grouped.containsKey(groupName)) {
+          grouped[groupName] = [];
+        }
+        grouped[groupName]!.add(ex);
+      }
+
+      if (mounted) {
+        setState(() {
+          final sortedKeys = grouped.keys.toList();
+          
+          // 부위별 커스텀 정렬 로직 (기존 로직 유지)
+          sortedKeys.sort((a, b) {
+            if (widget.muscleGroupId == 'back') {
+              if (a == '로우') return -1;
+              if (b == '로우') return 1;
+            }
+            if (widget.muscleGroupId == 'shoulders') {
+              if (a == '프레스') return -1;
+              if (b == '프레스') return 1;
+            }
+            if (widget.muscleGroupId == 'biceps') {
+              if (a == '바벨 컬') return -1;
+              if (b == '바벨 컬') return 1;
+            }
+            if (widget.muscleGroupId == 'triceps') {
+              if (a == '복합 관절 운동') return -1;
+              if (b == '복합 관절 운동') return 1;
+            }
+            if (widget.muscleGroupId == 'forearms') {
+              if (a == '손목 운동') return -1;
+              if (b == '손목 운동') return 1;
+            }
+            if (widget.muscleGroupId == 'legs') {
+              if (a == '스쿼트') return -1;
+              if (b == '스쿼트') return 1;
+            }
+            if (widget.muscleGroupId == 'core') {
+              final coreOrder = {'복근': 0, '허리': 1, '둔근(힙)': 2};
+              final aOrder = coreOrder[a] ?? 99;
+              final bOrder = coreOrder[b] ?? 99;
+              if (aOrder != bOrder) return aOrder.compareTo(bOrder);
+            }
+            if (a == '기타' && b != '기타') return 1;
+            if (b == '기타' && a != '기타') return -1;
+            return a.compareTo(b);
+          });
+          
+          final Map<String, List<Exercise>> sortedGrouped = {};
+          for (var key in sortedKeys) {
+            sortedGrouped[key] = grouped[key]!;
+          }
+          
+          _groupedExercises = sortedGrouped;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading exercises: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
-
-    setState(() {
-      final sortedKeys = grouped.keys.toList();
-      
-      // 부위별 커스텀 정렬 로직
-      sortedKeys.sort((a, b) {
-        // 1. 등(Back) 운동 정렬: '로우' 우선
-        if (widget.muscleGroupId == 'back') {
-          if (a == '로우') return -1;
-          if (b == '로우') return 1;
-        }
-        
-        // 2. 어깨(Shoulders) 운동 정렬: '프레스' 우선, '기타' 최하단
-        if (widget.muscleGroupId == 'shoulders') {
-          if (a == '프레스') return -1;
-          if (b == '프레스') return 1;
-        }
-
-        // 3. 이두(Biceps) 운동 정렬: '바벨 컬' 우선
-        if (widget.muscleGroupId == 'biceps') {
-          if (a == '바벨 컬') return -1;
-          if (b == '바벨 컬') return 1;
-        }
-
-        // 4. 삼두(Triceps) 운동 정렬: '복합 관절 운동' 우선
-        if (widget.muscleGroupId == 'triceps') {
-          if (a == '복합 관절 운동') return -1;
-          if (b == '복합 관절 운동') return 1;
-        }
-
-        // 5. 전완(Forearms) 운동 정렬: '손목 운동' 우선
-        if (widget.muscleGroupId == 'forearms') {
-          if (a == '손목 운동') return -1;
-          if (b == '손목 운동') return 1;
-        }
-
-        // 6. 하체(Legs) 운동 정렬: '스쿼트' 우선
-        if (widget.muscleGroupId == 'legs') {
-          if (a == '스쿼트') return -1;
-          if (b == '스쿼트') return 1;
-        }
-
-        // 7. 코어(Core) 운동 정렬: 복근 > 허리 > 둔근(힙)
-        if (widget.muscleGroupId == 'core') {
-          final coreOrder = {'복근': 0, '허리': 1, '둔근(힙)': 2};
-          final aOrder = coreOrder[a] ?? 99;
-          final bOrder = coreOrder[b] ?? 99;
-          if (aOrder != bOrder) return aOrder.compareTo(bOrder);
-        }
-
-        // 8. 공통: '기타'는 항상 아래로 (부위 상관없이)
-        if (a == '기타' && b != '기타') return 1;
-        if (b == '기타' && a != '기타') return -1;
-        
-        return a.compareTo(b);
-      });
-      
-      // 정렬된 키 순서대로 새로운 맵 생성
-      final Map<String, List<Exercise>> sortedGrouped = {};
-      for (var key in sortedKeys) {
-        sortedGrouped[key] = grouped[key]!;
-      }
-      
-      _groupedExercises = sortedGrouped;
-      _isLoading = false;
-    });
   }
 
   void _onExerciseTap(Exercise exercise) {
@@ -553,34 +563,37 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
                             ],
                           ),
                         ),
-                        if (hasSelection)
-                          TextButton.icon(
-                            onPressed: _saveCustomRoutine,
-                            icon: const Icon(Icons.save_alt),
-                            label: const Text('저장'),
-                          ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: hasSelection ? _startCustomRoutine : null,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).colorScheme.secondary,
-                            foregroundColor: Theme.of(context).colorScheme.onSecondary,
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: const Text('루틴 시작'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
+                                                if (hasSelection && !widget.isEnrichmentMode)
+                                                  TextButton.icon(
+                                                    onPressed: _saveCustomRoutine,
+                                                    icon: const Icon(Icons.save_alt),
+                                                    label: const Text('저장'),
+                                                  ),
+                                                const SizedBox(width: 8),
+                                                ElevatedButton(
+                                                  onPressed: hasSelection 
+                                                      ? (widget.isEnrichmentMode ? () => Navigator.pop(context) : _startCustomRoutine) 
+                                                      : null,
+                                                  style: ElevatedButton.styleFrom(
+                                                    backgroundColor: Theme.of(context).colorScheme.secondary,
+                                                    foregroundColor: Theme.of(context).colorScheme.onSecondary,
+                                                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius: BorderRadius.circular(12),
+                                                    ),
+                                                  ),
+                                                  child: Text(widget.isEnrichmentMode ? '기록에 추가' : '루틴 시작'),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          }
+                        }
+                        

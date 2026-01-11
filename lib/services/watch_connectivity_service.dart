@@ -25,14 +25,19 @@ class WatchConnectivityService {
   Future<void> init() async {
     if (defaultTargetPlatform != TargetPlatform.iOS) return;
 
-    // 1. 초기 상태 확인 (안정적인 API만 사용)
-    _isPaired = await _watch.isPaired;
-    _isReachable = await _watch.isReachable;
+    try {
+      // 1. 초기 상태 확인 (안정적인 API만 사용)
+      _isPaired = await _watch.isPaired;
+      _isReachable = await _watch.isReachable;
 
-    debugPrint('⌚ Watch Connectivity Init: Paired=$_isPaired, Reachable=$_isReachable');
+      debugPrint('⌚ Watch Connectivity Init: Paired=$_isPaired, Reachable=$_isReachable');
 
-    // 2. 메시지 수신 리스너 등록
-    _watch.messageStream.listen(_handleMessage);
+      // 2. 메시지 수신 리스너 등록
+      _watch.messageStream.listen(_handleMessage);
+    } catch (e) {
+      debugPrint('⚠️ Watch Connectivity not available: $e');
+      // 에러가 나더라도 앱은 계속 실행될 수 있게 에러를 위로 던지지 않음
+    }
   }
 
   /// Watch로부터 수신된 메시지 처리

@@ -213,7 +213,8 @@ class HealthKitBridge {
         let stage1 = [
             ("GeolocatorPlugin", "geolocator_apple"),
             ("HealthPlugin", "health"),
-            ("PermissionHandlerPlugin", "permission_handler_apple")
+            ("PermissionHandlerPlugin", "permission_handler_apple"),
+            ("WatchConnectivityPlugin", "watch_connectivity")
         ]
         for (name, mod) in stage1 {
             HealthKitBridge.registerPlugin(name: name, registry: self, module: mod)

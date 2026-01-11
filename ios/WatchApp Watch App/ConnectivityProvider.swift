@@ -42,8 +42,8 @@ class ConnectivityProvider: NSObject, ObservableObject, WCSessionDelegate {
     
     // 심박수 데이터를 Phone으로 전송
     func sendHeartRate(_ heartRate: Double) {
+        #if os(watchOS)
         guard WCSession.default.isReachable else {
-            // 연결되지 않은 경우 ApplicationContext로 백업 전송 시도
             try? WCSession.default.updateApplicationContext(["heartRate": heartRate])
             return
         }
@@ -51,5 +51,6 @@ class ConnectivityProvider: NSObject, ObservableObject, WCSessionDelegate {
         WCSession.default.sendMessage(["heartRate": heartRate], replyHandler: nil) { error in
             print("❌ Error sending heart rate: \(error.localizedDescription)")
         }
+        #endif
     }
 }
