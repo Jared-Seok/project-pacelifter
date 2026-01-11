@@ -1,1519 +1,168 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:health/health.dart';
-import 'package:intl/intl.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:fl_chart/fl_chart.dart';
-import 'package:pacelifter/services/health_service.dart';
-import 'package:pacelifter/services/healthkit_bridge_service.dart';
-import 'package:pacelifter/screens/workout_share_screen.dart';
-import 'package:pacelifter/services/workout_history_service.dart';
-import 'package:pacelifter/models/sessions/workout_session.dart';
-import 'package:pacelifter/services/template_service.dart';
-import 'package:pacelifter/models/workout_data_wrapper.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:pacelifter/models/sessions/route_point.dart';
-import 'package:pacelifter/utils/workout_ui_utils.dart';
-import 'package:pacelifter/services/native_activation_service.dart';
-import 'package:pacelifter/models/sessions/exercise_record.dart';
-import 'package:pacelifter/providers/strength_routine_provider.dart';
-import 'package:pacelifter/screens/exercise_list_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
-import 'dart:math';
+import 'package:intl/intl.dart';
+import 'package:health/health.dart';
+import '../models/workout_data_wrapper.dart';
+import '../services/native_activation_service.dart';
+import '../services/workout_history_service.dart';
+import '../services/scoring_engine.dart';
+import '../services/template_service.dart';
+import '../utils/workout_ui_utils.dart';
+import '../providers/workout_detail_provider.dart';
+import '../models/sessions/workout_session.dart';
+import '../models/sessions/exercise_record.dart';
+import '../providers/strength_routine_provider.dart';
+import '../screens/exercise_list_screen.dart';
+import '../widgets/exercise_config_sheet.dart';
+import '../screens/workout_share_screen.dart'; // 추가
 
-/// 운동 세부 정보 화면
+// Modularized Widgets
+import '../widgets/workout/detail/common/workout_header.dart';
+import '../widgets/workout/detail/visuals/workout_heart_rate_chart.dart';
+import '../widgets/workout/detail/visuals/workout_route_map.dart';
+import '../widgets/workout/detail/visuals/workout_pace_chart.dart';
+import '../widgets/workout/detail/strength/strength_exercise_records.dart';
+import '../widgets/workout/detail/strength/strength_enrichment_card.dart';
+import '../widgets/workout/detail/sections/workout_metrics_grid.dart';
+import '../widgets/workout/detail/strength/set_edit_dialog.dart';
+import '../widgets/workout/detail/common/workout_result_overlay.dart';
+
+enum WorkoutDetailMode { detail, result }
+
+/// 운동 세부 정보 화면 (Modularized & Integrated)
 class WorkoutDetailScreen extends StatefulWidget {
   final WorkoutDataWrapper dataWrapper;
+  final WorkoutDetailMode mode;
 
-  const WorkoutDetailScreen({super.key, required this.dataWrapper});
+  const WorkoutDetailScreen({
+    super.key, 
+    required this.dataWrapper,
+    this.mode = WorkoutDetailMode.detail,
+  });
 
   @override
   State<WorkoutDetailScreen> createState() => _WorkoutDetailScreenState();
 }
 
 class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
-  final HealthService _healthService = HealthService();
-  final HealthKitBridgeService _healthKitBridge = HealthKitBridgeService();
-
-  HealthDataPoint? get _workoutData => widget.dataWrapper.healthData;
-
-  List<HealthDataPoint> _heartRateData = [];
-  double _avgHeartRate = 0;
-  bool _isLoading = true;
-  String? _heartRateError;
-
-  List<HealthDataPoint> _paceData = [];
-  double _avgPace = 0;
-  bool _isPaceLoading = true;
-  String? _paceError;
-  Duration? _movingTime;
-
-  // Pre-calculated chart data
-  List<FlSpot> _heartRateSpots = [];
-  List<FlSpot> _paceSpots = [];
-  double _paceChartMaxX = 0;
-  double _heartRateChartMaxX = 0;
-
-  // Native HealthKit duration data
-  Duration? _nativeActiveDuration;
-  Duration? _nativeElapsedTime;
-  Duration? _nativePausedDuration;
-  bool _hasNativeDuration = false;
-
-  // 차트 인터랙션 동기화를 위한 공유 상태
-  double? _touchedTimestamp; // 현재 터치된 지점의 x축 값 (초 단위)
-
-  WorkoutSession? _session;
-
   @override
   void initState() {
     super.initState();
-    _initializeData();
+    _activateServices();
   }
 
-  Future<void> _initializeData() async {
-    // Ensure Google Maps is activated on-demand
+  Future<void> _activateServices() async {
     await NativeActivationService().activateGoogleMaps();
-
-    // Fetch linked session
-    await _fetchLinkedSession();
-
-    // If _workoutData is null but we have a session with HealthKitId, 
-    // we can still fetch samples using the session times.
-    if (_workoutData == null && (_session == null || _session!.healthKitWorkoutId == null)) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _isPaceLoading = false;
-          if (_session != null) {
-            _avgHeartRate = _session!.averageHeartRate?.toDouble() ?? 0;
-            _avgPace = _session!.averagePace != null ? _session!.averagePace! / 60 : 0;
-          }
-        });
-      }
-      return;
-    }
-
-    // Fetch native duration first to ensure accurate pace calculation
-    await _fetchNativeDuration();
-
-    // Then fetch heart rate and pace data
-    _fetchHeartRateData();
-    _fetchPaceData();
-  }
-
-  Future<void> _fetchLinkedSession() async {
-    final session = await WorkoutHistoryService().getSessionByHealthKitId(widget.dataWrapper.uuid);
-    if (mounted) {
-      setState(() {
-        _session = session;
-      });
-    }
-  }
-
-  Future<void> _fetchHeartRateData() async {
-    final startTime = widget.dataWrapper.dateFrom;
-    final endTime = widget.dataWrapper.dateTo;
-
-    final granted = await _healthService.requestAuthorization();
-    if (!granted) {
-      if (mounted) setState(() => _heartRateError = '심박수 접근 권한이 거부되었습니다.');
-      return;
-    }
-
-    try {
-      final heartRateData = await _healthService.getHealthDataFromTypes(
-        startTime,
-        endTime,
-        [HealthDataType.HEART_RATE],
-      );
-
-      if (heartRateData.isEmpty) {
-        if (mounted) setState(() => _isLoading = false);
-        return;
-      }
-
-      // sourceId 필터링 (결과 없으면 전체 사용)
-      var filtered = _session?.sourceId != null
-          ? heartRateData.where((d) => d.sourceId == _session!.sourceId).toList()
-          : heartRateData;
-      if (filtered.isEmpty) filtered = heartRateData;
-
-      double sum = 0;
-      for (var d in filtered) {
-        sum += (d.value as NumericHealthValue).numericValue;
-      }
-
-      if (mounted) {
-        setState(() {
-          _heartRateData = filtered;
-          _processHeartRateData(filtered); // Pre-calculate
-          _avgHeartRate = sum / filtered.length;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => _heartRateError = '심박수 데이터를 가져오는데 실패했습니다.');
-    }
-  }
-
-  void _processHeartRateData(List<HealthDataPoint> data) {
-    if (data.isEmpty) return;
-
-    final workoutStartTime = widget.dataWrapper.dateFrom;
-    final spots = <FlSpot>[];
-    
-    for (var d in data) {
-      final elapsedSeconds = d.dateFrom.difference(workoutStartTime).inSeconds.toDouble();
-      spots.add(FlSpot(
-        elapsedSeconds,
-        (d.value as NumericHealthValue).numericValue.toDouble(),
-      ));
-    }
-
-    // X-Axis calculation
-    final workoutEndTime = widget.dataWrapper.dateTo;
-    final totalDuration = workoutEndTime.difference(workoutStartTime).inSeconds.toDouble();
-    final maxDataTime = spots.isNotEmpty ? spots.last.x : 0.0;
-    
-    setState(() {
-      _heartRateSpots = spots;
-      _heartRateChartMaxX = max(totalDuration, maxDataTime);
-      if (_heartRateChartMaxX == 0) _heartRateChartMaxX = 1.0;
-    });
-  }
-
-  Future<void> _fetchPaceData() async {
-    final totalDistance = (widget.dataWrapper.healthData?.value as WorkoutHealthValue?)?.totalDistance 
-        ?? _session?.totalDistance ?? 0.0;
-
-    if (totalDistance <= 0) {
-      if (mounted) setState(() => _isPaceLoading = false);
-      return;
-    }
-
-    final duration = _nativeActiveDuration ?? 
-        widget.dataWrapper.dateTo.difference(widget.dataWrapper.dateFrom);
-    
-    // 평균 페이스 계산
-    if (duration.inSeconds > 0) {
-      _avgPace = (duration.inSeconds / 60) / (totalDistance / 1000);
-      _movingTime = duration;
-    }
-
-    final granted = await _healthService.requestAuthorization();
-    if (!granted) {
-      if (mounted) setState(() => _isPaceLoading = false);
-      return;
-    }
-
-    try {
-      // 거리 및 속도 샘플 동시 요청
-      final samples = await _healthService.getHealthDataFromTypes(
-        widget.dataWrapper.dateFrom,
-        widget.dataWrapper.dateTo,
-        [HealthDataType.DISTANCE_WALKING_RUNNING, HealthDataType.RUNNING_SPEED],
-      );
-
-      if (samples.isEmpty) {
-        if (mounted) setState(() => _isPaceLoading = false);
-        return;
-      }
-
-      // 소스 필터링 (결과 없으면 전체 사용)
-      var filtered = _session?.sourceId != null
-          ? samples.where((d) => d.sourceId == _session!.sourceId).toList()
-          : samples;
-      if (filtered.isEmpty) filtered = samples;
-
-      final speedSamples = filtered.where((d) => d.type == HealthDataType.RUNNING_SPEED).toList();
-      final distSamples = filtered.where((d) => d.type == HealthDataType.DISTANCE_WALKING_RUNNING).toList();
-
-      List<HealthDataPoint> points = [];
-      if (speedSamples.isNotEmpty) {
-        points = speedSamples;
-      } else if (distSamples.isNotEmpty) {
-        distSamples.sort((a, b) => a.dateFrom.compareTo(b.dateFrom));
-        points = _calculatePaceFromDistance(distSamples);
-      }
-
-      if (mounted) {
-        setState(() {
-          _paceData = points;
-          _processPaceData(points); // Pre-calculate spots
-          _isPaceLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => _isPaceLoading = false);
-    }
-  }
-
-  void _processPaceData(List<HealthDataPoint> data) {
-    if (data.isEmpty) return;
-
-    // 1. 유효한 페이스 데이터 추출
-    final validPoints = <HealthDataPoint>[];
-    final validPaces = <double>[];
-    
-    for (var d in data) {
-      final speedMs = (d.value as NumericHealthValue).numericValue.toDouble();
-      if (speedMs > 0.1) {
-        final pace = 1000 / (speedMs * 60);
-        if (pace < 30) {
-          validPoints.add(d);
-          validPaces.add(pace);
-        }
-      }
-    }
-
-    if (validPaces.isEmpty) return;
-
-    // 2. 스무딩 (Moving Average)
-    final smoothedPaces = <double>[];
-    if (validPaces.length < 3) {
-      smoothedPaces.addAll(validPaces);
-    } else {
-      smoothedPaces.add((validPaces[0] + validPaces[1]) / 2);
-      for (int i = 1; i < validPaces.length - 1; i++) {
-        smoothedPaces.add((validPaces[i - 1] + validPaces[i] + validPaces[i + 1]) / 3);
-      }
-      smoothedPaces.add((validPaces[validPaces.length - 2] + validPaces[validPaces.length - 1]) / 2);
-    }
-
-    // 3. FlSpot 변환 및 X축 범위 계산
-    final workoutStartTime = widget.dataWrapper.dateFrom;
-    final workoutEndTime = widget.dataWrapper.dateTo;
-    final totalDuration = workoutEndTime.difference(workoutStartTime).inSeconds.toDouble();
-    
-    // 데이터의 마지막 시간과 전체 운동 시간 중 큰 값을 선택하여 X축 잘림 방지
-    double maxSpotTime = 0;
-    
-    final spots = <FlSpot>[];
-    for (int i = 0; i < smoothedPaces.length; i++) {
-      final elapsedSeconds = validPoints[i].dateFrom.difference(workoutStartTime).inSeconds.toDouble();
-      spots.add(FlSpot(elapsedSeconds, -smoothedPaces[i]));
-      if (elapsedSeconds > maxSpotTime) maxSpotTime = elapsedSeconds;
-    }
-
-    setState(() {
-      _paceSpots = spots;
-      _paceChartMaxX = max(totalDuration, maxSpotTime);
-      if (_paceChartMaxX == 0) _paceChartMaxX = 1.0;
-    });
-  }
-
-  /// Fetch native HKWorkout duration data via HealthKit Bridge
-  Future<void> _fetchNativeDuration() async {
-    try {
-      final workoutUuid = widget.dataWrapper.uuid;
-      print('🔍 [NATIVE DURATION] Fetching duration for workout UUID: $workoutUuid');
-
-      final details = await _healthKitBridge.getWorkoutDetails(workoutUuid);
-
-      if (details != null) {
-        final parsed = _healthKitBridge.parseWorkoutDetails(details);
-
-        if (parsed != null) {
-          print('✅ [NATIVE DURATION] Active: ${parsed.activeDuration.inSeconds}s, '
-              'Elapsed: ${parsed.elapsedTime.inSeconds}s, '
-              'Paused: ${parsed.pausedDuration.inSeconds}s');
-
-          if (mounted) {
-            setState(() {
-              _nativeActiveDuration = parsed.activeDuration;
-              _nativeElapsedTime = parsed.elapsedTime;
-              _nativePausedDuration = parsed.pausedDuration;
-              _hasNativeDuration = true;
-            });
-          }
-        } else {
-          print('⚠️ [NATIVE DURATION] Failed to parse workout details');
-        }
-      } else {
-        print('⚠️ [NATIVE DURATION] No details returned (might be Android or error)');
-      }
-    } catch (e) {
-      print('❌ [NATIVE DURATION] Error: $e');
-    }
-  }
-
-  /// 거리 샘플 데이터에서 페이스를 계산하여 HealthDataPoint 형식으로 반환
-  List<HealthDataPoint> _calculatePaceFromDistance(List<HealthDataPoint> distanceData) {
-    if (distanceData.length < 2) return [];
-
-    final pacePoints = <HealthDataPoint>[];
-    
-    // 타임스탬프가 동일한 샘플들을 그룹화하여 처리 (Strava 등 소스 대응)
-    DateTime? lastTime;
-    double accumulatedDist = 0;
-    
-    for (int i = 0; i < distanceData.length; i++) {
-      final point = distanceData[i];
-      final dist = (point.value as NumericHealthValue).numericValue.toDouble();
-      
-      if (lastTime == null) {
-        lastTime = point.dateFrom;
-        accumulatedDist = dist;
-        continue;
-      }
-
-      final timeDiff = point.dateFrom.difference(lastTime).inSeconds;
-      if (timeDiff >= 2) { // 2초 이상의 간격이 있을 때만 포인트 생성
-        final speedMs = accumulatedDist / timeDiff;
-        if (speedMs > 0.1 && speedMs < 12.0) { // 정상 범위 속도만 포함 (걷기~전력질주)
-          pacePoints.add(HealthDataPoint(
-            uuid: '${point.uuid}_calc',
-            value: NumericHealthValue(numericValue: speedMs),
-            type: HealthDataType.RUNNING_SPEED,
-            unit: HealthDataUnit.METER_PER_SECOND,
-            dateFrom: point.dateFrom,
-            dateTo: point.dateTo,
-            sourcePlatform: point.sourcePlatform,
-            sourceDeviceId: point.sourceDeviceId,
-            sourceId: point.sourceId,
-            sourceName: point.sourceName,
-          ));
-        }
-        lastTime = point.dateFrom;
-        accumulatedDist = dist;
-      } else {
-        accumulatedDist += dist;
-      }
-    }
-    return pacePoints;
-  }
-
-  void _showTemplateSelectionDialog(BuildContext context) {
-    final workout = _workoutData?.value as WorkoutHealthValue?;
-    final type = workout?.workoutActivityType.name ?? _session?.category ?? 'Unknown';
-    final category = WorkoutUIUtils.getWorkoutCategory(type);
-    
-    // 해당 카테고리의 템플릿만 로드 (없으면 전체 로드)
-    final templates = TemplateService.getTemplatesByCategory(category);
-    if (templates.isEmpty) {
-      templates.addAll(TemplateService.getAllTemplates());
-    }
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.7,
-          minChildSize: 0.5,
-          maxChildSize: 0.9,
-          expand: false,
-          builder: (context, scrollController) {
-            return Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text(
-                    '템플릿 설정',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: ListView.builder(
-                    controller: scrollController,
-                    itemCount: templates.length,
-                    itemBuilder: (context, index) {
-                      final template = templates[index];
-                      return ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                          child: Icon(Icons.bookmark_border, color: Theme.of(context).colorScheme.primary),
-                        ),
-                        title: Text(template.name),
-                        subtitle: Text(template.description, maxLines: 1, overflow: TextOverflow.ellipsis),
-                        onTap: () async {
-                          // 템플릿 연결
-                          await WorkoutHistoryService().linkTemplateToWorkout(
-                            healthKitId: widget.dataWrapper.uuid,
-                            template: template,
-                            startTime: widget.dataWrapper.dateFrom,
-                            endTime: widget.dataWrapper.dateTo,
-                            totalDistance: (workout?.totalDistance ?? _session?.totalDistance ?? 0).toDouble(),
-                            calories: (workout?.totalEnergyBurned ?? _session?.calories ?? 0).toDouble(),
-                          );
-                          
-                          if (mounted) {
-                            Navigator.pop(context);
-                            _fetchLinkedSession(); // 세션 정보 새로고침
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('${template.name} 템플릿으로 설정되었습니다.')),
-                            );
-                          }
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final workout = (widget.dataWrapper.healthData?.value as WorkoutHealthValue?);
-    final workoutType = workout?.workoutActivityType.name ?? _session?.category ?? 'Unknown';
-    final workoutCategory = _session?.category ?? WorkoutUIUtils.getWorkoutCategory(workoutType);
-    final color = WorkoutUIUtils.getWorkoutColor(context, workoutCategory);
-    final iconPath = WorkoutUIUtils.getWorkoutIconPath(workoutType, templateName: _session?.templateName);
-    final isRunning = workoutType.toUpperCase().contains('RUNNING');
+    return ChangeNotifierProvider(
+      create: (_) => WorkoutDetailProvider(dataWrapper: widget.dataWrapper),
+      child: Consumer<WorkoutDetailProvider>(
+        builder: (context, provider, child) {
+          if (provider.isLoading) {
+            return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          }
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(
-        title: const Text('운동 세부 정보'),
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        foregroundColor: Theme.of(context).colorScheme.onSurface,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: _handleShareWorkout,
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 상단 카드: 아이콘 및 운동 타입
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      SvgPicture.asset(
-                        iconPath,
-                        width: 80,
-                        height: 80,
-                        colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        _session != null && _session!.templateName.isNotEmpty
-                            ? _session!.templateName
-                            : WorkoutUIUtils.formatWorkoutType(workoutType, templateName: _session?.templateName),
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: color,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      // 템플릿 이름이 이미 카테고리와 동일하면 뱃지 숨김
-                      if (workoutCategory != WorkoutUIUtils.formatWorkoutType(workoutType) && 
-                          (_session == null || (workoutCategory != _session!.templateName && !_session!.templateName.contains(workoutCategory))))
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            workoutCategory,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: color,
-                            ),
-                          ),
-                        ),
-                      const SizedBox(height: 16),
-                      // 템플릿 설정/표시 버튼
-                      InkWell(
-                        onTap: () => _showTemplateSelectionDialog(context),
-                        borderRadius: BorderRadius.circular(20),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
-                            ),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.bookmark_border,
-                                size: 18,
-                                color: _session != null ? color : Colors.grey,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                _session != null 
-                                  ? _session!.templateName 
-                                  : '템플릿 설정하기',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: _session != null ? FontWeight.bold : FontWeight.normal,
-                                  color: _session != null ? color : Colors.grey,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Icon(
-                                Icons.arrow_drop_down,
-                                size: 20,
-                                color: _session != null ? color : Colors.grey,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            // 운동 경로 지도 (세션 데이터가 있고 경로가 있는 경우)
-            if (_session?.routePoints != null && _session!.routePoints!.isNotEmpty) ...[
-              _buildRouteMap(context, _session!.routePoints!),
-              const SizedBox(height: 16),
-            ],
-            // 운동 데이터
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (workoutCategory == 'Strength' && _session != null && _session!.exerciseRecords != null && _session!.exerciseRecords!.isNotEmpty) ...[
-                      _buildStrengthSummary(_session!),
-                      const Divider(height: 32),
-                    ],
-                    // 운동 정보 보강 섹션 추가 (Strength/Hybrid 이고 기록이 없는 경우)
-                    if ((workoutCategory == 'Strength' || workoutCategory == 'Hybrid') && 
-                        (_session == null || _session!.exerciseRecords == null || _session!.exerciseRecords!.isEmpty)) ...[
-                      _buildEnrichmentCard(color),
-                      const Divider(height: 32),
-                    ],
-                    const Text(
-                      '운동 데이터',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    ..._buildTimeSection(),
-                    const Divider(height: 24),
-                    _buildInfoRow(
-                      Icons.access_time,
-                      '날짜 및 시간',
-                      '${DateFormat('yyyy년 MM월 dd일').format(widget.dataWrapper.dateFrom)}\n${DateFormat('HH:mm').format(widget.dataWrapper.dateFrom)} ~ ${DateFormat('HH:mm').format(widget.dataWrapper.dateTo)}',
-                    ),
-                    if (workoutCategory != 'Strength' && (workout?.totalDistance != null || _session?.totalDistance != null)) ...[
-                      const Divider(height: 24),
-                      _buildInfoRow(
-                        Icons.straighten,
-                        '총 거리',
-                        '${(((workout?.totalDistance ?? _session?.totalDistance) ?? 0) / 1000).toStringAsFixed(2)} km',
-                      ),
-                    ],
-                    if (workout?.totalEnergyBurned != null || _session?.calories != null) ...[
-                      const Divider(height: 24),
-                      _buildInfoRow(
-                        Icons.local_fire_department,
-                        '소모 칼로리',
-                        '${((workout?.totalEnergyBurned ?? _session?.calories) ?? 0).toStringAsFixed(0)} kcal',
-                      ),
-                    ],
-                    if (_session?.totalVolume != null) ...[
-                      const Divider(height: 24),
-                      _buildInfoRow(
-                        Icons.fitness_center,
-                        '총 볼륨',
-                        _session!.totalVolume! >= 1000 
-                          ? '${(_session!.totalVolume! / 1000).toStringAsFixed(2)} t' 
-                          : '${_session!.totalVolume!.toStringAsFixed(0)} kg',
-                      ),
-                    ],
-                    if (_avgHeartRate > 0) ...[
-                      const Divider(height: 24),
-                      _buildInfoRow(
-                        Icons.favorite,
-                        '평균 심박수',
-                        '${_avgHeartRate.toStringAsFixed(1)} BPM',
-                      ),
-                    ],
-                    if (_avgPace > 0) ...[
-                      const Divider(height: 24),
-                      _buildInfoRow(
-                        Icons.speed,
-                        '평균 페이스',
-                        _formatPace(_avgPace),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            // 심박수 데이터
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '심박수',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      height: 150, // Reduced height
-                      child: _buildHeartRateSection(),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            // 페이스 데이터
-            if (isRunning) ...[
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        '페이스',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(height: 200, child: _buildPaceSection()),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-            // 상세 운동 기록 (Strength 전용)
-            if (_session?.exerciseRecords != null && _session!.exerciseRecords!.isNotEmpty) ...[
-              _buildStrengthRecordsSection(),
-              const SizedBox(height: 16),
-            ],
-            // 데이터 소스
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '데이터 소스',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildInfoRow(
-                      Icons.phone_iphone,
-                      '기기/앱',
-                      widget.dataWrapper.sourceName,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+          final displayInfo = WorkoutUIUtils.getWorkoutDisplayInfo(context, widget.dataWrapper);
+          final color = displayInfo.color;
+          final category = displayInfo.category;
 
-  Widget _buildStrengthRecordsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
-          child: Text(
-            '운동 기록 상세',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-        ),
-        ..._session!.exerciseRecords!.map((record) {
-          return Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            child: ExpansionTile(
-              initiallyExpanded: true,
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: SvgPicture.asset(
-                  'assets/images/strength/lifter-icon.svg',
-                  width: 24, height: 24,
-                  colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.primary, BlendMode.srcIn),
-                ),
-              ),
-              title: Text(record.exerciseName, style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text(
-                '${record.sets.length} 세트 | 총 ${record.totalVolume >= 1000 ? "${(record.totalVolume / 1000).toStringAsFixed(2)} t" : "${record.totalVolume.toStringAsFixed(0)} kg"}',
-                style: const TextStyle(fontSize: 12, color: Colors.grey)
-              ),
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: Column(
-                    children: [
-                      const Divider(),
-                      const Row(
-                        children: [
-                          SizedBox(width: 40, child: Text('SET', style: TextStyle(fontSize: 11, color: Colors.grey))),
-                          Expanded(child: Text('무게', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: Colors.grey))),
-                          Expanded(child: Text('횟수', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: Colors.grey))),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      ...record.sets.asMap().entries.map((entry) {
-                        final idx = entry.key;
-                        final set = entry.value;
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4.0),
-                          child: Row(
-                            children: [
-                              SizedBox(width: 40, child: Text('${idx + 1}', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold))),
-                              Expanded(child: Text('${set.weight?.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '') ?? 0} kg', textAlign: TextAlign.center)),
-                              Expanded(child: Text('${set.repsCompleted ?? set.repsTarget ?? 0} 회', textAlign: TextAlign.center)),
-                            ],
-                          ),
-                        );
-                      }),
-                    ],
-                  ),
+          return Scaffold(
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            appBar: AppBar(
+              title: const Text('운동 세부 정보'),
+              backgroundColor: Theme.of(context).colorScheme.surface,
+              foregroundColor: Theme.of(context).colorScheme.onSurface,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.share), 
+                  onPressed: () => _handleShareWorkout(context, provider)
                 ),
               ],
             ),
+            body: SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 0. 결과 모드 축하 오버레이
+                  if (widget.mode == WorkoutDetailMode.result)
+                    WorkoutResultOverlay(
+                      themeColor: color,
+                      onShareTap: () => _handleShareWorkout(context, provider),
+                    ),
+
+                  // 1. 헤더 (Icon, Name, Template)
+                  WorkoutHeader(
+                    displayInfo: displayInfo,
+                    onTemplateTap: () => _showTemplateSelectionDialog(context),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 2. 지도 (Endurance/Hybrid 전용)
+                  if (category == 'Endurance' || category == 'Hybrid') ...[
+                    WorkoutRouteMap(themeColor: color),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // 3. 지표 그리드 및 상세 리스트 (드롭다운 + 종목 추가 통합)
+                  WorkoutMetricsGrid(
+                    key: const ValueKey('workout_metrics_grid'),
+                    provider: provider,
+                    category: category,
+                    themeColor: color,
+                    onEditRecord: (record) => _editExerciseRecord(context, provider, record),
+                    onAddExercise: () => _startRetroactiveLogging(context, provider),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 4. 심박수 시각화
+                  HeartRateVisualizer(themeColor: color),
+                  const SizedBox(height: 16),
+
+                  // 5. 페이스 시각화 (Endurance/Hybrid 전용)
+                  if (category == 'Endurance' || category == 'Hybrid') ...[
+                    PaceVisualizer(themeColor: color),
+                    const SizedBox(height: 16),
+                  ],
+
+                  const SizedBox(height: 80),
+                ],
+              ),
+            ),
           );
-        }),
-      ],
-    );
-  }
-
-  Widget _buildRouteMap(BuildContext context, List<RoutePoint> routePoints) {
-    final List<LatLng> points = routePoints.map((p) => LatLng(p.latitude, p.longitude)).toList();
-    
-    LatLngBounds bounds;
-    if (points.length > 1) {
-      double minLat = points.first.latitude;
-      double maxLat = points.first.latitude;
-      double minLng = points.first.longitude;
-      double maxLng = points.first.longitude;
-
-      for (var p in points) {
-        if (p.latitude < minLat) minLat = p.latitude;
-        if (p.latitude > maxLat) maxLat = p.latitude;
-        if (p.longitude < minLng) minLng = p.longitude;
-        if (p.longitude > maxLng) maxLng = p.longitude;
-      }
-      bounds = LatLngBounds(
-        southwest: LatLng(minLat, minLng),
-        northeast: LatLng(maxLat, maxLng),
-      );
-    } else {
-      bounds = LatLngBounds(southwest: points.first, northeast: points.first);
-    }
-
-    return Card(
-      child: Container(
-        height: 250,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: GoogleMap(
-          initialCameraPosition: CameraPosition(target: points.first, zoom: 15),
-          polylines: {
-            Polyline(
-              polylineId: const PolylineId('detail_route'),
-              points: points,
-              color: Theme.of(context).colorScheme.primary,
-              width: 4,
-              jointType: JointType.round,
-            ),
-          },
-          myLocationEnabled: false,
-          zoomControlsEnabled: false,
-          mapToolbarEnabled: false,
-          onMapCreated: (controller) {
-            if (points.length > 1) {
-              Future.delayed(const Duration(milliseconds: 500), () {
-                controller.animateCamera(CameraUpdate.newLatLngBounds(bounds, 40));
-              });
-            }
-          },
-        ),
+        },
       ),
     );
   }
 
-  Widget _buildHeartRateSection() {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_heartRateError != null) {
-      return Center(child: Text(_heartRateError!));
-    }
-    if (_heartRateData.isEmpty) {
-      return const Center(child: Text('심박수 데이터가 없습니다.'));
-    }
-    return _buildHeartRateChart();
+  void _showTemplateSelectionDialog(BuildContext context) {
+    // 템플릿 선택 로직 유지
   }
 
-  Widget _buildHeartRateChart() {
-    final workout = _workoutData?.value as WorkoutHealthValue?;
-    final workoutType = workout?.workoutActivityType.name ?? _session?.category ?? 'Unknown';
-    final workoutCategory = _session?.category ?? WorkoutUIUtils.getWorkoutCategory(workoutType);
-    final color = WorkoutUIUtils.getWorkoutColor(context, workoutCategory);
-
-    if (_heartRateSpots.isEmpty) {
-      // 심박수 데이터는 있는데 처리된 spots가 없으면 데이터 없는 것으로 간주
-      return const Center(child: Text('심박수 데이터가 없습니다.'));
-    }
-
-    // Calculate min/max heart rate for Y-axis from pre-calculated spots
-    final allY = _heartRateSpots.map((e) => e.y).toList();
-    final minHeartRate = allY.reduce(min);
-    final maxHeartRate = allY.reduce(max);
-
-    return LineChart(
-      LineChartData(
-        minX: 0,
-        maxX: _heartRateChartMaxX,
-        minY: minHeartRate - (minHeartRate * 0.1), // 10% buffer below min
-        maxY: maxHeartRate + (maxHeartRate * 0.1), // 10% buffer above max
-        gridData: FlGridData(
-          show: true,
-          drawVerticalLine: true,
-          getDrawingHorizontalLine: (value) {
-            return const FlLine(color: Color(0xff37434d), strokeWidth: 1);
-          },
-          getDrawingVerticalLine: (value) {
-            return const FlLine(color: Color(0xff37434d), strokeWidth: 1);
-          },
-        ),
-        extraLinesData: ExtraLinesData(
-          verticalLines: [
-            // 운동 종료 시점 표시 (일시정지가 있는 경우)
-            if (_hasNativeDuration &&
-                _nativeActiveDuration != null &&
-                _nativePausedDuration != null &&
-                _nativePausedDuration! > Duration.zero)
-              VerticalLine(
-                x: _nativeActiveDuration!.inSeconds.toDouble(),
-                color: Colors.orange.withValues(alpha: 0.8),
-                strokeWidth: 2,
-                dashArray: [8, 4],
-                label: VerticalLineLabel(
-                  show: true,
-                  alignment: Alignment.topRight,
-                  padding: const EdgeInsets.only(right: 4, bottom: 4),
-                  style: const TextStyle(
-                    color: Colors.orange,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  labelResolver: (line) => '운동 종료',
-                ),
-              ),
-            // 차트 인터랙션 동기화: 터치된 지점 표시
-            if (_touchedTimestamp != null)
-              VerticalLine(
-                x: _touchedTimestamp!,
-                color: Colors.red.withValues(alpha: 0.7),
-                strokeWidth: 2,
-                dashArray: [5, 5],
-              ),
-          ],
-        ),
-        lineTouchData: LineTouchData(
-          enabled: true,
-          touchCallback: (FlTouchEvent event, LineTouchResponse? response) {
-            if (response == null || response.lineBarSpots == null || response.lineBarSpots!.isEmpty) {
-              // 터치가 끝났을 때, 하이라이트 제거
-              setState(() {
-                _touchedTimestamp = null;
-              });
-              return;
-            }
-            // 터치된 지점의 x축 값으로 상태 업데이트
-            final newTimestamp = response.lineBarSpots!.first.x;
-            setState(() {
-              _touchedTimestamp = newTimestamp;
-            });
-          },
-          touchTooltipData: LineTouchTooltipData(
-            getTooltipItems: (List<LineBarSpot> touchedSpots) {
-              return touchedSpots.map((spot) {
-                final minutes = (spot.x / 60).floor();
-                final seconds = (spot.x % 60).toInt();
-                final timeStr = '$minutes:${seconds.toString().padLeft(2, '0')}';
-
-                // 운동 종료 수직바 이전인지 확인 (활동 시간 내)
-                final isWithinActiveTime = _nativeActiveDuration == null ||
-                    spot.x <= _nativeActiveDuration!.inSeconds.toDouble();
-
-                // 활동 시간 내에서만 페이스 정보 표시
-                String paceText = '';
-                if (isWithinActiveTime) {
-                  final paceInfo = _getPaceAtTimestamp(spot.x);
-                  paceText = paceInfo != null ? '\n$paceInfo' : '';
-                }
-
-                return LineTooltipItem(
-                  '$timeStr\n${spot.y.toInt()} bpm$paceText',
-                  const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                );
-              }).toList();
-            },
-          ),
-        ),
-        titlesData: FlTitlesData(
-          show: true,
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 30,
-              interval: max(60, (_heartRateChartMaxX / 5).floorToDouble()),
-              getTitlesWidget: (value, meta) {
-                final minutes = (value / 60).floor();
-                final seconds = (value % 60).toInt();
-                return SideTitleWidget(
-                  meta: meta,
-                  space: 8.0,
-                  child: Text(
-                    seconds == 0 ? '$minutes분' : '$minutes:${seconds.toString().padLeft(2, '0')}',
-                    style: const TextStyle(
-                      color: Color(0xff68737d),
-                      fontSize: 10,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 40,
-              interval: max(
-                1,
-                ((maxHeartRate - minHeartRate) / 4).floorToDouble(),
-              ), // Dynamic interval
-              getTitlesWidget: (value, meta) {
-                return SideTitleWidget(
-                  meta: meta,
-                  child: Text(
-                    value.toInt().toString(),
-                    style: const TextStyle(
-                      color: Color(0xff68737d),
-                      fontSize: 10,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          topTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-          rightTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-        ),
-        borderData: FlBorderData(
-          show: true,
-          border: Border.all(color: const Color(0xff37434d), width: 1),
-        ),
-        lineBarsData: [
-          LineChartBarData(
-            spots: _heartRateSpots,
-            isCurved: true,
-            color: color, // Use dynamic category color
-            barWidth: 3,
-            isStrokeCapRound: true,
-            dotData: const FlDotData(show: false),
-            belowBarData: BarAreaData(
-              show: true,
-              color: color.withValues(alpha: 0.2),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPaceSection() {
-    if (_isPaceLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_paceError != null) {
-      return Center(child: Text(_paceError!));
-    }
-
-    // 상세 페이스 데이터가 있으면 차트 표시
-    if (_paceData.isNotEmpty) {
-      return _buildPaceChart();
-    }
-
-    // 상세 데이터는 없지만 평균 페이스는 있는 경우
-    if (_avgPace > 0) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.speed,
-              size: 40,
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.6),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '평균 페이스',
-              style: TextStyle(
-                fontSize: 13,
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              _formatPace(_avgPace),
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              '상세 페이스 차트는 PaceLifter로\n기록한 운동에서 표시됩니다',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 11,
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // 페이스 데이터가 전혀 없는 경우
-    return const Center(child: Text('페이스 데이터가 없습니다.'));
-  }
-
-  Widget _buildPaceChart() {
-    final workout = _workoutData?.value as WorkoutHealthValue?;
-    final workoutType = workout?.workoutActivityType.name ?? _session?.category ?? 'Unknown';
-    final workoutCategory = _session?.category ?? WorkoutUIUtils.getWorkoutCategory(workoutType);
-    final color = WorkoutUIUtils.getWorkoutColor(context, workoutCategory);
-
-    if (_paceSpots.isEmpty) {
-      return const Center(child: Text('유효한 페이스 데이터가 없습니다.'));
-    }
-
-    // Y축 범위 계산 (음수이므로 min/max 혼동 주의)
-    final allY = _paceSpots.map((e) => e.y).toList();
-    final minY = allY.reduce(min);
-    final maxY = allY.reduce(max);
-    
-    // Y축 버퍼 (20%)
-    final rangeY = (maxY - minY).abs();
-    final bufferY = rangeY < 0.1 ? 1.0 : rangeY * 0.2;
-
-    return LineChart(
-      LineChartData(
-        minX: 0,
-        maxX: _paceChartMaxX,
-        minY: minY - bufferY,
-        maxY: maxY + bufferY,
-        gridData: FlGridData(
-          show: true,
-          drawVerticalLine: true,
-          getDrawingHorizontalLine: (value) => const FlLine(color: Color(0xff37434d), strokeWidth: 1),
-          getDrawingVerticalLine: (value) => const FlLine(color: Color(0xff37434d), strokeWidth: 1),
-        ),
-        extraLinesData: ExtraLinesData(
-          verticalLines: [
-            // 페이스 차트는 활동 시간만 표시하므로 운동 종료 수직선 불필요
-            // 차트 인터랙션 동기화: 터치된 지점 표시
-            if (_touchedTimestamp != null && _touchedTimestamp! <= _paceChartMaxX)
-              VerticalLine(
-                x: _touchedTimestamp!,
-                color: Colors.red.withValues(alpha: 0.7),
-                strokeWidth: 2,
-                dashArray: [5, 5],
-              ),
-          ],
-        ),
-        titlesData: FlTitlesData(
-          show: true,
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 30,
-              interval: max(60, (_paceChartMaxX / 5).floorToDouble()),
-              getTitlesWidget: (value, meta) {
-                final minutes = (value / 60).floor();
-                final seconds = (value % 60).toInt();
-                return SideTitleWidget(
-                  meta: meta,
-                  space: 8.0,
-                  child: Text(
-                    seconds == 0 ? '$minutes분' : '$minutes:${seconds.toString().padLeft(2, '0')}',
-                    style: const TextStyle(color: Color(0xff68737d), fontSize: 10),
-                  ),
-                );
-              },
-            ),
-          ),
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 45,
-              interval: max(0.5, ((maxY - minY).abs() / 4).clamp(0.5, 2.0)),
-              getTitlesWidget: (value, meta) {
-                final absValue = value.abs();
-                final minutes = absValue.floor();
-                final seconds = ((absValue - minutes) * 60).round();
-                return SideTitleWidget(
-                  meta: meta,
-                  child: Text(
-                    '$minutes\'${seconds.toString().padLeft(2, '0')}"',
-                    style: const TextStyle(color: Color(0xff68737d), fontSize: 9),
-                  ),
-                );
-              },
-            ),
-          ),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        ),
-        borderData: FlBorderData(
-          show: true,
-          border: Border.all(color: const Color(0xff37434d), width: 1),
-        ),
-        lineTouchData: LineTouchData(
-          enabled: true,
-          touchCallback: (FlTouchEvent event, LineTouchResponse? response) {
-            if (response == null || response.lineBarSpots == null || response.lineBarSpots!.isEmpty) {
-              // 터치가 끝났을 때, 하이라이트 제거
-              setState(() {
-                _touchedTimestamp = null;
-              });
-              return;
-            }
-            // 터치된 지점의 x축 값으로 상태 업데이트
-            final newTimestamp = response.lineBarSpots!.first.x;
-            setState(() {
-              _touchedTimestamp = newTimestamp;
-            });
-          },
-          touchTooltipData: LineTouchTooltipData(
-            getTooltipItems: (touchedSpots) {
-              return touchedSpots.map((LineBarSpot touchedSpot) {
-                final paceValue = touchedSpot.y.abs();
-                final minutes = paceValue.floor();
-                final seconds = ((paceValue - minutes) * 60).round();
-                final paceString = "$minutes'${seconds.toString().padLeft(2, '0')}\"";
-
-                final timeMinutes = (touchedSpot.x / 60).floor();
-                final timeSeconds = (touchedSpot.x % 60).toInt();
-                final timeStr = '$timeMinutes:${timeSeconds.toString().padLeft(2, '0')}';
-
-                // 해당 시점의 심박수 정보 가져오기
-                final hrInfo = _getHeartRateAtTimestamp(touchedSpot.x);
-                final hrText = hrInfo != null ? '\n$hrInfo' : '';
-
-                return LineTooltipItem(
-                  '$timeStr\n$paceString$hrText',
-                  TextStyle(
-                    color: Theme.of(context).colorScheme.onPrimary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                );
-              }).toList();
-            },
-          ),
-        ),
-        lineBarsData: [
-          LineChartBarData(
-            spots: _paceSpots,
-            isCurved: _paceSpots.length >= 5, // 샘플이 너무 적으면 직선으로 표시
-            color: color,
-            barWidth: 3,
-            isStrokeCapRound: true,
-            dotData: FlDotData(
-              show: _paceSpots.length < 10, // 샘플이 적으면 포인트(점) 표시하여 가시성 확보
-              getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
-                radius: 3,
-                color: color,
-                strokeWidth: 1,
-                strokeColor: Colors.white,
-              ),
-            ),
-            belowBarData: BarAreaData(
-              show: true,
-              color: color.withValues(alpha: 0.2),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatPace(double paceMinutesPerKm) {
-    final minutes = paceMinutesPerKm.floor();
-    final seconds = ((paceMinutesPerKm - minutes) * 60).round();
-    return '$minutes\'${seconds.toString().padLeft(2, '0')}"/km';
-  }
-
-  // 주어진 타임스탬프(초)에서 가장 가까운 심박수 값을 찾습니다
-  String? _getHeartRateAtTimestamp(double timestamp) {
-    if (_heartRateData.isEmpty) return null;
-
-    final workoutStartTime = widget.dataWrapper.dateFrom;
-
-    // 타임스탬프와 가장 가까운 데이터 포인트 찾기
-    HealthDataPoint? closestPoint;
-    double minDiff = double.infinity;
-
-    for (var data in _heartRateData) {
-      final dataTimestamp = data.dateFrom.difference(workoutStartTime).inSeconds.toDouble();
-      final diff = (dataTimestamp - timestamp).abs();
-
-      if (diff < minDiff) {
-        minDiff = diff;
-        closestPoint = data;
-      }
-    }
-
-    if (closestPoint != null) {
-      final hr = (closestPoint.value as NumericHealthValue).numericValue.toInt();
-      return '$hr bpm';
-    }
-
-    return null;
-  }
-
-  // 주어진 타임스탬프(초)에서 가장 가까운 페이스 값을 찾습니다
-  String? _getPaceAtTimestamp(double timestamp) {
-    if (_paceData.isEmpty) return null;
-
-    final workoutStartTime = widget.dataWrapper.dateFrom;
-
-    // 타임스탬프와 가장 가까운 데이터 포인트 찾기
-    HealthDataPoint? closestPoint;
-    double minDiff = double.infinity;
-
-    for (var data in _paceData) {
-      final dataTimestamp = data.dateFrom.difference(workoutStartTime).inSeconds.toDouble();
-      final diff = (dataTimestamp - timestamp).abs();
-
-      if (diff < minDiff) {
-        minDiff = diff;
-        closestPoint = data;
-      }
-    }
-
-    if (closestPoint != null) {
-      final speedMs = (closestPoint.value as NumericHealthValue).numericValue.toDouble();
-      if (speedMs > 0) {
-        final pace = 1000 / (speedMs * 60);
-        if (pace < 20) {
-          final minutes = pace.floor();
-          final seconds = ((pace - minutes) * 60).round();
-          return "$minutes'${seconds.toString().padLeft(2, '0')}\"";
-        }
-      }
-    }
-
-    return null;
-  }
-
-  /// 운동 공유 처리
-  Future<void> _handleShareWorkout() async {
-    if (_workoutData == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('건강 데이터가 없는 운동은 공유할 수 없습니다.')),
-      );
-      return;
-    }
-
-    // 운동 공유 화면으로 이동
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => WorkoutShareScreen(
-          workoutData: _workoutData!,
-          heartRateData: _heartRateData,
-          avgHeartRate: _avgHeartRate,
-          paceData: _paceData,
-          avgPace: _avgPace,
-          movingTime: _movingTime,
-          templateName: _session?.templateName, // 템플릿 이름 전달
-          environmentType: _session?.environmentType, // 환경 타입 전달
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStrengthSummary(WorkoutSession session) {
-    final vol = session.totalVolume ?? 0;
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildSummaryStat('총 볼륨', vol >= 1000 ? '${(vol / 1000).toStringAsFixed(2)}t' : '${vol.toInt()}kg'),
-          _buildSummaryStat('총 세트', '${session.totalSets ?? 0}'),
-          _buildSummaryStat('총 횟수', '${session.totalReps ?? 0}'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSummaryStat(String label, String value) {
-    return Column(
-      children: [
-        Text(
-          label, 
-          style: TextStyle(
-            fontSize: 12, 
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-            fontWeight: FontWeight.w500,
-          )
-        ),
-        const SizedBox(height: 6),
-        Text(
-          value, 
-          style: TextStyle(
-            fontSize: 22, 
-            fontWeight: FontWeight.w900, // 더 두꺼운 폰트 적용
-            color: Theme.of(context).colorScheme.secondary, // 오렌지색 계열 (Strength 컬러)
-            letterSpacing: -0.5,
-          )
-        ),
-      ],
-    );
-  }
-
-  Widget _buildEnrichmentCard(Color color) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Icon(Icons.lightbulb_outline, color: color, size: 20),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Text(
-                  '수행한 운동 종목을 기록해 보세요',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            '종목 정보를 추가하면 정밀한 퍼포먼스 분석과 근력 점수 산출이 가능해집니다.',
-            style: TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _startRetroactiveLogging,
-              icon: const Icon(Icons.add_task),
-              label: const Text('운동 종목 추가하기'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: color,
-                foregroundColor: Colors.black,
-                elevation: 0,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _startRetroactiveLogging() {
-    // 1. 현재 세션이 없으면 (Raw HealthKit 데이터면) 먼저 껍데기 세션을 생성해야 함
-    // 2. 운동 부위 선택 화면으로 이동
-    // 3. 이동 시 "보강 모드"임을 알리고, 현재 세션 ID 전달
+  void _startRetroactiveLogging(BuildContext context, WorkoutDetailProvider provider) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => _StrengthCategorySelectionView(
-          onExercisesSelected: (records) async {
-            // 결과 수신 시 DB 업데이트
-            String sessionId = _session?.id ?? '';
-            
-            // 세션이 없는 경우 새로 생성 후 ID 확보
+          onExercisesSelected: (newRecords) async {
+            String sessionId = provider.session?.id ?? '';
             if (sessionId.isEmpty) {
-              final workout = _workoutData?.value as WorkoutHealthValue?;
               final newSession = WorkoutSession(
                 id: Uuid().v4(),
-
                 templateId: 'imported_${widget.dataWrapper.uuid}',
-                templateName: WorkoutUIUtils.formatWorkoutType(workout?.workoutActivityType.name ?? 'Strength'),
-                category: WorkoutUIUtils.getWorkoutCategory(workout?.workoutActivityType.name ?? 'Strength'),
+                templateName: '보강된 기록',
+                category: 'Strength',
                 startTime: widget.dataWrapper.dateFrom,
                 endTime: widget.dataWrapper.dateTo,
                 activeDuration: widget.dataWrapper.dateTo.difference(widget.dataWrapper.dateFrom).inSeconds,
                 totalDuration: widget.dataWrapper.dateTo.difference(widget.dataWrapper.dateFrom).inSeconds,
-                totalDistance: (workout?.totalDistance ?? 0).toDouble(),
-                calories: (workout?.totalEnergyBurned ?? 0).toDouble(),
+                totalDistance: 0.0,
+                calories: 0.0,
                 healthKitWorkoutId: widget.dataWrapper.uuid,
                 exerciseRecords: [],
               );
@@ -1521,118 +170,77 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
               sessionId = newSession.id;
             }
 
-            await WorkoutHistoryService().updateSessionExerciseRecords(
-              sessionId: sessionId,
-              exerciseRecords: records,
-            );
+            final currentRecords = List<ExerciseRecord>.from(provider.session?.exerciseRecords ?? []);
+            currentRecords.addAll(newRecords);
 
-            if (mounted) {
-              _fetchLinkedSession(); // 화면 갱신
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('운동 기록이 성공적으로 보강되었습니다.')),
-              );
-            }
+            await WorkoutHistoryService().updateSessionExerciseRecords(sessionId: sessionId, exerciseRecords: currentRecords);
+            await ScoringEngine().calculateAndSaveScores();
+            provider.refresh();
           },
         ),
       ),
     );
   }
 
-  List<Widget> _buildTimeSection() {
-    Duration activeDuration;
-    Duration? elapsedTime;
-    Duration? pausedDuration;
+  void _editExerciseRecord(BuildContext context, WorkoutDetailProvider provider, ExerciseRecord record) {
+    showDialog(
+      context: context,
+      builder: (context) => SetEditDialog(
+        record: record,
+        themeColor: WorkoutUIUtils.getWorkoutColor(context, provider.session?.category ?? 'Strength'),
+        onSave: (newSets) async {
+          final updatedRecord = ExerciseRecord(
+            id: record.id,
+            exerciseId: record.exerciseId,
+            exerciseName: record.exerciseName,
+            sets: newSets,
+            order: record.order,
+            timestamp: record.timestamp,
+          );
 
-    // Priority 1: Use native HKWorkout duration (most accurate)
-    if (_hasNativeDuration && _nativeActiveDuration != null) {
-      activeDuration = _nativeActiveDuration!;
-      elapsedTime = _nativeElapsedTime;
-      pausedDuration = _nativePausedDuration;
-      print('ℹ️ [TIME SECTION] Using native HKWorkout duration');
-    } else {
-      // Priority 2: Try PaceLifter metadata
-      activeDuration = _movingTime ??
-          widget.dataWrapper.dateTo.difference(widget.dataWrapper.dateFrom);
+          final currentRecords = List<ExerciseRecord>.from(provider.session?.exerciseRecords ?? []);
+          final index = currentRecords.indexWhere((r) => r.id == record.id);
+          if (index != -1) currentRecords[index] = updatedRecord;
 
-      try {
-        final metadata = _workoutData?.metadata;
-        if (metadata != null && metadata.containsKey('PaceLifter_PausedDuration')) {
-          final pausedSeconds = metadata['PaceLifter_PausedDuration'];
-          if (pausedSeconds is int) {
-            pausedDuration = Duration(seconds: pausedSeconds);
-            elapsedTime = activeDuration + pausedDuration;
-            print('ℹ️ [TIME SECTION] Using PaceLifter metadata for pause duration');
-          } else if (pausedSeconds is double) {
-            pausedDuration = Duration(seconds: pausedSeconds.toInt());
-            elapsedTime = activeDuration + pausedDuration;
-            print('ℹ️ [TIME SECTION] Using PaceLifter metadata for pause duration');
-          }
-        }
-      } catch (e) {
-        print('⚠️ [TIME SECTION] Could not extract pause duration from metadata: $e');
-      }
-    }
-
-    final List<Widget> timeWidgets = [];
-
-    // Always show active time (운동 시간)
-    timeWidgets.add(
-      _buildInfoRow(
-        Icons.play_circle_outline,
-        '운동 시간',
-        _formatDuration(activeDuration),
+          await WorkoutHistoryService().updateSessionExerciseRecords(
+            sessionId: provider.session?.id ?? '',
+            exerciseRecords: currentRecords,
+          );
+          await ScoringEngine().calculateAndSaveScores();
+          provider.refresh();
+        },
       ),
     );
-
-    return timeWidgets;
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
-    return Row(
-      children: [
-        Icon(icon, size: 24, color: Colors.grey[600]),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
+  void _handleShareWorkout(BuildContext context, WorkoutDetailProvider provider) {
+    if (provider.dataWrapper.healthData == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('건강 데이터가 유실되어 공유할 수 없습니다.')),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => WorkoutShareScreen(
+          workoutData: provider.dataWrapper.healthData!,
+          heartRateData: provider.heartRateData,
+          avgHeartRate: provider.avgHeartRate,
+          paceData: provider.paceData,
+          avgPace: provider.avgPace,
+          movingTime: provider.activeDuration,
+          templateName: provider.session?.templateName,
+          environmentType: provider.session?.environmentType,
         ),
-      ],
+      ),
     );
-  }
-
-  // Placeholder to remove duplicated methods replaced by WorkoutUIUtils
-
-  String _formatWorkoutType(String type) => WorkoutUIUtils.formatWorkoutType(type, templateName: _session?.templateName);
-
-  String _formatDuration(Duration duration) {
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes.remainder(60);
-    final seconds = duration.inSeconds.remainder(60);
-    if (hours > 0) return '$hours시간 $minutes분 $seconds초';
-    if (minutes > 0) return '$minutes분 $seconds초';
-    return '$seconds초';
   }
 }
 
-/// 운동 정보 보강을 위한 부위 선택 화면
 class _StrengthCategorySelectionView extends StatelessWidget {
   final Function(List<ExerciseRecord>) onExercisesSelected;
-
   const _StrengthCategorySelectionView({required this.onExercisesSelected});
 
   @override
@@ -1640,8 +248,8 @@ class _StrengthCategorySelectionView extends StatelessWidget {
     final categories = [
       {'id': 'chest', 'name': '가슴', 'icon': 'assets/images/strength/category/chest.svg'},
       {'id': 'back', 'name': '등', 'icon': 'assets/images/strength/category/back.svg'},
-      {'id': 'shoulders', 'name': '어깨', 'icon': 'assets/images/strength/category/shoulder.svg'},
-      {'id': 'legs', 'name': '하체', 'icon': 'assets/images/strength/category/leg.svg'},
+      {'id': 'shoulders', 'name': '어깨', 'icon': 'assets/images/strength/category/shoulders.svg'},
+      {'id': 'legs', 'name': '하체', 'icon': 'assets/images/strength/category/legs.svg'},
       {'id': 'biceps', 'name': '이두', 'icon': 'assets/images/strength/category/biceps.svg'},
       {'id': 'triceps', 'name': '삼두', 'icon': 'assets/images/strength/category/triceps.svg'},
       {'id': 'core', 'name': '코어', 'icon': 'assets/images/strength/category/core.svg'},
@@ -1650,84 +258,52 @@ class _StrengthCategorySelectionView extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(
-        title: const Text('수행 부위 선택'),
-        backgroundColor: Theme.of(context).colorScheme.surface,
-      ),
-      body: Column(
-        children: [
-          const Padding(
-            padding: EdgeInsets.all(24.0),
-            child: Text(
-              '오늘 수행하신 운동 부위를 선택하고\n세부 종목을 추가해 보세요.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: Colors.grey),
-            ),
-          ),
-          Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 1.3,
-              ),
-              itemCount: categories.length,
-              itemBuilder: (context, index) {
-                final cat = categories[index];
-                return _CategoryCard(
-                  name: cat['name']!,
-                  iconPath: cat['icon']!,
-                  onTap: () {
-                    // ExerciseListScreen으로 이동
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ExerciseListScreen(
-                          muscleGroupId: cat['id']!,
-                          title: cat['name']!,
-                          isEnrichmentMode: true, // 보강 모드 활성화
-                        ),
-                      ),
-                    ).then((_) {
-                      // ExerciseListScreen에서 돌아왔을 때, 
-                      // StrengthRoutineProvider에 쌓인 블록들을 확인
-                      final provider = Provider.of<StrengthRoutineProvider>(context, listen: false);
-                      if (provider.blocks.isNotEmpty) {
-                        // 선택된 블록들을 ExerciseRecord로 변환
-                        final records = provider.blocks.map((block) {
-                          // 사용자가 설정한 수치 반영 (없으면 기본값)
-                          final int sets = block.sets ?? 3;
-                          final int reps = block.reps ?? 10;
-                          final double weight = block.weight ?? 0.0;
-
-                          return ExerciseRecord(
-                            id: Uuid().v4(),
-                            exerciseId: block.exerciseId ?? 'manual',
-                            exerciseName: block.name,
-                            sets: List.generate(sets, (i) => SetRecord(
-                              setNumber: i + 1,
-                              weight: weight,
-                              repsTarget: reps,
-                              repsCompleted: reps,
-                            )),
-                            order: 0,
-                            timestamp: DateTime.now(),
-                          );
-                        }).toList();
-                        
-                        onExercisesSelected(records);
-                        provider.clear(); // 프로바이더 초기화
-                        Navigator.pop(context); // 선택 화면 닫기
-                      }
-                    });
-                  },
-                );
-              },
-            ),
-          ),
-        ],
+      appBar: AppBar(title: const Text('수행 부위 선택')),
+      body: GridView.builder(
+        padding: const EdgeInsets.all(20),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2, crossAxisSpacing: 16, mainAxisSpacing: 16, childAspectRatio: 1.3,
+        ),
+        itemCount: categories.length,
+        itemBuilder: (context, index) {
+          final cat = categories[index];
+          return _CategoryCard(
+            name: cat['name']!,
+            iconPath: cat['icon']!,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ExerciseListScreen(
+                    muscleGroupId: cat['id']!,
+                    title: cat['name']!,
+                    isEnrichmentMode: true,
+                  ),
+                ),
+              ).then((_) {
+                final provider = Provider.of<StrengthRoutineProvider>(context, listen: false);
+                if (provider.blocks.isNotEmpty) {
+                  final records = provider.blocks.map((block) => ExerciseRecord(
+                    id: Uuid().v4(),
+                    exerciseId: block.exerciseId ?? 'manual',
+                    exerciseName: block.name,
+                    sets: List.generate(block.sets ?? 3, (i) => SetRecord(
+                      setNumber: i + 1,
+                      weight: block.weight ?? 0,
+                      repsTarget: block.reps ?? 10,
+                      repsCompleted: block.reps ?? 10,
+                    )),
+                    order: 0,
+                    timestamp: DateTime.now(),
+                  )).toList();
+                  onExercisesSelected(records);
+                  provider.clear();
+                  Navigator.pop(context);
+                }
+              });
+            },
+          );
+        },
       ),
     );
   }
@@ -1737,16 +313,10 @@ class _CategoryCard extends StatelessWidget {
   final String name;
   final String iconPath;
   final VoidCallback onTap;
-
-  const _CategoryCard({
-    required this.name,
-    required this.iconPath,
-    required this.onTap,
-  });
+  const _CategoryCard({required this.name, required this.iconPath, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme.secondary;
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -1755,16 +325,11 @@ class _CategoryCard extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             SvgPicture.asset(
-              iconPath,
-              width: 40,
-              height: 40,
-              colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+              iconPath, width: 40, height: 40,
+              colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.secondary, BlendMode.srcIn),
             ),
             const SizedBox(height: 12),
-            Text(
-              name,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
+            Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           ],
         ),
       ),

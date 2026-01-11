@@ -32,4 +32,20 @@ class WorkoutDataWrapper {
     if (healthData != null) return healthData!.sourceName;
     return 'PaceLifter';
   }
+
+  double get totalDistance {
+    if (session != null) return session!.totalDistance ?? 0.0;
+    if (healthData != null && healthData!.value is WorkoutHealthValue) {
+      return ((healthData!.value as WorkoutHealthValue).totalDistance ?? 0).toDouble();
+    }
+    return 0.0;
+  }
+
+  double get calories {
+    if (session != null) return session!.calories ?? 0.0;
+    if (healthData != null && healthData!.value is WorkoutHealthValue) {
+      return ((healthData!.value as WorkoutHealthValue).totalEnergyBurned ?? 0).toDouble();
+    }
+    return 0.0;
+  }
 }

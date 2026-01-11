@@ -4,6 +4,7 @@ import 'package:pacelifter/models/user_profile.dart';
 import 'package:pacelifter/services/profile_service.dart';
 import 'package:pacelifter/screens/main_navigation.dart';
 import 'package:intl/intl.dart';
+import 'package:pacelifter/utils/workout_ui_utils.dart'; // 추가
 
 /// 사용자 프로필 설정을 위한 다단계 화면
 class ProfileSetupScreen extends StatefulWidget {
@@ -166,8 +167,25 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     return Duration(hours: hours, minutes: minutes, seconds: seconds);
   }
 
+  Color _getCurrentColor() {
+    switch (_currentPage) {
+      case 1: // 러닝 경험
+      case 4: // 러닝 기록
+        return WorkoutUIUtils.getWorkoutColor(context, 'Endurance');
+      case 2: // 웨이트 경험
+      case 3: // 인바디
+      case 5: // 맨몸 운동
+      case 6: // 3RM
+        return WorkoutUIUtils.getWorkoutColor(context, 'Strength');
+      default:
+        return WorkoutUIUtils.getWorkoutColor(context, 'Hybrid');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final activeColor = _getCurrentColor();
+    
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
@@ -187,9 +205,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                   value: _progressAnimation.value,
                   minHeight: 8,
                   backgroundColor: Colors.white10,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    Theme.of(context).colorScheme.primary,
-                  ),
+                  valueColor: AlwaysStoppedAnimation<Color>(activeColor),
                 );
               },
             ),
@@ -198,9 +214,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                 controller: _pageController,
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
-                  _buildStep1(), // 기본 정보 (성별, 키, 체중, 생년월일)
-                  _buildStep2(), // 러닝 구력/레벨
-                  _buildStep3(), // 웨이트 구력/레벨
+                  _buildStep1(), // 기본 정보
+                  _buildStep2(), // 러닝 프로필
+                  _buildStep3(), // 웨이트 프로필
                   _buildStep4(), // 인바디
                   _buildStep5(), // 러닝 기록
                   _buildStep6(), // 맨몸 운동
@@ -216,6 +232,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
 
   // 1단계: 기본 정보 (생년월일 추가)
   Widget _buildStep1() {
+    final activeColor = _getCurrentColor();
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Column(
@@ -261,12 +278,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
           const SizedBox(height: 8),
           TextField(
             keyboardType: TextInputType.number,
-            cursorColor: Theme.of(context).colorScheme.primary,
+            cursorColor: activeColor,
             decoration: InputDecoration(
               hintText: '예: 175', 
               border: const OutlineInputBorder(),
               focusedBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+                borderSide: BorderSide(color: activeColor, width: 2),
               ),
             ),
             onChanged: (val) => setState(() => _userProfile = _userProfile.copyWith(height: double.tryParse(val))),
@@ -277,12 +294,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
           const SizedBox(height: 8),
           TextField(
             keyboardType: TextInputType.number,
-            cursorColor: Theme.of(context).colorScheme.primary,
+            cursorColor: activeColor,
             decoration: InputDecoration(
               hintText: '예: 70', 
               border: const OutlineInputBorder(),
               focusedBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+                borderSide: BorderSide(color: activeColor, width: 2),
               ),
             ),
             onChanged: (val) => setState(() => _userProfile = _userProfile.copyWith(weight: double.tryParse(val))),
@@ -294,7 +311,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
             child: ElevatedButton(
               onPressed: (_userProfile.gender != null && _userProfile.birthDate != null && _userProfile.height != null && _userProfile.weight != null) ? _nextPage : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
+                backgroundColor: activeColor,
                 foregroundColor: Colors.black,
               ),
               child: const Text('다음', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -381,7 +398,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
 
   // 3단계: 웨이트 구력 및 레벨
   Widget _buildStep3() {
-    final strengthColor = Theme.of(context).colorScheme.primary;
+    final activeColor = _getCurrentColor();
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Column(
@@ -397,13 +414,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
           TextField(
             controller: _strengthExpController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            cursorColor: strengthColor,
+            cursorColor: activeColor,
             decoration: InputDecoration(
               hintText: '예: 2', 
               border: const OutlineInputBorder(), 
               suffixText: '년',
               focusedBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: strengthColor, width: 2),
+                borderSide: BorderSide(color: activeColor, width: 2),
               ),
             ),
             onChanged: (val) {
@@ -428,7 +445,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
               FocusScope.of(context).unfocus();
               setState(() => _userProfile = _userProfile.copyWith(strengthLevel: val));
             },
-            activeColor: strengthColor,
+            activeColor: activeColor,
           ),
 
           const SizedBox(height: 48),
@@ -437,7 +454,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
             child: ElevatedButton(
               onPressed: (_userProfile.strengthExperience != null && _userProfile.strengthLevel != null) ? _nextPage : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: strengthColor,
+                backgroundColor: activeColor,
                 foregroundColor: Colors.black,
               ),
               child: const Text('다음', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -497,10 +514,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
 
   // 4단계: 인바디 (선택)
   Widget _buildStep4() {
+    final activeColor = _getCurrentColor();
     return _buildSelectionStep('인바디 정보 입력 (선택)', '정확한 분석을 위해 필요한 정보입니다.', [
-      _buildNumericField('골격근량 (kg)', (val) => _userProfile = _userProfile.copyWith(skeletalMuscleMass: double.tryParse(val))),
-      _buildNumericField('체지방률 (%)', (val) => _userProfile = _userProfile.copyWith(bodyFatPercentage: double.tryParse(val))),
-    ]);
+      _buildNumericField('골격근량 (kg)', (val) => _userProfile = _userProfile.copyWith(skeletalMuscleMass: double.tryParse(val)), activeColor: activeColor),
+      _buildNumericField('체지방률 (%)', (val) => _userProfile = _userProfile.copyWith(bodyFatPercentage: double.tryParse(val)), activeColor: activeColor),
+    ], activeColor: activeColor);
   }
 
   // 5단계: 러닝 기록 (선택)
@@ -657,21 +675,21 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
 
   // 6단계: 맨몸 운동 (선택)
   Widget _buildStep6() {
-    final strengthColor = Theme.of(context).colorScheme.primary;
+    final activeColor = _getCurrentColor();
     return _buildSelectionStep('맨몸 운동 능력 (선택)', '수행 가능한 최대 횟수를 입력해주세요.', [
-      _buildNumericField('턱걸이 (최대)', (val) => _userProfile = _userProfile.copyWith(maxPullUps: int.tryParse(val)), activeColor: strengthColor),
-      _buildNumericField('푸쉬업 (최대)', (val) => _userProfile = _userProfile.copyWith(maxPushUps: int.tryParse(val)), activeColor: strengthColor),
-    ], activeColor: strengthColor);
+      _buildNumericField('턱걸이 (최대)', (val) => _userProfile = _userProfile.copyWith(maxPullUps: int.tryParse(val)), activeColor: activeColor),
+      _buildNumericField('푸쉬업 (최대)', (val) => _userProfile = _userProfile.copyWith(maxPushUps: int.tryParse(val)), activeColor: activeColor),
+    ], activeColor: activeColor);
   }
 
   // 7단계: 3RM (선택)
   Widget _buildStep7() {
-    final strengthColor = Theme.of(context).colorScheme.primary;
+    final activeColor = _getCurrentColor();
     return _buildSelectionStep('3대 운동 3RM (선택)', '3회 반복 가능한 최대 무게를 입력해주세요.', [
-      _buildNumericField('스쿼트 (kg)', (val) => _userProfile = _userProfile.copyWith(squat3RM: double.tryParse(val)), activeColor: strengthColor),
-      _buildNumericField('벤치프레스 (kg)', (val) => _userProfile = _userProfile.copyWith(benchPress3RM: double.tryParse(val)), activeColor: strengthColor),
-      _buildNumericField('데드리프트 (kg)', (val) => _userProfile = _userProfile.copyWith(deadlift3RM: double.tryParse(val)), activeColor: strengthColor),
-    ], isLast: true, activeColor: strengthColor);
+      _buildNumericField('스쿼트 (kg)', (val) => _userProfile = _userProfile.copyWith(squat3RM: double.tryParse(val)), activeColor: activeColor),
+      _buildNumericField('벤치프레스 (kg)', (val) => _userProfile = _userProfile.copyWith(benchPress3RM: double.tryParse(val)), activeColor: activeColor),
+      _buildNumericField('데드리프트 (kg)', (val) => _userProfile = _userProfile.copyWith(deadlift3RM: double.tryParse(val)), activeColor: activeColor),
+    ], isLast: true, activeColor: activeColor);
   }
 
   // 공통 선택사항 빌더

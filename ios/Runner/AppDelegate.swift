@@ -170,6 +170,58 @@ class HealthKitBridge {
             self.healthStore.execute(query)
         }
     }
+
+    /// Get GPS route points for a workout by UUID
+    func getWorkoutRoute(uuid: String, result: @escaping FlutterResult) {
+        guard let workoutUUID = UUID(uuidString: uuid) else {
+            result(FlutterError(code: "INVALID_UUID", message: "Invalid UUID format", details: nil))
+            return
+        }
+
+        // 1. Get the workout object
+        let workoutType = HKObjectType.workoutType()
+        let predicate = HKQuery.predicateForObject(with: workoutUUID)
+        
+        let query = HKSampleQuery(sampleType: workoutType, predicate: predicate, limit: 1, sortDescriptors: nil) { [weak self] (query, samples, error) in
+            guard let self = self, let workout = samples?.first as? HKWorkout else {
+                result(nil) // No workout found
+                return
+            }
+
+            // 2. Find route data linked to this workout
+            let routeType = HKSeriesType.workoutRoute()
+            let routePredicate = HKQuery.predicateForObjects(from: workout)
+            
+            let routeQuery = HKSampleQuery(sampleType: routeType, predicate: routePredicate, limit: 1, sortDescriptors: nil) { (q, routeSamples, err) in
+                guard let route = routeSamples?.first as? HKWorkoutRoute else {
+                    result(nil) // No route found for this workout
+                    return
+                }
+
+                // 3. Query the location data from the route
+                var locations: [[String: Any]] = []
+                let locationQuery = HKWorkoutRouteQuery(route: route) { (query, newLocations, done, error) in
+                    if let newLocations = newLocations {
+                        for loc in newLocations {
+                            locations.append([
+                                "latitude": loc.coordinate.latitude,
+                                "longitude": loc.coordinate.longitude,
+                                "altitude": loc.altitude,
+                                "timestamp": Int(loc.timestamp.timeIntervalSince1970 * 1000)
+                            ])
+                        }
+                    }
+
+                    if done {
+                        result(locations)
+                    }
+                }
+                self.healthStore.execute(locationQuery)
+            }
+            self.healthStore.execute(routeQuery)
+        }
+        self.healthStore.execute(query)
+    }
 }
 
 @main
@@ -313,6 +365,12 @@ class HealthKitBridge {
           return
         }
         self.healthKitBridge.getWorkoutDetails(uuid: uuid, result: result)
+      case "getWorkoutRoute":
+        guard let args = call.arguments as? [String: Any], let uuid = args["uuid"] as? String else {
+          result(FlutterError(code: "INVALID_ARGS", message: "Missing uuid", details: nil))
+          return
+        }
+        self.healthKitBridge.getWorkoutRoute(uuid: uuid, result: result)
       default:
         result(FlutterMethodNotImplemented)
       }

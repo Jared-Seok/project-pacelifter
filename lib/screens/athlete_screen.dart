@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:pacelifter/services/auth_service.dart';
-import 'package:pacelifter/models/user_profile.dart';
-import 'package:pacelifter/services/profile_service.dart';
+import '../services/auth_service.dart';
+import '../models/user_profile.dart';
+import '../services/profile_service.dart';
 import 'package:intl/intl.dart';
+import '../utils/workout_ui_utils.dart';
 
 /// 애슬릿 화면 (개인 정보 및 운동 기록)
 class AthleteScreen extends StatefulWidget {
@@ -213,10 +214,11 @@ class _AthleteScreenState extends State<AthleteScreen> with SingleTickerProvider
           _buildEditableSection(
             title: '신체 기초 데이터',
             icon: Icons.accessibility_new,
+            category: 'Hybrid', // 기초 데이터는 중립 색상 적용
             items: [
-              _buildEditableItem(label: '성별', value: _userProfile?.gender == 'male' ? '남성' : (_userProfile?.gender == 'female' ? '여성' : '미설정'), onTap: () => _editGender()),
-              _buildEditableItem(label: '생년월일', value: _userProfile?.birthDate != null ? DateFormat('yyyy - MM - dd').format(_userProfile!.birthDate!) : '미설정', onTap: () => _editBirthDate()),
-              _buildEditableItem(label: '키 / 체중', value: '${_userProfile?.height?.toStringAsFixed(1) ?? "--"}cm / ${_userProfile?.weight?.toStringAsFixed(1) ?? "--"}kg', onTap: () => _editHeightWeight()),
+              _buildEditableItem(label: '성별', value: _userProfile?.gender == 'male' ? '남성' : (_userProfile?.gender == 'female' ? '여성' : '미설정'), onTap: () => _editGender(), category: 'Hybrid'),
+              _buildEditableItem(label: '생년월일', value: _userProfile?.birthDate != null ? DateFormat('yyyy - MM - dd').format(_userProfile!.birthDate!) : '미설정', onTap: () => _editBirthDate(), category: 'Hybrid'),
+              _buildEditableItem(label: '키 / 체중', value: '${_userProfile?.height?.toStringAsFixed(1) ?? "--"}cm / ${_userProfile?.weight?.toStringAsFixed(1) ?? "--"}kg', onTap: () => _editHeightWeight(), category: 'Hybrid'),
             ],
           ),
           const SizedBox(height: 16),
@@ -224,17 +226,18 @@ class _AthleteScreenState extends State<AthleteScreen> with SingleTickerProvider
             title: '경력 및 숙련도',
             icon: Icons.history_edu,
             items: [
-              _buildEditableItem(label: '러닝', value: '${_userProfile?.runningExperience?.toStringAsFixed(1) ?? "--"}년 / ${_formatLevel(_userProfile?.runningLevel)}', onTap: () => _editExperienceAndLevel('running')),
-              _buildEditableItem(label: '웨이트', value: '${_userProfile?.strengthExperience?.toStringAsFixed(1) ?? "--"}년 / ${_formatLevel(_userProfile?.strengthLevel)}', onTap: () => _editExperienceAndLevel('strength')),
+              _buildEditableItem(label: '러닝', value: '${_userProfile?.runningExperience?.toStringAsFixed(1) ?? "--"}년 / ${_formatLevel(_userProfile?.runningLevel)}', onTap: () => _editExperienceAndLevel('running'), category: 'Endurance'),
+              _buildEditableItem(label: '웨이트', value: '${_userProfile?.strengthExperience?.toStringAsFixed(1) ?? "--"}년 / ${_formatLevel(_userProfile?.strengthLevel)}', onTap: () => _editExperienceAndLevel('strength'), category: 'Strength'),
             ],
           ),
           const SizedBox(height: 16),
           _buildEditableSection(
             title: '인바디 세부 정보',
             svgIcon: 'assets/images/pllogo.svg',
+            category: 'Strength',
             items: [
-              _buildEditableItem(label: '골격근량', value: _userProfile?.skeletalMuscleMass != null ? '${_userProfile!.skeletalMuscleMass!.toStringAsFixed(1)} kg' : '미설정', onTap: () => _editSkeletalMuscleMass()),
-              _buildEditableItem(label: '체지방률', value: _userProfile?.bodyFatPercentage != null ? '${_userProfile!.bodyFatPercentage!.toStringAsFixed(1)} %' : '미설정', onTap: () => _editBodyFatPercentage()),
+              _buildEditableItem(label: '골격근량', value: _userProfile?.skeletalMuscleMass != null ? '${_userProfile!.skeletalMuscleMass!.toStringAsFixed(1)} kg' : '미설정', onTap: () => _editSkeletalMuscleMass(), category: 'Strength'),
+              _buildEditableItem(label: '체지방률', value: _userProfile?.bodyFatPercentage != null ? '${_userProfile!.bodyFatPercentage!.toStringAsFixed(1)} %' : '미설정', onTap: () => _editBodyFatPercentage(), category: 'Strength'),
             ],
           ),
         ],
@@ -252,30 +255,33 @@ class _AthleteScreenState extends State<AthleteScreen> with SingleTickerProvider
           _buildEditableSection(
             title: '러닝 개인 최고 기록',
             svgIcon: 'assets/images/endurance/runner-icon.svg',
+            category: 'Endurance',
             items: [
-              _buildEditableItem(label: 'Full Marathon', value: _formatDuration(_userProfile?.fullMarathonTime), onTap: () => _editRunningRecord('fullMarathon')),
-              _buildEditableItem(label: 'Half Marathon', value: _formatDuration(_userProfile?.halfMarathonTime), onTap: () => _editRunningRecord('halfMarathon')),
-              _buildEditableItem(label: '10K', value: _formatDuration(_userProfile?.tenKmTime), onTap: () => _editRunningRecord('10K')),
-              _buildEditableItem(label: '5K', value: _formatDuration(_userProfile?.fiveKmTime), onTap: () => _editRunningRecord('5K')),
+              _buildEditableItem(label: 'Full Marathon', value: _formatDuration(_userProfile?.fullMarathonTime), onTap: () => _editRunningRecord('fullMarathon'), category: 'Endurance'),
+              _buildEditableItem(label: 'Half Marathon', value: _formatDuration(_userProfile?.halfMarathonTime), onTap: () => _editRunningRecord('halfMarathon'), category: 'Endurance'),
+              _buildEditableItem(label: '10K', value: _formatDuration(_userProfile?.tenKmTime), onTap: () => _editRunningRecord('10K'), category: 'Endurance'),
+              _buildEditableItem(label: '5K', value: _formatDuration(_userProfile?.fiveKmTime), onTap: () => _editRunningRecord('5K'), category: 'Endurance'),
             ],
           ),
           const SizedBox(height: 16),
           _buildEditableSection(
             title: '근력 3RM 기록',
             svgIcon: 'assets/images/strength/lifter-icon.svg',
+            category: 'Strength',
             items: [
-              _buildEditableItem(label: '스쿼트', value: _userProfile?.squat3RM != null ? '${_userProfile!.squat3RM!.toStringAsFixed(1)} kg' : '미설정', onTap: () => _edit3RM('squat')),
-              _buildEditableItem(label: '벤치프레스', value: _userProfile?.benchPress3RM != null ? '${_userProfile!.benchPress3RM!.toStringAsFixed(1)} kg' : '미설정', onTap: () => _edit3RM('benchPress')),
-              _buildEditableItem(label: '데드리프트', value: _userProfile?.deadlift3RM != null ? '${_userProfile!.deadlift3RM!.toStringAsFixed(1)} kg' : '미설정', onTap: () => _edit3RM('deadlift')),
+              _buildEditableItem(label: '스쿼트', value: _userProfile?.squat3RM != null ? '${_userProfile!.squat3RM!.toStringAsFixed(1)} kg' : '미설정', onTap: () => _edit3RM('squat'), category: 'Strength'),
+              _buildEditableItem(label: '벤치프레스', value: _userProfile?.benchPress3RM != null ? '${_userProfile!.benchPress3RM!.toStringAsFixed(1)} kg' : '미설정', onTap: () => _edit3RM('benchPress'), category: 'Strength'),
+              _buildEditableItem(label: '데드리프트', value: _userProfile?.deadlift3RM != null ? '${_userProfile!.deadlift3RM!.toStringAsFixed(1)} kg' : '미설정', onTap: () => _edit3RM('deadlift'), category: 'Strength'),
             ],
           ),
           const SizedBox(height: 16),
           _buildEditableSection(
             title: '맨몸 운동 수행력',
             svgIcon: 'assets/images/strength/pullup-icon.svg',
+            category: 'Strength',
             items: [
-              _buildEditableItem(label: '턱걸이 (최대)', value: _userProfile?.maxPullUps != null ? '${_userProfile!.maxPullUps} 회' : '미설정', onTap: () => _editBodyweightExercise('pullUps')),
-              _buildEditableItem(label: '푸쉬업 (최대)', value: _userProfile?.maxPushUps != null ? '${_userProfile!.maxPushUps} 회' : '미설정', onTap: () => _editBodyweightExercise('pushUps')),
+              _buildEditableItem(label: '턱걸이 (최대)', value: _userProfile?.maxPullUps != null ? '${_userProfile!.maxPullUps} 회' : '미설정', onTap: () => _editBodyweightExercise('pullUps'), category: 'Strength'),
+              _buildEditableItem(label: '푸쉬업 (최대)', value: _userProfile?.maxPushUps != null ? '${_userProfile!.maxPushUps} 회' : '미설정', onTap: () => _editBodyweightExercise('pushUps'), category: 'Strength'),
             ],
           ),
         ],
@@ -319,15 +325,23 @@ class _AthleteScreenState extends State<AthleteScreen> with SingleTickerProvider
   }
 
   Widget _buildZoneBar(int zone, int min, int max) {
-    final colors = [Colors.blue, Colors.green, Colors.yellow, Colors.orange, Colors.red];
+    // 테마와 조화를 이루는 고품질 팔레트
+    final colors = [
+      const Color(0xFF4FC3F7), // Zone 1: Light Blue
+      const Color(0xFF66BB6A), // Zone 2: Green
+      const Color(0xFFFFEE58), // Zone 3: Yellow
+      const Color(0xFFFFA726), // Zone 4: Orange
+      const Color(0xFFEF5350), // Zone 5: Red
+    ];
     final labels = ['Warm-up', 'Fat Burn', 'Aerobic', 'Threshold', 'VO2 Max'];
     final color = colors[zone - 1];
+    
     return Padding(
       padding: const EdgeInsets.only(bottom: 14.0),
       child: Column(children: [
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           Text('Zone $zone: ${labels[zone - 1]}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color)),
-          Text('$min - $max BPM', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'monospace')),
+          Text('$min - $max BPM', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'monospace', color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8))),
         ]),
         const SizedBox(height: 6),
         ClipRRect(
@@ -343,25 +357,44 @@ class _AthleteScreenState extends State<AthleteScreen> with SingleTickerProvider
     );
   }
 
-  Widget _buildEditableSection({required String title, IconData? icon, String? svgIcon, required List<Widget> items}) {
+  Widget _buildEditableSection({
+    required String title, 
+    IconData? icon, 
+    String? svgIcon, 
+    required List<Widget> items, 
+    String category = 'Endurance' // 기본값 설정
+  }) {
+    final displayColor = WorkoutUIUtils.getWorkoutColor(context, category);
+    
     return Card(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           child: Row(children: [
-            if (svgIcon != null) SvgPicture.asset(svgIcon, width: 18, height: 18, colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.primary, BlendMode.srcIn))
-            else if (icon != null) Icon(icon, size: 18, color: Theme.of(context).colorScheme.primary),
+            if (svgIcon != null) SvgPicture.asset(
+              svgIcon, width: 18, height: 18, 
+              colorFilter: ColorFilter.mode(displayColor, BlendMode.srcIn)
+            )
+            else if (icon != null) Icon(icon, size: 18, color: displayColor),
             const SizedBox(width: 8),
             Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
           ]),
         ),
         const Divider(height: 1),
+        // 아이템들에게 결정된 색상을 전달
         ...items,
       ]),
     );
   }
 
-  Widget _buildEditableItem({required String label, required String value, required VoidCallback onTap}) {
+  Widget _buildEditableItem({
+    required String label, 
+    required String value, 
+    required VoidCallback onTap, 
+    String category = 'Endurance'
+  }) {
+    final displayColor = WorkoutUIUtils.getWorkoutColor(context, category);
+    
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -369,7 +402,7 @@ class _AthleteScreenState extends State<AthleteScreen> with SingleTickerProvider
         child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           Text(label, style: const TextStyle(fontSize: 14)),
           Row(children: [
-            Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+            Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: displayColor)),
             const Icon(Icons.chevron_right, color: Colors.grey, size: 18),
           ]),
         ]),

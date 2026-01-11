@@ -40,15 +40,16 @@ class WorkoutUIUtils {
 
     // 2. 카테고리 표준 색상 추출
     final color = getWorkoutColor(context, workoutCategory);
-    final upperType = type.toUpperCase();
-    final combinedName = (upperType + (session?.templateName ?? '')).toUpperCase();
+    final templateName = (session != null && session.templateId.isNotEmpty && session.templateId != 'health_kit_import') ? session.templateName : null;
 
-    // 3. 표시 이름 결정 (정책의 중앙화: 제목은 항상 활동명으로 고정)
-    String displayName = formatWorkoutType(type);
+    // 3. 표시 이름 결정 (정책의 중앙화: 제목은 항상 활동명으로 고정, 템플릿 이름 참조 추가)
+    String displayName = formatWorkoutType(type, templateName: session?.templateName);
 
     // 4. 아이콘 및 배경 색상 결정 (Core/Functional 특수 케이스 포함)
     final Color backgroundColor;
     final Color iconColor;
+    final upperType = type.toUpperCase();
+    final combinedName = (upperType + (session?.templateName ?? '')).toUpperCase();
 
     if (combinedName.contains('CORE') || combinedName.contains('FUNCTIONAL') || 
         combinedName.contains('코어') || combinedName.contains('기능성')) {
@@ -206,7 +207,7 @@ class WorkoutUIUtils {
     final upperType = type.toUpperCase();
     final upperTemplate = (templateName ?? '').toUpperCase();
     
-    // ⚠️ 1순위: 코어 강화 (활동 타입 또는 템플릿 이름에 포함된 경우)
+    // ⚠️ 1순위: 코어 강화 (활동 타입 또는 템플릿 이름에 'CORE' 혹은 '코어'가 포함된 경우)
     if (upperType.contains('CORE') || upperType.contains('ABDOMINAL') || 
         upperTemplate.contains('CORE') || upperTemplate.contains('코어')) {
       return '코어 강화 운동';
