@@ -63,12 +63,14 @@ class WorkoutDetailProvider extends ChangeNotifier {
         _elevationGain = _session!.elevationGain ?? 0.0;
       }
 
-      // 3. 네이티브 데이터 비동기 로드
+      // 3. 네이티브 데이터 로드 (순차 실행으로 정확도 및 의존성 보장)
+      await _fetchNativeDuration(); 
+
+      // 4. 나머지 지표 비동기 로드
       await Future.wait([
-        _fetchNativeDuration(),
         _fetchHeartRateData(),
         _fetchPaceSamples(),
-        _fetchCadenceAndElevation(), // 추가
+        _fetchCadenceAndElevation(),
       ]);
 
     } catch (e) {
@@ -79,7 +81,7 @@ class WorkoutDetailProvider extends ChangeNotifier {
     }
   }
 
-  /// 네이티브 HealthKit으로부터 정밀한 운동 시간 정보를 가져옵니다.
+  /// 네이티브 HealthKit으로부터 정밀한 운동 시간 및 추가 지표(고도, 케이던스) 정보를 가져옵니다.
   Future<void> _fetchNativeDuration() async {
     try {
       final details = await _healthKitBridge.getWorkoutDetails(dataWrapper.uuid);
@@ -87,10 +89,18 @@ class WorkoutDetailProvider extends ChangeNotifier {
         final parsed = _healthKitBridge.parseWorkoutDetails(details);
         if (parsed != null) {
           _activeDuration = parsed.activeDuration;
+          
+          // 네이티브에서 직접 제공하는 지표가 있으면 우선 적용 (NRC 등 타사 앱 호환)
+          if (parsed.elevationGain != null && parsed.elevationGain! > 0) {
+            _elevationGain = parsed.elevationGain!;
+          }
+          if (parsed.averageCadence != null && parsed.averageCadence! > 0) {
+            _avgCadence = parsed.averageCadence!.round();
+          }
         }
       }
     } catch (e) {
-      debugPrint('⚠️ WorkoutDetailProvider: Failed to fetch native duration: $e');
+      debugPrint('⚠️ WorkoutDetailProvider: Failed to fetch native details: $e');
     }
   }
 
@@ -139,7 +149,7 @@ class WorkoutDetailProvider extends ChangeNotifier {
     }
   }
 
-  /// 케이던스 및 고도 정보를 가져옵니다.
+  /// 케이던스 및 고도 정보를 가져옵니다. (네이티브 값이 없을 때만 폴백으로 실행)
   Future<void> _fetchCadenceAndElevation() async {
     try {
       final samples = await _healthService.getHealthDataFromTypes(
@@ -149,11 +159,42 @@ class WorkoutDetailProvider extends ChangeNotifier {
       );
 
       if (samples.isNotEmpty) {
-        final totalSteps = samples.fold(0.0, (sum, s) => sum + (s.value as NumericHealthValue).numericValue);
-        final duration = _activeDuration ?? dataWrapper.dateTo.difference(dataWrapper.dateFrom);
-        
-        if (duration.inMinutes > 0) {
-          _avgCadence = (totalSteps / duration.inMinutes).round();
+        // 1. 케이던스 처리
+        if (_avgCadence == 0) {
+          // 소스별로 걸음수 그룹화
+          final Map<String, double> sourceStepCounts = {};
+          for (var s in samples) {
+            final source = s.sourceName;
+            final val = (s.value as NumericHealthValue).numericValue.toDouble();
+            sourceStepCounts[source] = (sourceStepCounts[source] ?? 0) + val;
+          }
+          
+          if (sourceStepCounts.isNotEmpty) {
+            final duration = _activeDuration ?? dataWrapper.dateTo.difference(dataWrapper.dateFrom);
+            
+            if (duration.inMinutes > 0) {
+              // 1) 최대 걸음수 확인 (기준점)
+              final maxSteps = sourceStepCounts.values.reduce((a, b) => a > b ? a : b);
+              
+              // 2) 유효한 소스만 필터링 (최대값의 50% 이상인 것만 '성실한' 기록으로 인정)
+              final validCadences = sourceStepCounts.values
+                .where((steps) => steps >= maxSteps * 0.5)
+                .map((steps) => steps / duration.inMinutes)
+                .toList();
+              
+              // 3) 유효 소스들의 평균값 계산
+              if (validCadences.isNotEmpty) {
+                final sumCadence = validCadences.reduce((a, b) => a + b);
+                _avgCadence = (sumCadence / validCadences.length).round();
+                debugPrint('✅ WorkoutDetailProvider: Averaged cadence from ${validCadences.length} sources: $_avgCadence');
+              }
+            }
+          }
+        }
+
+        // 2. 고도 상승 처리 (네이티브 값이 없을 때만)
+        if (_elevationGain == 0) {
+          // (고도 관련 샘플 처리 로직 추가 가능)
         }
       }
     } catch (e) {

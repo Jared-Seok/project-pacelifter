@@ -155,14 +155,31 @@ class HealthKitBridge {
                 let elapsedTimeSeconds = workout.endDate.timeIntervalSince(workout.startDate)
                 let activeDurationSeconds = workout.duration
                 let pausedDurationSeconds = elapsedTimeSeconds - activeDurationSeconds
-
-                let details: [String: Any] = [
+                
+                var details: [String: Any] = [
                     "activeDuration": Int(activeDurationSeconds * 1000),
                     "elapsedTime": Int(elapsedTimeSeconds * 1000),
                     "pausedDuration": Int(max(0, pausedDurationSeconds) * 1000),
                     "startDate": Int(workout.startDate.timeIntervalSince1970 * 1000),
                     "endDate": Int(workout.endDate.timeIntervalSince1970 * 1000)
                 ]
+
+                // NRC 및 Apple 워크아웃의 추가 지표 안전하게 추출
+                if #available(iOS 13.0, *) {
+                    // 1. 평균 케이던스 (SPM)
+                    // "HKAverageCadence"는 NRC 등에서 사용하는 일반적인 메타데이터 키입니다.
+                    if let cadence = workout.metadata?["HKAverageCadence"] as? HKQuantity {
+                        let spmUnit = HKUnit.count().unitDivided(by: HKUnit.minute())
+                        details["averageCadence"] = cadence.doubleValue(for: spmUnit)
+                    }
+                    
+                    // 2. 고도 상승 (Elevation Gain)
+                    // HKMetadataKeyWorkoutElevationGain의 실제 값은 "HKElevationGain"입니다.
+                    // 상수를 찾지 못하는 경우를 대비해 직접 문자열 키를 사용합니다.
+                    if let elevation = workout.metadata?["HKElevationGain"] as? HKQuantity {
+                        details["elevationGain"] = elevation.doubleValue(for: HKUnit.meter())
+                    }
+                }
 
                 result(details)
             }

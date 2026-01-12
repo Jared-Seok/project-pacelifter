@@ -72,10 +72,10 @@ class HealthKitBridgeService {
     }
   }
 
-  /// Convert workout details map to Duration objects
-  /// Returns a record with (activeDuration, elapsedTime, pausedDuration)
+  /// Convert workout details map to Duration objects and optional metrics
+  /// Returns a record with (activeDuration, elapsedTime, pausedDuration, elevationGain, averageCadence)
   /// Returns null if details is null or missing required fields
-  ({Duration activeDuration, Duration elapsedTime, Duration pausedDuration})?
+  ({Duration activeDuration, Duration elapsedTime, Duration pausedDuration, double? elevationGain, double? averageCadence})?
       parseWorkoutDetails(Map<String, dynamic>? details) {
     if (details == null) {
       return null;
@@ -85,11 +85,17 @@ class HealthKitBridgeService {
       final int activeDurationMs = details['activeDuration'] as int;
       final int elapsedTimeMs = details['elapsedTime'] as int;
       final int pausedDurationMs = details['pausedDuration'] as int;
+      
+      // Optional metrics
+      final double? elevationGain = details['elevationGain'] != null ? (details['elevationGain'] as num).toDouble() : null;
+      final double? averageCadence = details['averageCadence'] != null ? (details['averageCadence'] as num).toDouble() : null;
 
       return (
         activeDuration: Duration(milliseconds: activeDurationMs),
         elapsedTime: Duration(milliseconds: elapsedTimeMs),
         pausedDuration: Duration(milliseconds: pausedDurationMs),
+        elevationGain: elevationGain,
+        averageCadence: averageCadence,
       );
     } catch (e) {
       print('⚠️ Failed to parse workout details: $e');
