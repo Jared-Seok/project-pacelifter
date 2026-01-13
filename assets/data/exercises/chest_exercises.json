@@ -11,7 +11,7 @@
       "equipment": "barbell",
       "difficulty": "intermediate",
       "description": "가슴 운동의 기본이자 스트렝스의 지표가 되는 운동입니다.",
-      "variations": ["경사도: 플랫", "경사도: 인클라인", "경사도: 디클라인", "그립: 일반", "그립: 와이드", "그립: 클로즈", "수행: 정지", "수행: 스포토", "수행: 템포", "기타: 플로어 프레스", "기타: 리버스 그립"],
+      "variations": ["경사도: 플랫", "경사도: 인클라인", "경사도: 디클라인", "그립: 일반", "그립: 와이드", "그립: 클로즈", "수행: 정지", "수행: 스포토", "수행: 템포", "장비: 스미스 머신", "기타: 플로어 프레스", "기타: 리버스 그립"],
       "isCompound": true,
       "isUnilateral": false,
       "group": "벤치 프레스",
@@ -35,37 +35,21 @@
       "imagePath": "assets/images/strength/chest/dumbbell_bench_press.svg"
     },
     {
-      "id": "machine_chest_press",
-      "name": "Machine Chest Press",
-      "nameKo": "머신 체스트 프레스",
+      "id": "dips",
+      "name": "Dips",
+      "nameKo": "딥스",
       "category": "strength",
       "movementPattern": "push",
-      "primaryMuscles": ["chest"],
-      "secondaryMuscles": ["triceps"],
-      "equipment": "machine",
-      "difficulty": "beginner",
-      "description": "궤적이 고정되어 있어 초보자가 자극을 느끼기 쉽고 고립에 유리합니다.",
-      "variations": ["종류: 시티드", "종류: 인클라인", "종류: 디클라인", "그립: 오버핸드", "그립: 뉴트럴"],
-      "isCompound": true,
-      "isUnilateral": false,
-      "group": "벤치 프레스"
-    },
-    {
-      "id": "smith_machine_bench_press",
-      "name": "Smith Machine Bench Press",
-      "nameKo": "스미스 머신 벤치 프레스",
-      "category": "strength",
-      "movementPattern": "push",
-      "primaryMuscles": ["chest"],
+      "primaryMuscles": ["lower_chest"],
       "secondaryMuscles": ["triceps", "shoulders"],
-      "equipment": "machine",
-      "difficulty": "intermediate",
-      "description": "바벨의 안정성과 머신의 고립감을 동시에 제공합니다.",
-      "variations": ["경사도: 플랫", "경사도: 인클라인", "경사도: 디클라인"],
+      "equipment": "bodyweight",
+      "difficulty": "advanced",
+      "description": "아랫가슴과 삼두근을 발달시키는 최고의 상체 운동 중 하나입니다.",
+      "variations": ["유형: 맨몸", "유형: 중량", "유형: 어시스트", "타겟: 가슴(상체 숙임)", "타겟: 삼두(상체 세움)"],
       "isCompound": true,
       "isUnilateral": false,
-      "group": "벤치 프레스",
-      "imagePath": "assets/images/strength/chest/smith_machine_bench_press.svg"
+      "group": "맨몸 & 중량 운동",
+      "imagePath": "assets/images/strength/chest/dips.svg"
     },
     {
       "id": "dumbbell_fly",
@@ -82,6 +66,23 @@
       "isCompound": false,
       "isUnilateral": true,
       "group": "플라이"
+    },
+    {
+      "id": "machine_chest_press",
+      "name": "Machine Chest Press",
+      "nameKo": "머신 체스트 프레스",
+      "category": "strength",
+      "movementPattern": "push",
+      "primaryMuscles": ["chest"],
+      "secondaryMuscles": ["triceps"],
+      "equipment": "machine",
+      "difficulty": "beginner",
+      "description": "궤적이 고정되어 있어 초보자가 자극을 느끼기 쉽고 고립에 유리합니다.",
+      "variations": ["종류: 시티드", "종류: 인클라인", "종류: 디클라인", "그립: 오버핸드", "그립: 뉴트럴"],
+      "isCompound": true,
+      "isUnilateral": false,
+      "group": "벤치 프레스",
+      "imagePath": "assets/images/strength/chest/chest-press-machine.svg"
     },
     {
       "id": "cable_crossover",
@@ -113,23 +114,8 @@
       "variations": ["그립: 팔꿈치 패드형", "그립: 핸들형"],
       "isCompound": false,
       "isUnilateral": false,
-      "group": "플라이"
-    },
-    {
-      "id": "weighted_dips",
-      "name": "Dips",
-      "nameKo": "딥스",
-      "category": "strength",
-      "movementPattern": "push",
-      "primaryMuscles": ["lower_chest"],
-      "secondaryMuscles": ["triceps", "shoulders"],
-      "equipment": "bodyweight",
-      "difficulty": "advanced",
-      "description": "아랫가슴과 삼두근을 발달시키는 최고의 상체 운동 중 하나입니다.",
-      "variations": ["유형: 맨몸", "유형: 중량", "유형: 어시스트", "타겟: 가슴(상체 숙임)", "타겟: 삼두(상체 세움)"],
-      "isCompound": true,
-      "isUnilateral": false,
-      "group": "맨몸 & 중량 운동"
+      "group": "플라이",
+      "imagePath": "assets/images/strength/chest/pec-deck-fly.svg"
     },
     {
       "id": "push_ups",
@@ -145,7 +131,8 @@
       "variations": ["유형: 일반", "유형: 닐링(무릎 대고)", "유형: 핸드 릴리즈", "유형: 아처", "유형: 파이크(어깨)", "경사: 평지", "경사: 상체 높게(초보)", "경사: 하체 높게(상급)", "그립: 일반", "그립: 와이드", "그립: 다이아몬드", "부하: 맨몸", "부하: 중량", "부하: 밴드"],
       "isCompound": true,
       "isUnilateral": false,
-      "group": "맨몸 & 중량 운동"
+      "group": "맨몸 & 중량 운동",
+      "imagePath": "assets/images/strength/chest/push-up.svg"
     },
     {
       "id": "pullover",

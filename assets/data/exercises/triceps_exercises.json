@@ -97,22 +97,6 @@
       "group": "맨몸 및 기타"
     },
     {
-      "id": "diamond_push_ups_triceps",
-      "name": "Diamond Push-ups",
-      "nameKo": "다이아몬드 푸쉬업",
-      "category": "strength",
-      "movementPattern": "push",
-      "primaryMuscles": ["triceps", "chest"],
-      "secondaryMuscles": ["front_delts", "core"],
-      "equipment": "bodyweight",
-      "difficulty": "intermediate",
-      "description": "양손을 다이아몬드 모양으로 좁게 짚어 삼두근에 강한 부하를 주는 푸쉬업입니다.",
-      "variations": ["부하: 맨몸", "부하: 중량", "자세: 무릎 대고(닐링)"],
-      "isCompound": true,
-      "isUnilateral": false,
-      "group": "맨몸 및 기타"
-    },
-    {
       "id": "machine_tricep_extension",
       "name": "Machine Triceps Extension",
       "nameKo": "머신 트라이셉 익스텐션",
