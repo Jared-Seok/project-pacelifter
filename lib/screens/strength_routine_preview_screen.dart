@@ -465,7 +465,7 @@ class _StrengthRoutinePreviewScreenState extends State<StrengthRoutinePreviewScr
                   width: 40, height: 44,
                   decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
                   padding: const EdgeInsets.all(6),
-                  child: SvgPicture.asset(exercise?.imagePath ?? 'assets/images/strength/lifter-icon.svg', colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.secondary, BlendMode.srcIn)),
+                  child: SvgPicture.asset(exercise?.imagePath ?? 'assets/images/strength/lifter-icon.svg', fit: BoxFit.contain, colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.secondary, BlendMode.srcIn)),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

@@ -12,6 +12,7 @@ import '../widgets/exercise_config_sheet.dart';
 import 'strength_tracking_screen.dart';
 import 'strength_routine_preview_screen.dart';
 import '../utils/korean_search_utils.dart';
+import '../constants/strength_categories.dart';
 
 class StrengthTemplateScreen extends StatefulWidget {
   const StrengthTemplateScreen({super.key});
@@ -24,54 +25,6 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen>
     with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _routineScrollController = ScrollController();
-
-  final List<Map<String, dynamic>> _muscleGroups = [
-    {
-      'id': 'chest',
-      'name': '가슴',
-      'icon': 'assets/images/strength/category/chest.svg',
-    },
-    {
-      'id': 'shoulders',
-      'name': '어깨',
-      'icon': 'assets/images/strength/category/shoulders.svg',
-    },
-    {
-      'id': 'back',
-      'name': '등',
-      'icon': 'assets/images/strength/category/back.svg',
-    },
-    {
-      'id': 'biceps',
-      'name': '이두',
-      'icon': 'assets/images/strength/category/biceps.svg',
-    },
-    {
-      'id': 'triceps',
-      'name': '삼두',
-      'icon': 'assets/images/strength/category/triceps.svg',
-    },
-    {
-      'id': 'forearms',
-      'name': '전완',
-      'icon': 'assets/images/strength/category/forearms.svg',
-    },
-    {
-      'id': 'legs',
-      'name': '하체',
-      'icon': 'assets/images/strength/category/legs.svg',
-    },
-    {
-      'id': 'core',
-      'name': '코어',
-      'icon': 'assets/images/strength/category/core.svg',
-    },
-    {
-      'id': 'compound',
-      'name': '복합',
-      'icon': 'assets/images/strength/lifter-icon.svg',
-    },
-  ];
 
   @override
   void initState() {
@@ -320,9 +273,9 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen>
                         mainAxisSpacing: 10,
                         childAspectRatio: 0.85,
                       ),
-                      itemCount: _muscleGroups.length,
+                      itemCount: StrengthCategories.categories.length,
                       itemBuilder: (context, index) {
-                        final group = _muscleGroups[index];
+                        final group = StrengthCategories.categories[index];
                         return _buildMuscleCard(group);
                       },
                     )
@@ -375,17 +328,22 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen>
               vertical: 8,
             ),
             leading: hasSpecificIcon
-                ? SvgPicture.asset(
-                    ex.imagePath!,
-                    width: 66,
-                    height: 66,
-                    colorFilter: ColorFilter.mode(
-                      Theme.of(context).colorScheme.secondary,
-                      BlendMode.srcIn,
+                ? SizedBox(
+                    width: 50,
+                    height: 50,
+                    child: SvgPicture.asset(
+                      ex.imagePath!,
+                      fit: BoxFit.contain,
+                      colorFilter: ColorFilter.mode(
+                        Theme.of(context).colorScheme.secondary,
+                        BlendMode.srcIn,
+                      ),
                     ),
                   )
                 : Container(
-                    padding: const EdgeInsets.all(12),
+                    width: 50,
+                    height: 50,
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: Theme.of(
                         context,
@@ -394,8 +352,7 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen>
                     ),
                     child: SvgPicture.asset(
                       'assets/images/strength/lifter-icon.svg',
-                      width: 40,
-                      height: 40,
+                      fit: BoxFit.contain,
                       colorFilter: ColorFilter.mode(
                         Theme.of(context).colorScheme.secondary,
                         BlendMode.srcIn,
@@ -545,9 +502,9 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen>
     );
   }
 
-  Widget _buildMuscleCard(Map<String, dynamic> group) {
+  Widget _buildMuscleCard(StrengthCategory group) {
     return InkWell(
-      onTap: () => _onMuscleGroupTap(group['id'], group['name']),
+      onTap: () => _onMuscleGroupTap(group.id, group.name),
       borderRadius: BorderRadius.circular(16),
       child: Container(
         decoration: BoxDecoration(
@@ -563,14 +520,17 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SvgPicture.asset(
-              group['icon'],
-              width: 104,
-              height: 104,
+            SizedBox(
+              width: 56,
+              height: 56,
+              child: SvgPicture.asset(
+                group.iconPath,
+                fit: BoxFit.contain,
+              ),
             ),
             const SizedBox(height: 16),
             Text(
-              group['name'],
+              group.name,
               style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
             ),
           ],
@@ -656,7 +616,7 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen>
                                 ),
                                 child: Center(
                                   child: Padding(
-                                    padding: const EdgeInsets.all(2.0),
+                                    padding: const EdgeInsets.all(12.0),
                                     child: SvgPicture.asset(
                                       imagePath ??
                                           'assets/images/strength/lifter-icon.svg',
