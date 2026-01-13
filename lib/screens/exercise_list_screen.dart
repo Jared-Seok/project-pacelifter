@@ -400,16 +400,20 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         leading: hasSpecificIcon 
           ? SizedBox(
-              width: 50,
-              height: 50,
+              width: 60,
+              height: 60,
               child: SvgPicture.asset(
                 exercise.imagePath!,
                 fit: BoxFit.contain,
+                colorFilter: ColorFilter.mode(
+                  Theme.of(context).colorScheme.secondary,
+                  BlendMode.srcIn,
+                ),
               ),
             )
           : Container(
-              width: 50,
-              height: 50,
+              width: 60,
+              height: 60,
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),

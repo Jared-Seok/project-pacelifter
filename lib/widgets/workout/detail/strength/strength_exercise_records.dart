@@ -79,6 +79,7 @@ class StrengthExerciseRecords extends StatelessWidget {
             width: 24,
             height: 24,
             fit: BoxFit.contain,
+            colorFilter: ColorFilter.mode(themeColor, BlendMode.srcIn),
           ),
         ),
         title: Text(

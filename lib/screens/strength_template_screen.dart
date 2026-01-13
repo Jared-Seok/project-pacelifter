@@ -329,8 +329,8 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen>
             ),
             leading: hasSpecificIcon
                 ? SizedBox(
-                    width: 50,
-                    height: 50,
+                    width: 60,
+                    height: 60,
                     child: SvgPicture.asset(
                       ex.imagePath!,
                       fit: BoxFit.contain,
@@ -341,8 +341,8 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen>
                     ),
                   )
                 : Container(
-                    width: 50,
-                    height: 50,
+                    width: 60,
+                    height: 60,
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: Theme.of(
@@ -521,8 +521,8 @@ class _StrengthTemplateScreenState extends State<StrengthTemplateScreen>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             SizedBox(
-              width: 56,
-              height: 56,
+              width: 80,
+              height: 80,
               child: SvgPicture.asset(
                 group.iconPath,
                 fit: BoxFit.contain,

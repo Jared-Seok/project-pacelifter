@@ -359,8 +359,13 @@ class _CategoryCard extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SvgPicture.asset(
-              iconPath, width: 40, height: 40,
+            SizedBox(
+              width: 60,
+              height: 60,
+              child: SvgPicture.asset(
+                iconPath,
+                fit: BoxFit.contain,
+              ),
             ),
             const SizedBox(height: 12),
             Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
