@@ -25,26 +25,20 @@ class TemplateService {
       final templateBox = Hive.box<WorkoutTemplate>(_templatesBoxName);
       final exerciseBox = Hive.box<Exercise>(_exercisesBoxName);
 
-      // 데이터 존재 여부 확인 (최소 기준치)
-      bool hasTemplates = templateBox.length >= 30; // 정예화된 템플릿 최소 수
-      bool hasExercises = exerciseBox.length >= 50;
-
-      if (hasTemplates && hasExercises) {
-        print('✅ TemplateService: Data already exists, skipping heavy load');
-        return;
-      }
-
       print('📦 TemplateService: Starting data import from assets...');
 
-      // 1. 운동 라이브러리 로드 (병렬 로딩 시도)
-      await _loadExercisesLibrary();
+      // 1. 운동 라이브러리 로드 (강제 업데이트)
+      await _loadExercisesLibrary(force: true);
 
       // 2. 템플릿 로드 (병렬 실행)
-      await Future.wait([
-        _loadEnduranceTemplates(),
-        _loadStrengthTemplates(),
-        _loadHybridTemplates(),
-      ]);
+      // 데이터가 이미 30개 이상 있으면 템플릿 로드는 스킵 (운동 정보만 업데이트)
+      if (templateBox.length < 30) {
+        await Future.wait([
+          _loadEnduranceTemplates(),
+          _loadStrengthTemplates(),
+          _loadHybridTemplates(),
+        ]);
+      }
       
       // 3. 프리셋 박스 보장
       if (!Hive.isBoxOpen(_presetsBoxName)) {
@@ -60,12 +54,13 @@ class TemplateService {
   }
 
   /// 운동 라이브러리 로드
-  static Future<void> _loadExercisesLibrary() async {
+  static Future<void> _loadExercisesLibrary({bool force = false}) async {
     try {
       if (!Hive.isBoxOpen(_exercisesBoxName)) return;
       final box = Hive.box<Exercise>(_exercisesBoxName);
       
-      if (box.length > 50) return;
+      // force가 false일 때만 기존 데이터 체크
+      if (!force && box.length > 50) return;
 
       final libraryFiles = [
         'assets/data/exercises/chest_exercises.json',
@@ -97,6 +92,14 @@ class TemplateService {
       }
 
       if (allExercises.isNotEmpty) {
+        // 1. 오래된 데이터 삭제 (JSON에서 제거된 운동)
+        final staleKeys = box.keys.where((key) => !allExercises.containsKey(key)).toList();
+        if (staleKeys.isNotEmpty) {
+          await box.deleteAll(staleKeys);
+          print('🗑️ TemplateService: Deleted ${staleKeys.length} stale exercises');
+        }
+
+        // 2. 새로운/업데이트된 데이터 저장
         await box.putAll(allExercises);
         print('✅ TemplateService: Batch loaded ${allExercises.length} exercises');
       }
