@@ -18,17 +18,18 @@ import '../providers/strength_routine_provider.dart';
 import '../screens/exercise_list_screen.dart';
 import '../widgets/exercise_config_sheet.dart';
 import '../screens/workout_share_screen.dart'; // 추가
+import '../constants/strength_categories.dart';
 
 // Modularized Widgets
 import '../widgets/workout/detail/common/workout_header.dart';
 import '../widgets/workout/detail/visuals/workout_heart_rate_chart.dart';
 import '../widgets/workout/detail/visuals/workout_route_map.dart';
-import '../widgets/workout/detail/visuals/workout_pace_chart.dart';
-import '../widgets/workout/detail/strength/strength_exercise_records.dart';
-import '../widgets/workout/detail/strength/strength_enrichment_card.dart';
 import '../widgets/workout/detail/sections/workout_metrics_grid.dart';
 import '../widgets/workout/detail/strength/set_edit_dialog.dart';
 import '../widgets/workout/detail/common/workout_result_overlay.dart';
+import '../widgets/workout/detail/sections/endurance_dashboard.dart';
+import '../widgets/workout/detail/sections/endurance_hero_header.dart'; // 추가
+import '../widgets/workout/detail/visuals/performance_analytic_chart.dart';
 
 enum WorkoutDetailMode { detail, result }
 
@@ -97,39 +98,51 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                       onShareTap: () => _handleShareWorkout(context, provider),
                     ),
 
-                  // 1. 헤더 (Icon, Name, Template)
-                  WorkoutHeader(
-                    displayInfo: displayInfo,
-                    onTemplateTap: () => _showTemplateSelectionDialog(context),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // 2. 지도 (Endurance/Hybrid 전용)
+                  // 💡 유산소(Endurance) 히어로 레이아웃
                   if (category == 'Endurance' || category == 'Hybrid') ...[
                     WorkoutRouteMap(themeColor: color),
                     const SizedBox(height: 16),
+                    EnduranceHeroHeader(
+                      displayInfo: displayInfo,
+                      date: widget.dataWrapper.dateFrom,
+                    ),
+                    const SizedBox(height: 16),
+                    EnduranceDashboard(
+                      provider: provider,
+                      themeColor: color,
+                    ),
+                  ] 
+                  // 🏋️ 근력(Strength) 표준 레이아웃
+                  else ...[
+                    WorkoutHeader(
+                      displayInfo: displayInfo,
+                      onTemplateTap: () => _showTemplateSelectionDialog(context),
+                    ),
+                    const SizedBox(height: 16),
+                    WorkoutMetricsGrid(
+                      key: const ValueKey('workout_metrics_grid'),
+                      provider: provider,
+                      category: category,
+                      themeColor: color,
+                      onEditRecord: (record) => _editExerciseRecord(context, provider, record),
+                      onAddExercise: () => _startRetroactiveLogging(context, provider),
+                    ),
                   ],
 
-                  // 3. 지표 그리드 및 상세 리스트 (드롭다운 + 종목 추가 통합)
-                  WorkoutMetricsGrid(
-                    key: const ValueKey('workout_metrics_grid'),
-                    provider: provider,
-                    category: category,
-                    themeColor: color,
-                    onEditRecord: (record) => _editExerciseRecord(context, provider, record),
-                    onAddExercise: () => _startRetroactiveLogging(context, provider),
-                  ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
 
-                  // 4. 심박수 시각화
-                  HeartRateVisualizer(themeColor: color),
-                  const SizedBox(height: 16),
-
-                  // 5. 페이스 시각화 (Endurance/Hybrid 전용)
+                  // 📊 통합 분석 차트 (유산소 전용)
                   if (category == 'Endurance' || category == 'Hybrid') ...[
-                    PaceVisualizer(themeColor: color),
+                    PerformanceAnalyticChart(themeColor: color),
+                    const SizedBox(height: 16),
+                  ] else ...[
+                    // 근력 운동은 심박수만 표시
+                    HeartRateVisualizer(themeColor: color),
                     const SizedBox(height: 16),
                   ],
+
+                  // 🏷️ 공통 데이터 출처 (최하단)
+                  _buildDataSourceFooter(context, provider.dataWrapper.sourceName),
 
                   const SizedBox(height: 80),
                 ],
@@ -137,6 +150,37 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildDataSourceFooter(BuildContext context, String source) {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 32),
+        child: Column(
+          children: [
+            Icon(Icons.verified_user_outlined, size: 16, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3)),
+            const SizedBox(height: 8),
+            Text(
+              '데이터 출처: $source',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Apple Health 및 PaceLifter 보안 규정을 준수합니다',
+              style: TextStyle(
+                fontSize: 9,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.2),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -245,16 +289,7 @@ class _StrengthCategorySelectionView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final categories = [
-      {'id': 'chest', 'name': '가슴', 'icon': 'assets/images/strength/category/chest.svg'},
-      {'id': 'back', 'name': '등', 'icon': 'assets/images/strength/category/back.svg'},
-      {'id': 'shoulders', 'name': '어깨', 'icon': 'assets/images/strength/category/shoulders.svg'},
-      {'id': 'legs', 'name': '하체', 'icon': 'assets/images/strength/category/legs.svg'},
-      {'id': 'biceps', 'name': '이두', 'icon': 'assets/images/strength/category/biceps.svg'},
-      {'id': 'triceps', 'name': '삼두', 'icon': 'assets/images/strength/category/triceps.svg'},
-      {'id': 'core', 'name': '코어', 'icon': 'assets/images/strength/category/core.svg'},
-      {'id': 'compound', 'name': '복합', 'icon': 'assets/images/strength/lifter-icon.svg'},
-    ];
+    final categories = StrengthCategories.categories;
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -268,15 +303,15 @@ class _StrengthCategorySelectionView extends StatelessWidget {
         itemBuilder: (context, index) {
           final cat = categories[index];
           return _CategoryCard(
-            name: cat['name']!,
-            iconPath: cat['icon']!,
+            name: cat.name,
+            iconPath: cat.iconPath,
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => ExerciseListScreen(
-                    muscleGroupId: cat['id']!,
-                    title: cat['name']!,
+                    muscleGroupId: cat.id,
+                    title: cat.name,
                     isEnrichmentMode: true,
                   ),
                 ),
@@ -326,7 +361,6 @@ class _CategoryCard extends StatelessWidget {
           children: [
             SvgPicture.asset(
               iconPath, width: 40, height: 40,
-              colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.secondary, BlendMode.srcIn),
             ),
             const SizedBox(height: 12),
             Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),

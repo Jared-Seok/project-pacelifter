@@ -399,24 +399,25 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         leading: hasSpecificIcon 
-          ? SvgPicture.asset(
-              exercise.imagePath!,
-              width: 66,
-              height: 66,
-              colorFilter: ColorFilter.mode(
-                Theme.of(context).colorScheme.secondary,
-                BlendMode.srcIn,
+          ? SizedBox(
+              width: 50,
+              height: 50,
+              child: SvgPicture.asset(
+                exercise.imagePath!,
+                fit: BoxFit.contain,
               ),
             )
           : Container(
+              width: 50,
+              height: 50,
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: SvgPicture.asset(
                 'assets/images/strength/lifter-icon.svg',
-                width: 40,
-                height: 40,
+                fit: BoxFit.contain,
                 colorFilter: ColorFilter.mode(
                   Theme.of(context).colorScheme.secondary,
                   BlendMode.srcIn,
