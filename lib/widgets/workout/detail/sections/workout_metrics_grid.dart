@@ -157,28 +157,13 @@ class _WorkoutMetricsGridState extends State<WorkoutMetricsGrid> {
           _buildMetricItem(Icons.play_circle_outline, '운동 시간', _formatDuration(widget.provider.activeDuration ?? dateTo.difference(dateFrom))),
           const Divider(height: 24),
           _buildMetricItem(Icons.access_time, '날짜 및 시간', '$dateStr\n$timeRangeStr'),
-          if (widget.category != 'Strength') ...[
-            const Divider(height: 24),
-            _buildMetricItem(Icons.straighten, '총 거리', '${(wrapper.totalDistance / 1000).toStringAsFixed(2)} km'),
-          ],
           const Divider(height: 24),
           _buildMetricItem(Icons.local_fire_department, '소모 칼로리', '${wrapper.calories.toStringAsFixed(0)} kcal'),
           if (widget.provider.avgHeartRate > 0) ...[
             const Divider(height: 24),
             _buildMetricItem(Icons.favorite, '평균 심박수', '${widget.provider.avgHeartRate.toStringAsFixed(1)} BPM'),
           ],
-          if (widget.category == 'Endurance' && widget.provider.avgPace > 0) ...[
-            const Divider(height: 24),
-            _buildMetricItem(Icons.speed, '평균 페이스', _formatPace(widget.provider.avgPace)),
-          ],
-          if (widget.provider.avgCadence > 0) ...[
-            const Divider(height: 24),
-            _buildMetricItem(Icons.directions_run, '평균 케이던스', '${widget.provider.avgCadence} SPM'),
-          ],
-          if (widget.provider.elevationGain > 0) ...[
-            const Divider(height: 24),
-            _buildMetricItem(Icons.terrain, '누적 상승 고도', '${widget.provider.elevationGain.toStringAsFixed(0)} m'),
-          ],
+          // 유산소 지표(페이스, 케이던스, 고도)는 EnduranceDashboard에서 담당하므로 여기서는 제거
         ],
       ),
     );

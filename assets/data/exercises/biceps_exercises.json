@@ -14,7 +14,8 @@
       "variations": ["장비: 스트레이트 바", "장비: EZ-바", "그립: 내로우", "그립: 와이드"],
       "isCompound": false,
       "isUnilateral": false,
-      "group": "바벨 컬"
+      "group": "바벨 컬",
+      "imagePath": "assets/images/strength/biceps/brabell-curl.svg"
     },
     {
       "id": "dumbbell_curl",
@@ -30,7 +31,8 @@
       "variations": ["자세: 스탠딩", "자세: 시티드", "수행: 교대(Alternating)", "수행: 동시(Bilateral)"],
       "isCompound": false,
       "isUnilateral": true,
-      "group": "덤벨 컬"
+      "group": "덤벨 컬",
+      "imagePath": "assets/images/strength/biceps/dumbell-curl.svg"
     },
     {
       "id": "hammer_curl",
@@ -110,7 +112,8 @@
       "variations": ["장비: 스트레이트 바", "장비: EZ-바", "장비: 로프", "수행: 원암"],
       "isCompound": false,
       "isUnilateral": false,
-      "group": "케이블 컬"
+      "group": "케이블 컬",
+      "imagePath": "assets/images/strength/biceps/cable-curl.svg"
     },
     {
       "id": "spider_curl",
@@ -190,7 +193,8 @@
       "variations": ["그립: 일반", "그립: 뉴트럴", "수행: 원암"],
       "isCompound": false,
       "isUnilateral": false,
-      "group": "머신 및 기타"
+      "group": "머신 및 기타",
+      "imagePath": "assets/images/strength/biceps/machine-bicep-curl.svg"
     },
     {
       "id": "chin_up_biceps",

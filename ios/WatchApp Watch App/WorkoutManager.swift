@@ -100,6 +100,10 @@ extension WorkoutManager: HKLiveWorkoutBuilderDelegate {
         }
     }
     
-    func workoutBuilderDidCollectEvent(_ workoutBuilder: HKLiveWorkoutBuilder) {}
-}
-#endif
+        func workoutBuilderDidCollectEvent(_ workoutBuilder: HKLiveWorkoutBuilder) {}
+    
+    }
+    
+    #endif
+    
+    

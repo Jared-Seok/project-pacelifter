@@ -195,49 +195,58 @@ class HealthKitBridge {
             return
         }
 
-        // 1. Get the workout object
         let workoutType = HKObjectType.workoutType()
-        let predicate = HKQuery.predicateForObject(with: workoutUUID)
-        
-        let query = HKSampleQuery(sampleType: workoutType, predicate: predicate, limit: 1, sortDescriptors: nil) { [weak self] (query, samples, error) in
-            guard let self = self, let workout = samples?.first as? HKWorkout else {
-                result(nil) // No workout found
+        let routeType = HKSeriesType.workoutRoute()
+        let typesToRead: Set<HKObjectType> = [workoutType, routeType]
+
+        // 0. Ensure authorization for routes
+        healthStore.requestAuthorization(toShare: nil, read: typesToRead) { [weak self] (success, error) in
+            guard let self = self else { return }
+            if !success {
+                result(nil)
                 return
             }
 
-            // 2. Find route data linked to this workout
-            let routeType = HKSeriesType.workoutRoute()
-            let routePredicate = HKQuery.predicateForObjects(from: workout)
-            
-            let routeQuery = HKSampleQuery(sampleType: routeType, predicate: routePredicate, limit: 1, sortDescriptors: nil) { (q, routeSamples, err) in
-                guard let route = routeSamples?.first as? HKWorkoutRoute else {
-                    result(nil) // No route found for this workout
+            // 1. Get the workout object
+            let predicate = HKQuery.predicateForObject(with: workoutUUID)
+            let query = HKSampleQuery(sampleType: workoutType, predicate: predicate, limit: 1, sortDescriptors: nil) { (query, samples, error) in
+                guard let workout = samples?.first as? HKWorkout else {
+                    result(nil)
                     return
                 }
 
-                // 3. Query the location data from the route
-                var locations: [[String: Any]] = []
-                let locationQuery = HKWorkoutRouteQuery(route: route) { (query, newLocations, done, error) in
-                    if let newLocations = newLocations {
-                        for loc in newLocations {
-                            locations.append([
-                                "latitude": loc.coordinate.latitude,
-                                "longitude": loc.coordinate.longitude,
-                                "altitude": loc.altitude,
-                                "timestamp": Int(loc.timestamp.timeIntervalSince1970 * 1000)
-                            ])
-                        }
+                // 2. Find route data linked to this workout
+                let routePredicate = HKQuery.predicateForObjects(from: workout)
+                let routeQuery = HKSampleQuery(sampleType: routeType, predicate: routePredicate, limit: 1, sortDescriptors: nil) { (q, routeSamples, err) in
+                    guard let route = routeSamples?.first as? HKWorkoutRoute else {
+                        result(nil)
+                        return
                     }
 
-                    if done {
-                        result(locations)
+                    // 3. Query the location data from the route
+                    var locations: [[String: Any]] = []
+                    let locationQuery = HKWorkoutRouteQuery(route: route) { (query, newLocations, done, error) in
+                        if let newLocations = newLocations {
+                            for loc in newLocations {
+                                locations.append([
+                                    "latitude": loc.coordinate.latitude,
+                                    "longitude": loc.coordinate.longitude,
+                                    "altitude": loc.altitude,
+                                    "timestamp": Int(loc.timestamp.timeIntervalSince1970 * 1000)
+                                ])
+                            }
+                        }
+
+                        if done {
+                            result(locations)
+                        }
                     }
+                    self.healthStore.execute(locationQuery)
                 }
-                self.healthStore.execute(locationQuery)
+                self.healthStore.execute(routeQuery)
             }
-            self.healthStore.execute(routeQuery)
+            self.healthStore.execute(query)
         }
-        self.healthStore.execute(query)
     }
 }
 

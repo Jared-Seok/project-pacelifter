@@ -93,17 +93,6 @@ class PaceVisualizer extends StatelessWidget {
                       titlesData: _buildTitlesData(maxX, minY, maxY),
                       borderData: FlBorderData(show: false),
                       lineTouchData: _buildTouchData(context),
-                      extraLinesData: ExtraLinesData(
-                        verticalLines: [
-                          VerticalLine(
-                            x: activeLimit,
-                            color: Colors.orange.withValues(alpha: 0.5),
-                            strokeWidth: 2,
-                            dashArray: [5, 5],
-                            label: VerticalLineLabel(show: true, labelResolver: (_) => '활동 종료', style: const TextStyle(fontSize: 9, color: Colors.orange)),
-                          ),
-                        ],
-                      ),
                       lineBarsData: [
                         LineChartBarData(
                           spots: smoothedSpots,

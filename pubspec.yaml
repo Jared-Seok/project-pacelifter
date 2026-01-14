@@ -83,6 +83,9 @@ dependencies:
   # SVG
   flutter_svg: ^2.0.0
 
+  # TTS
+  flutter_tts: ^4.2.2
+
   # 이미지 처리 및 공유
   image_picker: ^1.1.2
   screenshot: ^3.0.0

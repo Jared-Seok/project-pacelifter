@@ -11,11 +11,28 @@
       "equipment": "barbell",
       "difficulty": "advanced",
       "description": "후면 사슬 전체와 등의 전반적인 스트렝스를 강화하는 핵심 전신 운동입니다.",
-      "variations": ["장비: 덤벨", "장비: 바벨", "장비: 스미스 머신", "유형: 루마니안", "유형: 스모"],
+      "variations": ["장비: 덤벨", "장비: 바벨", "유형: 루마니안", "유형: 스모"],
       "isCompound": true,
       "isUnilateral": false,
       "group": "데드리프트",
       "imagePath": "assets/images/strength/legs/dead-lift.svg"
+    },
+    {
+      "id": "smith_machine_deadlift",
+      "name": "Smith Machine Deadlift",
+      "nameKo": "스미스 머신 데드리프트",
+      "category": "strength",
+      "movementPattern": "pull",
+      "primaryMuscles": ["back", "hamstrings", "glutes"],
+      "secondaryMuscles": ["core"],
+      "equipment": "machine",
+      "difficulty": "intermediate",
+      "description": "정해진 궤적을 따라 안정적으로 데드리프트를 수행합니다.",
+      "variations": ["Standard", "Romanian"],
+      "isCompound": true,
+      "isUnilateral": false,
+      "group": "데드리프트",
+      "imagePath": "assets/images/strength/legs/smithmachine-deadlift.svg"
     },
     {
       "id": "pull_ups",
@@ -32,7 +49,7 @@
       "isCompound": true,
       "isUnilateral": false,
       "group": "풀업",
-      "imagePath": "assets/images/strength/pullup-icon.svg"
+      "imagePath": "assets/images/strength/back/pullup-icon.svg"
     },
     {
       "id": "bent_over_row",
@@ -48,7 +65,8 @@
       "variations": ["장비: 덤벨", "장비: 바벨", "장비: 스미스 머신", "장비: 케이블", "장비: 밴드", "그립: 리버스", "그립: 일반", "그립: 원암"],
       "isCompound": true,
       "isUnilateral": false,
-      "group": "로우"
+      "group": "로우",
+      "imagePath": "assets/images/strength/back/seated-row.svg"
     },
     {
       "id": "lat_pulldown",
@@ -77,7 +95,7 @@
       "secondaryMuscles": ["biceps", "rear_shoulders"],
       "equipment": "barbell",
       "difficulty": "intermediate",
-      "description": "고정된 바벨의 한쪽 끝을 잡고 당기며 등의 중부와 하부를 강력하게 자극합니다.",
+      "description": "고정된 바벨의 한쪽 끝을 잡고 당기며 등의 중부와  하부를 강력하게 자극합니다.",
       "variations": ["유형: 일반", "유형: 머신"],
       "isCompound": true,
       "isUnilateral": false,
@@ -243,7 +261,8 @@
       "variations": ["장비: 로프", "장비: 스트레이트 바", "장비: 원암"],
       "isCompound": false,
       "isUnilateral": false,
-      "group": "암풀다운"
+      "group": "암풀다운",
+      "imagePath": "assets/images/strength/back/arm-pull-down.svg"
     },
     {
       "id": "machine_high_row",

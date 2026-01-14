@@ -75,23 +75,39 @@ class _ExerciseListScreenState extends State<ExerciseListScreen> {
       }
       
       final filtered = allExercises.where((ex) {
-        // 모든 관련 근육 리스트를 합쳐서 검사 (대소문자 무시)
-        final allMuscles = [
-          ...ex.primaryMuscles.map((m) => m.toLowerCase()),
-          ...ex.secondaryMuscles.map((m) => m.toLowerCase()),
-        ];
+        final primary = ex.primaryMuscles.map((m) => m.toLowerCase()).toList();
+        final secondary = ex.secondaryMuscles.map((m) => m.toLowerCase()).toList();
+        final all = [...primary, ...secondary];
         
         final id = widget.muscleGroupId.toLowerCase();
 
-        if (id == 'chest') return allMuscles.any((m) => m.contains('chest'));
-        if (id == 'back') return allMuscles.any((m) => (m.contains('back') && !m.contains('lower')) || m == 'lats' || m == 'traps');
-        if (id == 'shoulders') return allMuscles.any((m) => m == 'shoulders' || m.contains('delt') || m == 'rotator_cuff' || m == 'traps');
-        if (id == 'legs') return allMuscles.any((m) => m == 'quads' || m == 'hamstrings' || m == 'calves' || m == 'legs');
-        if (id == 'arms') return allMuscles.any((m) => m == 'biceps' || m == 'triceps' || m == 'forearms' || m == 'arms');
-        if (id == 'biceps') return allMuscles.any((m) => m.contains('biceps') || m.contains('brachialis'));
-        if (id == 'triceps') return allMuscles.any((m) => m.contains('triceps'));
-        if (id == 'forearms') return allMuscles.any((m) => m.contains('forearm') || m.contains('brachioradialis'));
-        if (id == 'core') return allMuscles.any((m) => m == 'core' || m.contains('abs') || m.contains('oblique') || m.contains('lower_back') || m == 'erector_spinae' || m.contains('glute'));
+        // 1. 가슴: 가슴 근육이 주동근인 경우
+        if (id == 'chest') return primary.any((m) => m.contains('chest'));
+        
+        // 2. 등: 등 전체(광배, 능형근 등)가 주동근이거나, 데드리프트류
+        if (id == 'back') {
+          return primary.any((m) => (m.contains('back') && !m.contains('lower')) || m == 'lats') || 
+                 ex.id.contains('deadlift') || ex.id.contains('row');
+        }
+        
+        // 3. 어깨: 삼각근이 주동근인 경우 (승모근은 보조근일 때가 많으므로 제외)
+        if (id == 'shoulders') return primary.any((m) => m == 'shoulders' || m.contains('delt') || m == 'rotator_cuff');
+        
+        // 4. 하체: 대퇴사두, 햄스트링, 둔근, 종아리가 주동근인 경우
+        if (id == 'legs') return primary.any((m) => m == 'quads' || m == 'hamstrings' || m == 'calves' || m == 'glutes' || m == 'legs');
+        
+        // 5. 팔 (이두/삼두/전완 통합)
+        if (id == 'arms') return primary.any((m) => m.contains('biceps') || m.contains('triceps') || m.contains('forearm') || m == 'brachialis');
+        
+        // 세부 카테고리
+        if (id == 'biceps') return primary.any((m) => m.contains('biceps') || m == 'brachialis');
+        if (id == 'triceps') return primary.any((m) => m.contains('triceps'));
+        if (id == 'forearms') return primary.any((m) => m.contains('forearm') || m == 'brachioradialis');
+        
+        // 6. 코어 및 복근
+        if (id == 'core') return primary.any((m) => m == 'core' || m.contains('abs') || m.contains('oblique') || m.contains('lower_back') || m == 'erector_spinae');
+        
+        // 7. 복합 운동
         if (id == 'compound') return ex.isCompound;
         
         return false;

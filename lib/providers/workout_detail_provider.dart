@@ -194,11 +194,64 @@ class WorkoutDetailProvider extends ChangeNotifier {
 
         // 2. 고도 상승 처리 (네이티브 값이 없을 때만)
         if (_elevationGain == 0) {
-          // (고도 관련 샘플 처리 로직 추가 가능)
+          await _calculateElevationFromRoute();
+        }
+      } else {
+        // 걸음수 데이터가 아예 없더라도 지도 데이터가 있다면 고도는 계산 시도
+        if (_elevationGain == 0) {
+          await _calculateElevationFromRoute();
         }
       }
     } catch (e) {
-      debugPrint('⚠️ WorkoutDetailProvider: Failed to fetch cadence: $e');
+      debugPrint('⚠️ WorkoutDetailProvider: Failed to fetch cadence/elevation: $e');
+    }
+  }
+
+  /// GPS 경로 데이터로부터 누적 상승 고도를 계산합니다.
+  Future<void> _calculateElevationFromRoute() async {
+    try {
+      debugPrint('🏃 WorkoutDetailProvider: Fetching route for elevation calculation...');
+      final route = await _healthKitBridge.getWorkoutRoute(dataWrapper.uuid);
+      
+      if (route == null) {
+        debugPrint('❌ WorkoutDetailProvider: Route data is NULL');
+        return;
+      }
+      
+      if (route.isEmpty) {
+        debugPrint('⚠️ WorkoutDetailProvider: Route data is EMPTY');
+        return;
+      }
+
+      debugPrint('📍 WorkoutDetailProvider: Found ${route.length} route points');
+      
+      double totalGain = 0;
+      double? lastValidAltitude;
+      int altitudeCount = 0;
+      
+      for (var point in route) {
+        final double? currentAlt = point['altitude'] as double?;
+        if (currentAlt != null && currentAlt != 0) {
+          altitudeCount++;
+          if (lastValidAltitude != null) {
+            final diff = currentAlt - lastValidAltitude;
+            if (diff > 0.5) {
+              totalGain += diff;
+            }
+          }
+          lastValidAltitude = currentAlt;
+        }
+      }
+
+      debugPrint('📊 WorkoutDetailProvider: Valid altitude points: $altitudeCount / ${route.length}');
+      debugPrint('📊 WorkoutDetailProvider: Final Calculated Gain: $totalGain m');
+
+      if (totalGain > 0) {
+        _elevationGain = totalGain;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('⚠️ WorkoutDetailProvider: Failed to calculate elevation from route: $e');
     }
   }
 

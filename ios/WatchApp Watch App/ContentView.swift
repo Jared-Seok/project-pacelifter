@@ -1,5 +1,6 @@
 import SwiftUI
 
+#if os(watchOS)
 struct ContentView: View {
     @StateObject var workoutManager = WorkoutManager.shared
     @StateObject var connectivityProvider = ConnectivityProvider.shared
@@ -48,3 +49,4 @@ struct ContentView: View {
         }
     }
 }
+#endif

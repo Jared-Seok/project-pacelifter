@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
 import 'package:health/health.dart';
+import 'package:share_plus/share_plus.dart'; // Added
+import '../utils/tracking/gpx_exporter.dart'; // Added
 import '../models/workout_data_wrapper.dart';
 import '../services/native_activation_service.dart';
 import '../services/workout_history_service.dart';
@@ -17,7 +19,7 @@ import '../models/sessions/exercise_record.dart';
 import '../providers/strength_routine_provider.dart';
 import '../screens/exercise_list_screen.dart';
 import '../widgets/exercise_config_sheet.dart';
-import '../screens/workout_share_screen.dart'; // 추가
+import '../screens/workout_share_screen.dart';
 import '../constants/strength_categories.dart';
 
 // Modularized Widgets
@@ -28,7 +30,7 @@ import '../widgets/workout/detail/sections/workout_metrics_grid.dart';
 import '../widgets/workout/detail/strength/set_edit_dialog.dart';
 import '../widgets/workout/detail/common/workout_result_overlay.dart';
 import '../widgets/workout/detail/sections/endurance_dashboard.dart';
-import '../widgets/workout/detail/sections/endurance_hero_header.dart'; // 추가
+import '../widgets/workout/detail/sections/endurance_hero_header.dart';
 import '../widgets/workout/detail/visuals/performance_analytic_chart.dart';
 
 enum WorkoutDetailMode { detail, result }
@@ -59,6 +61,69 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     await NativeActivationService().activateGoogleMaps();
   }
 
+  void _handleExportGpx(BuildContext context, WorkoutDetailProvider provider) async {
+    final session = provider.session;
+    if (session == null || session.routePoints == null || session.routePoints!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('내보낼 경로 데이터가 없습니다.')),
+      );
+      return;
+    }
+
+    try {
+      // 로딩 표시
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+
+      final file = await GpxExporter.generateGpxFile(session);
+      
+      if (context.mounted) {
+        Navigator.pop(context); // 로딩 닫기
+        
+        await Share.shareXFiles(
+          [XFile(file.path)],
+          subject: 'PaceLifter 운동 경로 내보내기',
+          text: '${session.templateName} 운동의 GPX 파일입니다.',
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.pop(context); // 로딩 닫기
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('GPX 생성 오류: $e')),
+        );
+      }
+    }
+  }
+
+  void _handleShareWorkout(BuildContext context, WorkoutDetailProvider provider) {
+    if (provider.dataWrapper.healthData == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('건강 데이터가 유실되어 공유할 수 없습니다.')),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => WorkoutShareScreen(
+          workoutData: provider.dataWrapper.healthData!,
+          heartRateData: provider.heartRateData,
+          avgHeartRate: provider.avgHeartRate,
+          paceData: provider.paceData,
+          avgPace: provider.avgPace,
+          movingTime: provider.activeDuration,
+          templateName: provider.session?.templateName,
+          environmentType: provider.session?.environmentType,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
@@ -80,6 +145,12 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
               backgroundColor: Theme.of(context).colorScheme.surface,
               foregroundColor: Theme.of(context).colorScheme.onSurface,
               actions: [
+                if (category == 'Endurance' || category == 'Hybrid')
+                  IconButton(
+                    icon: const Icon(Icons.map_outlined),
+                    tooltip: 'GPX 내보내기',
+                    onPressed: () => _handleExportGpx(context, provider),
+                  ),
                 IconButton(
                   icon: const Icon(Icons.share), 
                   onPressed: () => _handleShareWorkout(context, provider)
@@ -253,31 +324,6 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           await ScoringEngine().calculateAndSaveScores();
           provider.refresh();
         },
-      ),
-    );
-  }
-
-  void _handleShareWorkout(BuildContext context, WorkoutDetailProvider provider) {
-    if (provider.dataWrapper.healthData == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('건강 데이터가 유실되어 공유할 수 없습니다.')),
-      );
-      return;
-    }
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => WorkoutShareScreen(
-          workoutData: provider.dataWrapper.healthData!,
-          heartRateData: provider.heartRateData,
-          avgHeartRate: provider.avgHeartRate,
-          paceData: provider.paceData,
-          avgPace: provider.avgPace,
-          movingTime: provider.activeDuration,
-          templateName: provider.session?.templateName,
-          environmentType: provider.session?.environmentType,
-        ),
       ),
     );
   }

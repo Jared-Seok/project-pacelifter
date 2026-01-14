@@ -14,7 +14,8 @@
       "variations": ["자세: 스탠딩", "자세: 시티드", "그립: 일반", "그립: 와이드"],
       "isCompound": true,
       "isUnilateral": false,
-      "group": "프레스"
+      "group": "프레스",
+      "imagePath": "assets/images/strength/shoulders/barbell-overhead-press.svg"
     },
     {
       "id": "behind_the_neck_press",
@@ -46,7 +47,8 @@
       "variations": ["자세: 시티드", "자세: 스탠딩", "그립: 일반", "그립: 뉴트럴", "수행: 원암"],
       "isCompound": true,
       "isUnilateral": true,
-      "group": "프레스"
+      "group": "프레스",
+      "imagePath": "assets/images/strength/shoulders/dumbell-shoulder-press.svg"
     },
     {
       "id": "arnold_press",
@@ -78,7 +80,8 @@
       "variations": ["그립: 일반", "그립: 뉴트럴"],
       "isCompound": true,
       "isUnilateral": false,
-      "group": "프레스"
+      "group": "프레스",
+      "imagePath": "assets/images/strength/shoulders/machine-shoulder-press.svg"
     },
     {
       "id": "landmine_press",
@@ -136,7 +139,8 @@
       ],
       "isCompound": false,
       "isUnilateral": true,
-      "group": "레이즈"
+      "group": "레이즈",
+      "imagePath": "assets/images/strength/shoulders/side-lateral-raise.svg"
     },
     {
       "id": "cable_lateral_raise",
@@ -159,7 +163,8 @@
       ],
       "isCompound": false,
       "isUnilateral": true,
-      "group": "레이즈"
+      "group": "레이즈",
+      "imagePath": "assets/images/strength/shoulders/cable-lateral-raise.svg"
     },
     {
       "id": "machine_lateral_raise",
@@ -209,22 +214,23 @@
       "isUnilateral": false,
       "group": "레이즈"
     },
-    {
-      "id": "face_pull",
-      "name": "Face Pull",
-      "nameKo": "페이스 풀",
-      "category": "strength",
-      "movementPattern": "pull",
-      "primaryMuscles": ["rear_delts"],
-      "secondaryMuscles": ["upper_back", "traps"],
-      "equipment": "cable",
-      "difficulty": "beginner",
-      "description": "후면 삼각근과 상부 등을 강화하여 라운드 숄더 개선과 어깨 건강에 도움을 줍니다.",
-      "variations": ["타겟: 후면 삼각근", "타겟: 상부 승모근"],
-      "isCompound": false,
-      "isUnilateral": false,
-      "group": "후면 삼각근"
-    },
+        {
+          "id": "face_pull",
+          "name": "Face Pull",
+          "nameKo": "페이스  풀",
+          "category": "strength",
+          "movementPattern": "pull",
+          "primaryMuscles": ["rear_delts", "shoulders"],
+          "secondaryMuscles": ["upper_back", "traps"],
+          "equipment": "cable",
+          "difficulty": "beginner",
+          "description": "후면 삼각근과 상부 등을 강화하여 라운드 숄더 개선과 어깨 건강에 도움을 줍니다.",
+          "variations": ["타겟: 후면 삼각근", "타겟: 상부 승모근"],
+          "isCompound": false,
+          "isUnilateral": false,
+          "group": "후면 삼각근"
+        },
+    
     {
       "id": "reverse_pec_deck_fly",
       "name": "Reverse Pec Deck Fly",
@@ -239,7 +245,8 @@
       "variations": ["그립: 뉴트럴", "그립: 오버핸드"],
       "isCompound": false,
       "isUnilateral": false,
-      "group": "후면 삼각근"
+      "group": "후면 삼각근",
+      "imagePath": "assets/images/strength/shoulders/reverse-pec-deck-fly.svg"
     },
     {
       "id": "bent_over_reverse_fly",

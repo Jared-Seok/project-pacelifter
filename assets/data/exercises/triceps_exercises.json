@@ -30,7 +30,8 @@
       "variations": ["핸들: 스트레이트 바", "핸들: 로프", "핸들: V-바", "수행: 원암", "그립: 리버스(언더핸드)"],
       "isCompound": false,
       "isUnilateral": false,
-      "group": "케이블"
+      "group": "케이블",
+      "imagePath": "assets/images/strength/triceps/tricep-push-down.svg"
     },
     {
       "id": "skull_crusher",

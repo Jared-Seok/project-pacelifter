@@ -102,4 +102,31 @@ class HealthKitBridgeService {
       return null;
     }
   }
+
+  /// Get GPS route points for a workout by UUID
+  /// Returns a list of maps with latitude, longitude, altitude, timestamp
+  Future<List<Map<String, dynamic>>?> getWorkoutRoute(String uuid) async {
+    if (!Platform.isIOS) {
+      return null;
+    }
+
+    try {
+      final List<dynamic>? route = await _channel.invokeMethod(
+        'getWorkoutRoute',
+        {'uuid': uuid},
+      );
+
+      if (route == null) {
+        return null;
+      }
+
+      return route.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+    } on PlatformException catch (e) {
+      print('⚠️ Failed to get workout route: ${e.code} - ${e.message}');
+      return null;
+    } catch (e) {
+      print('⚠️ Unexpected error getting workout route: $e');
+      return null;
+    }
+  }
 }

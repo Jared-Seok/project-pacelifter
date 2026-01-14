@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Added
 import 'package:provider/provider.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -88,7 +89,7 @@ class _EnduranceTrackingScreenState extends State<EnduranceTrackingScreen> with 
   }
 
   void _startCountdown() {
-    _pulseController.repeat(reverse: true);
+    _pulseController.forward();
 
     Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
@@ -99,11 +100,14 @@ class _EnduranceTrackingScreenState extends State<EnduranceTrackingScreen> with 
       setState(() {
         if (_countdown > 1) {
           _countdown--;
+          _pulseController.reset();
+          _pulseController.forward();
+          HapticFeedback.mediumImpact(); // 숫자 바뀔 때마다 햅틱
         } else {
           _showCountdown = false;
           _pulseController.stop();
-          _hrService.startMonitoring(); // 심박수 모니터링 시작
-          _service.startWorkout(template: widget.template); // 운동 시작 호출 추가
+          _hrService.startMonitoring();
+          _service.startWorkout(template: widget.template);
           timer.cancel();
         }
       });
@@ -123,98 +127,114 @@ class _EnduranceTrackingScreenState extends State<EnduranceTrackingScreen> with 
 
   @override
   Widget build(BuildContext context) {
+    // 트래킹 중인지 즉시 확인
+    final bool isActuallyTracking = _service.isTracking;
+
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
+        top: false,
+        bottom: false,
         child: _showCountdown
             ? _buildCountdownScreen()
-            : (_currentState == null || !_currentState!.isTracking
-                ? const Center(child: CircularProgressIndicator())
-                : _buildTrackingScreen()),
+            : (isActuallyTracking
+                ? _buildTrackingScreen() // _currentState가 찰나의 순간 null이어도 내부적으로 null check 수행
+                : const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text('트래킹 엔진을 초기화 중입니다...', style: TextStyle(color: Colors.grey)),
+                      ],
+                    ),
+                  )),
       ),
     );
   }
-
-  /// 카운트다운 화면
+  /// 카운트다운 화면 (NRC 스타일의 모던 디자인)
   Widget _buildCountdownScreen() {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.3),
-            Theme.of(context).colorScheme.surface,
-          ],
-        ),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+    return SizedBox.expand( // 전체 화면 확장 강제
+      child: Container(
+        color: Colors.black,
+        child: Stack(
+          alignment: Alignment.center,
           children: [
-            // Runner 아이콘
-            SvgPicture.asset(
-              'assets/images/endurance/runner-icon.svg',
-              width: 100,
-              height: 100,
-              colorFilter: ColorFilter.mode(
-                Theme.of(context).colorScheme.tertiary,
-                BlendMode.srcIn,
+            // 배경 장식 (은은한 그라데이션)
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    colors: [
+                      Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.15),
+                      Colors.transparent,
+                    ],
+                    radius: 0.8,
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: 40),
 
-            // 준비 텍스트
-            Text(
-              '준비',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
-                letterSpacing: 2,
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // 카운트다운 숫자 (펄스 애니메이션)
-            AnimatedBuilder(
-              animation: _pulseAnimation,
-              builder: (context, child) {
-                return Transform.scale(
-                  scale: _pulseAnimation.value,
-                  child: Container(
-                    width: 150,
-                    height: 150,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.2),
-                      border: Border.all(
-                        color: Theme.of(context).colorScheme.tertiary,
-                        width: 4,
-                      ),
+            // 상단 타이틀 (더 여유 있는 상단 배치)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 60,
+              child: Column(
+                children: [
+                  Text(
+                    'READY TO RUN',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 4,
+                      color: Theme.of(context).colorScheme.tertiary,
                     ),
-                    child: Center(
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: 40,
+                    height: 2,
+                    color: Theme.of(context).colorScheme.tertiary,
+                  ),
+                ],
+              ),
+            ),
+
+            // 중앙 숫자 애니메이션 (완전 중앙)
+            Center(
+              child: AnimatedBuilder(
+                animation: _pulseAnimation,
+                builder: (context, child) {
+                  return Opacity(
+                    opacity: (1.5 - _pulseAnimation.value).clamp(0.0, 1.0),
+                    child: Transform.scale(
+                      scale: _pulseAnimation.value,
                       child: Text(
                         '$_countdown',
                         style: TextStyle(
-                          fontSize: 80,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 200, // 더 크게
+                          fontWeight: FontWeight.w900,
                           color: Theme.of(context).colorScheme.tertiary,
+                          fontStyle: FontStyle.italic,
+                          height: 1,
                         ),
                       ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
-            const SizedBox(height: 40),
 
-            // 안내 메시지
-            Text(
-              '곧 운동이 시작됩니다',
-              style: TextStyle(
-                fontSize: 16,
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+            // 하단 안내
+            Positioned(
+              bottom: MediaQuery.of(context).padding.bottom + 80,
+              child: Text(
+                widget.template?.name.toUpperCase() ?? 'FREE RUN',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white38,
+                  letterSpacing: 2,
+                ),
               ),
             ),
           ],
@@ -225,26 +245,44 @@ class _EnduranceTrackingScreenState extends State<EnduranceTrackingScreen> with 
 
   /// 운동 중 추적 화면 (고도화된 퍼포먼스 UI)
   Widget _buildTrackingScreen() {
-    if (_currentState == null) return const SizedBox();
+    // _currentState가 아직 오지 않은 경우(0.1초 미만)를 위한 기본값 처리
+    final duration = _currentState?.durationFormatted ?? "00:00:00";
+    final isPaused = _currentState?.isPaused ?? false;
+    final isAutoPaused = _currentState?.isAutoPaused ?? false;
 
     return Column(
       children: [
         // 1. 상단 슬림 상태바
         _buildSlimHeader(),
         
-        // 2. 템플릿 진행 바 (템플릿 모드일 때만)
+        // 2. 템플릿 진행 바
         if (_isTemplateMode) _buildSessionProgressBar(),
 
         // 3. 메인 지표 영역
         Expanded(
           child: _isTemplateMode 
             ? _buildTemplateTrackingBody() 
-            : FreeRunBody(currentState: _currentState!),
+            : FreeRunBody(currentState: _currentState ?? _getInitialState()),
         ),
 
         // 4. 하단 컨트롤 버튼
         _buildControls(),
       ],
+    );
+  }
+
+  /// 초기 더미 상태 생성 (데이터 지연 방지용)
+  WorkoutState _getInitialState() {
+    return WorkoutState(
+      isTracking: true,
+      isPaused: false,
+      duration: Duration.zero,
+      distanceMeters: 0,
+      currentSpeedMs: 0,
+      averagePace: "--:--",
+      currentPace: "--:--",
+      calories: 0,
+      routePointsCount: 0,
     );
   }
 
@@ -288,10 +326,14 @@ class _EnduranceTrackingScreenState extends State<EnduranceTrackingScreen> with 
 
   Widget _buildSlimHeader() {
     final isPaused = _currentState?.isPaused ?? false;
+    final isAutoPaused = _currentState?.isAutoPaused ?? false;
+    
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
-        color: isPaused ? Colors.orange.withValues(alpha: 0.1) : Colors.transparent,
+        color: isPaused 
+            ? Colors.orange.withValues(alpha: 0.1) 
+            : (isAutoPaused ? Colors.blue.withValues(alpha: 0.1) : Colors.transparent),
         border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.05))),
       ),
       child: Row(
@@ -300,8 +342,22 @@ class _EnduranceTrackingScreenState extends State<EnduranceTrackingScreen> with 
           // Total Distance & Heart Rate
           Row(
             children: [
-              HeartRateMonitorWidget(),
-              const SizedBox(width: 16),
+              if (isAutoPaused)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.blue,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'AUTO PAUSE',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                )
+              else ...[
+                HeartRateMonitorWidget(),
+                const SizedBox(width: 16),
+              ],
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
