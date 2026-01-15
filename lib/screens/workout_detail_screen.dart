@@ -58,7 +58,10 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   }
 
   Future<void> _activateServices() async {
-    await NativeActivationService().activateGoogleMaps();
+    await Future.wait([
+      NativeActivationService().activateGoogleMaps(),
+      NativeActivationService().activateMediaPicker(),
+    ]);
   }
 
   void _handleExportGpx(BuildContext context, WorkoutDetailProvider provider) async {
@@ -100,9 +103,10 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   }
 
   void _handleShareWorkout(BuildContext context, WorkoutDetailProvider provider) {
-    if (provider.dataWrapper.healthData == null) {
+    // 💡 개선: healthData가 없더라도 session(로컬 기록)이 있으면 공유 가능하도록 변경
+    if (provider.dataWrapper.healthData == null && provider.session == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('건강 데이터가 유실되어 공유할 수 없습니다.')),
+        const SnackBar(content: Text('공유할 수 있는 운동 데이터가 없습니다.')),
       );
       return;
     }
@@ -111,7 +115,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => WorkoutShareScreen(
-          workoutData: provider.dataWrapper.healthData!,
+          workoutData: provider.dataWrapper.healthData, // null 허용 (ShareScreen에서 처리)
+          session: provider.session, // 로컬 세션 전달 추가
           heartRateData: provider.heartRateData,
           avgHeartRate: provider.avgHeartRate,
           paceData: provider.paceData,

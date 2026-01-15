@@ -6,9 +6,16 @@ import HealthKit
 /// Bridge to access additional HealthKit properties not exposed by the health package
 class HealthKitBridge {
     private let healthStore = HKHealthStore()
+    private static var registeredPlugins = Set<String>() // 💡 등록된 플러그인 추적용
 
     // Dynamic registrar to avoid header issues during diagnosis
     static func registerPlugin(name: String, registry: FlutterPluginRegistry, module: String? = nil) {
+        // 💡 이미 등록된 플러그인이면 중복 등록 방지를 위해 즉시 반환
+        if registeredPlugins.contains(name) {
+            NSLog("ℹ️ [AppDelegate] Plugin \(name) already registered. Skipping.")
+            return
+        }
+
         NSLog("🧪 [AppDelegate] Attempting to dynamically register: \(name)")
         
         var potentialNames = [name]
@@ -39,12 +46,12 @@ class HealthKitBridge {
         }
         
         if let pluginClass = foundClass {
-            if let registrar = registry.registrar(forPlugin: name) {
-                let selector = NSSelectorFromString("registerWithRegistrar:")
-                if pluginClass.responds(to: selector) {
-                    pluginClass.perform(selector, with: registrar)
-                    NSLog("✅ [AppDelegate] Successfully registered: \(name)")
-                }
+            let registrar = registry.registrar(forPlugin: name)
+            let selector = NSSelectorFromString("registerWithRegistrar:")
+            if pluginClass.responds(to: selector) {
+                pluginClass.perform(selector, with: registrar)
+                registeredPlugins.insert(name) // 💡 성공 시 집합에 추가
+                NSLog("✅ [AppDelegate] Successfully registered: \(name)")
             }
         }
     }
@@ -313,7 +320,9 @@ class HealthKitBridge {
             ("FlutterAppGroupDirectoryPlugin", "flutter_app_group_directory"),
             ("PedometerPlugin", "pedometer"),
             ("FPPSensorsPlusPlugin", "sensors_plus"),
-            ("WorkmanagerPlugin", "workmanager_apple")
+            ("WorkmanagerPlugin", "workmanager_apple"),
+            ("LiveActivitiesPlugin", "live_activities"),
+            ("FPPSharePlusPlugin", "share_plus")
         ]
         for (name, mod) in stage2 {
             HealthKitBridge.registerPlugin(name: name, registry: self, module: mod)

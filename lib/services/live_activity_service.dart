@@ -68,8 +68,8 @@ class LiveActivityService {
       await endActivity();
 
       final Map<String, dynamic> activityData = {
-        'name': name,
-        'distanceKm': distanceKm,
+        'workoutName': name,
+        'distance': distanceKm,
         'duration': duration,
         'pace': pace,
         'heartRate': heartRate?.toString() ?? '--',
@@ -103,7 +103,7 @@ class LiveActivityService {
 
     try {
       final Map<String, dynamic> updateData = {
-        'distanceKm': distanceKm,
+        'distance': distanceKm,
         'duration': duration,
         'pace': pace,
         'heartRate': heartRate?.toString() ?? '--',

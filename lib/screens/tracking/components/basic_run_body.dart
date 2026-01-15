@@ -25,6 +25,7 @@ class _BasicRunBodyState extends State<BasicRunBody> {
     MetricType.time,
     MetricType.pace,
     MetricType.heartRate,
+    MetricType.cadence,
     MetricType.calories,
   ];
 
@@ -58,6 +59,8 @@ class _BasicRunBodyState extends State<BasicRunBody> {
         return widget.currentState.currentPace;
       case MetricType.heartRate:
         return widget.currentState.heartRate?.toString() ?? '--';
+      case MetricType.cadence:
+        return widget.currentState.cadence?.toString() ?? '--';
       case MetricType.calories:
         return widget.currentState.caloriesFormatted;
     }

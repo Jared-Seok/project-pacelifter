@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:health/health.dart';
 import 'package:sensors_plus/sensors_plus.dart';
+import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart'; // Added
 import '../models/sessions/route_point.dart';
 import '../models/templates/workout_template.dart';
@@ -44,6 +46,9 @@ class WorkoutTrackingService extends ChangeNotifier {
   
   final List<PaceDataPoint> _paceHistory = [];
   int? _latestHeartRate;
+  int? _currentCadence;
+  int? _lastStepCount;
+  DateTime? _lastStepTimestamp;
   double? _lastBarometricAltitude;
   double _lastMagnitude = 0.0;
   int _lastAnnouncedKm = 0;
@@ -71,6 +76,7 @@ class WorkoutTrackingService extends ChangeNotifier {
   StreamSubscription<double>? _heartRateSubscription;
   StreamSubscription<BarometerEvent>? _barometerSubscription;
   StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
+  StreamSubscription<StepCount>? _pedometerSubscription;
   Timer? _updateTimer;
 
   final _workoutStateController = StreamController<WorkoutState>.broadcast();
@@ -157,8 +163,14 @@ class WorkoutTrackingService extends ChangeNotifier {
     final summary = _createSummary(activeDuration, avgHeartRate);
 
     // 기록 저장
-    await WorkoutHistoryService().saveSession(_createSession(summary, activeDuration));
-    await _saveToHealthKit(summary);
+    final session = _createSession(summary, activeDuration);
+    await WorkoutHistoryService().saveSession(session);
+    
+    // HealthKit 저장 후 반환된 ID를 로컬 세션에 업데이트 (중복 방지 핵심)
+    final healthKitId = await _saveToHealthKit(summary);
+    if (healthKitId != null) {
+      await WorkoutHistoryService().saveSession(session.copyWith(healthKitWorkoutId: healthKitId));
+    }
     
     await WatchConnectivityService().stopWatchWorkout();
     LiveActivityService().endActivity();
@@ -239,11 +251,50 @@ class WorkoutTrackingService extends ChangeNotifier {
     _startAccelerometerTracking();
     _startUpdateTimer();
     
-    // 심박수 연동
+    // 심박수 연동 (업데이트 시 즉시 상태 반영)
     _heartRateSubscription?.cancel();
     final watch = WatchConnectivityService();
-    _heartRateSubscription = watch.heartRateStream.map((bpm) => bpm.toDouble()).listen((bpm) => _latestHeartRate = bpm.toInt());
+    _heartRateSubscription = watch.heartRateStream.map((bpm) => bpm.toDouble()).listen((bpm) {
+      _latestHeartRate = bpm.toInt();
+      if (_isTracking && !_isPaused && !_isAutoPaused) {
+        _updateWorkoutState();
+      }
+    });
     watch.startWatchWorkout(activityType: _isStructured && _activeTemplate?.category == 'Strength' ? 'Strength' : 'Running');
+
+    // 케이던스 (Pedometer) 연동
+    _pedometerSubscription?.cancel();
+    _pedometerSubscription = Pedometer.stepCountStream.listen((StepCount event) {
+      if (!_isTracking || _isPaused || _isAutoPaused) {
+        _lastStepCount = event.steps;
+        _lastStepTimestamp = DateTime.now();
+        return;
+      }
+
+      if (_lastStepCount != null && _lastStepTimestamp != null) {
+        final now = DateTime.now();
+        final secondsDiff = now.difference(_lastStepTimestamp!).inSeconds;
+        
+        // 💡 2초 이상의 간격으로 케이던스 계산 (노이즈 방지)
+        if (secondsDiff >= 2) {
+          final stepsDiff = event.steps - _lastStepCount!;
+          if (stepsDiff >= 0) {
+            // SPM = (걸음수 차이 / 초 차이) * 60
+            _currentCadence = ((stepsDiff / secondsDiff) * 60).round();
+            // 비정상 수치 필터링 (0~250 범위만 허용)
+            if (_currentCadence! > 250) _currentCadence = 250;
+          }
+          _lastStepCount = event.steps;
+          _lastStepTimestamp = now;
+          
+          // 케이던스 업데이트 시 UI 즉시 반영
+          _updateWorkoutState();
+        }
+      } else {
+        _lastStepCount = event.steps;
+        _lastStepTimestamp = DateTime.now();
+      }
+    });
   }
 
   void _stopHardwareServices() {
@@ -251,6 +302,7 @@ class WorkoutTrackingService extends ChangeNotifier {
     _heartRateSubscription?.cancel();
     _barometerSubscription?.cancel();
     _accelerometerSubscription?.cancel();
+    _pedometerSubscription?.cancel();
     _updateTimer?.cancel();
   }
 
@@ -354,7 +406,8 @@ class WorkoutTrackingService extends ChangeNotifier {
         HapticFeedback.lightImpact();
         notifyListeners();
       }
-    } else {
+    }
+    else {
       if (speed < threshold && !isMoving) {
         _lowSpeedSeconds++;
         if (_lowSpeedSeconds >= _autoPauseThresholdSeconds) {
@@ -418,20 +471,38 @@ class WorkoutTrackingService extends ChangeNotifier {
     final dur = DateTime.now().difference(_startTime!) - _totalPausedDuration;
     double speed = _paceSmoother.currentSpeedMs;
     String avgPace = _calculatePace(_totalDistance / 1000, dur);
-    String curPace = speed > _minSpeedThreshold ? _calculatePace(speed * 3.6 / 1000, const Duration(seconds: 1)) : '--:--';
+    
+    // 💡 정밀 수정: speed(m/s)는 1초당 이동 거리(m)와 같으므로, 
+    // 이를 km로 변환하려면 1000으로만 나누면 됨 (3.6 곱하기 제거)
+    String curPace = speed > _minSpeedThreshold 
+        ? _calculatePace(speed / 1000, const Duration(seconds: 1)) 
+        : '--:--';
 
     if (speed >= _minSpeedThreshold) {
       _paceHistory.add(PaceDataPoint(elapsedTime: dur, paceMinPerKm: 1000 / (speed * 60), speedMs: speed));
     }
 
-    _workoutStateController.add(WorkoutState(
+    final state = WorkoutState(
       isTracking: _isTracking, isPaused: _isPaused, isAutoPaused: _isAutoPaused,
       duration: dur, distanceMeters: _totalDistance, currentSpeedMs: speed,
       averagePace: avgPace, currentPace: curPace, calories: _calculateCalories(_totalDistance / 1000, dur),
-      heartRate: _latestHeartRate, routePointsCount: _route.length, elevationGain: _totalElevationGain,
+      heartRate: _latestHeartRate, cadence: _currentCadence, 
+      routePointsCount: _route.length, elevationGain: _totalElevationGain,
       isStructured: _isStructured, currentBlockIndex: _currentBlockIndex,
       lastBlockDuration: _lastBlockDuration, currentBlockDuration: _blockDurationAccumulator,
-    ));
+    );
+
+    _workoutStateController.add(state);
+
+    // 💡 Live Activity (다이나믹 아일랜드) 실시간 업데이트 복구
+    if (!kIsWeb && Platform.isIOS) {
+      LiveActivityService().updateActivity(
+        distanceKm: state.distanceKm,
+        duration: state.durationFormatted,
+        pace: state.currentPace,
+        heartRate: state.heartRate,
+      );
+    }
   }
 
   String _calculatePace(double distKm, Duration dur) {
@@ -475,10 +546,25 @@ class WorkoutTrackingService extends ChangeNotifier {
     );
   }
 
-  Future<void> _saveToHealthKit(WorkoutSummary summary) async {
+  Future<String?> _saveToHealthKit(WorkoutSummary summary) async {
     try {
-      await _health.writeWorkoutData(activityType: HealthWorkoutActivityType.RUNNING, start: summary.startTime, end: summary.stopTime, totalDistance: summary.distanceMeters.toInt(), totalEnergyBurned: summary.calories.toInt());
-    } catch (_) {}
+      // 💡 writeWorkoutData는 성공 시 String(UUID)를 반환하거나 true를 반환할 수 있음
+      final dynamic result = await _health.writeWorkoutData(
+        activityType: HealthWorkoutActivityType.RUNNING, 
+        start: summary.startTime, 
+        end: summary.stopTime, 
+        totalDistance: summary.distanceMeters.toInt(), 
+        totalEnergyBurned: summary.calories.toInt()
+      );
+      
+      if (result is String) {
+        return result;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('⚠️ Failed to save to HealthKit: $e');
+      return null;
+    }
   }
 
   Future<bool> _checkLocationPermission() async {
@@ -537,14 +623,14 @@ class WorkoutState {
   final Duration? lastBlockDuration;
   final double distanceMeters, currentSpeedMs, calories, elevationGain;
   final String averagePace, currentPace;
-  final int? heartRate;
+  final int? heartRate, cadence;
   final int routePointsCount, currentBlockIndex;
 
   WorkoutState({
     required this.isTracking, required this.isPaused, this.isAutoPaused = false,
     required this.duration, required this.distanceMeters, required this.currentSpeedMs,
     required this.averagePace, required this.currentPace, required this.calories,
-    this.heartRate, required this.routePointsCount, this.elevationGain = 0.0,
+    this.heartRate, this.cadence, required this.routePointsCount, this.elevationGain = 0.0,
     this.isStructured = false, this.currentBlockIndex = 0, this.lastBlockDuration,
     this.currentBlockDuration = Duration.zero,
   });
