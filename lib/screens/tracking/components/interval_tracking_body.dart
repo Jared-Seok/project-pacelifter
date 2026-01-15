@@ -187,7 +187,10 @@ class _IntervalTrackingBodyState extends State<IntervalTrackingBody> {
         children: [
           const Text('GET READY', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.orangeAccent, letterSpacing: 2)),
           const SizedBox(height: 20),
-          Text('$seconds', style: const TextStyle(fontSize: 140, fontWeight: FontWeight.w900)),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text('$seconds', style: const TextStyle(fontSize: 140, fontWeight: FontWeight.w900)),
+          ),
           const SizedBox(height: 20),
           Text("NEXT: ${widget.currentBlock.name.toUpperCase()}", style: const TextStyle(fontSize: 18, color: Colors.grey)),
         ],
@@ -297,15 +300,18 @@ class _IntervalTrackingBodyState extends State<IntervalTrackingBody> {
   }
 
   Widget _buildLargeMetric(String value, String unit, Color color) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.baseline,
-      textBaseline: TextBaseline.alphabetic,
-      children: [
-        Text(value, style: TextStyle(fontSize: 110, fontWeight: FontWeight.w900, color: color, height: 1)),
-        const SizedBox(width: 8),
-        Text(unit, style: TextStyle(fontSize: 28, color: color.withOpacity(0.7))),
-      ],
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
+        children: [
+          Text(value, style: TextStyle(fontSize: 110, fontWeight: FontWeight.w900, color: color, height: 1)),
+          const SizedBox(width: 8),
+          Text(unit, style: TextStyle(fontSize: 28, color: color.withOpacity(0.7))),
+        ],
+      ),
     );
   }
 

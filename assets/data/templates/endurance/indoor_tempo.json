@@ -3,8 +3,8 @@
   "name": "템포",
   "category": "Endurance",
   "environmentType": "Indoor",
-  "subCategory": "젖산 역치 향상",
-  "description": "중간 강도로 일정한 페이스를 유지하는 템포 런입니다. 젖산 역치를 향상시킵니다.",
+  "subCategory": "Tempo",
+  "description": "실내에서 진행하는 템포런입니다. 정해진 페이스로 일정 시간 동안 유지합니다.",
   "imagePath": "assets/images/endurance/runner-icon.svg",
   "isCustom": false,
   "phases": [

@@ -1,15 +1,19 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:pacelifter/services/native_activation_service.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import '../services/workout_tracking_service.dart';
 import '../services/template_service.dart';
 import '../services/health_service.dart';
+import '../utils/workout_ui_utils.dart';
 import '../models/templates/workout_template.dart';
 import '../models/templates/template_block.dart';
 import '../models/templates/custom_phase_preset.dart';
@@ -18,6 +22,7 @@ import 'hybrid_tracking_screen.dart';
 import 'strength_tracking_screen.dart'; 
 import '../widgets/block_edit_dialog.dart';
 import '../widgets/interval_set_edit_dialog.dart';
+import '../widgets/shared/horizontal_ruler_picker.dart';
 
 class _DisplayItem {
   final bool isGroup;
@@ -65,12 +70,28 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     // 템플릿 딥 카피 생성 (toJson -> fromJson)
     _editableTemplate = WorkoutTemplate.fromJson(widget.template.toJson());
 
+    // 💡 최적화: 설정 화면 진입 시점에 즉시 필수 권한 확보 (iOS 팝업 트리거)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAndRequestPermissions();
+    });
+
     // 맵이 필요한 환경인지 확인 (Outdoor, Track)
     if (_shouldShowMap()) {
       NativeActivationService().activateGoogleMaps();
       _getCurrentLocation();
     } else {
       _isLoadingLocation = false;
+    }
+  }
+
+  Future<void> _checkAndRequestPermissions() async {
+    // 위치 권한 확인
+    await Permission.locationWhenInUse.request();
+    // 건강 데이터 권한 확인
+    await HealthService().requestAuthorization(force: true);
+    // 동작 센서 권한 확인
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      await Permission.sensors.request();
     }
   }
 
@@ -174,10 +195,33 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
   }
 
   void _startWorkout() async {
-    // 운동 시작 전 건강 데이터 권한 확인 (심박수 등)
-    await HealthService().requestAuthorization();
+    // 1. 필수 권한 재확인 (이미 승인되었는지 최종 체크)
+    var locStatus = await Permission.locationWhenInUse.status;
+    bool healthGranted = await HealthService().requestAuthorization();
+    bool motionGranted = true;
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      motionGranted = (await Permission.sensors.status).isGranted;
+    }
 
     if (!mounted) return;
+
+    // 권한 거부 시 안내 (최종 확인)
+    if (!locStatus.isGranted || !healthGranted || !motionGranted) {
+      final bool? goToSettings = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('필수 권한 필요'),
+          content: const Text('정확한 운동 기록을 위해 모든 권한이 필요합니다. 설정 화면에서 권한을 허용해주세요.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
+            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('설정으로 이동')),
+          ],
+        ),
+      );
+
+      if (goToSettings == true) openAppSettings();
+      return;
+    }
 
     if (widget.template.category == 'Strength') {
       Navigator.pushReplacement(
@@ -458,10 +502,85 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     );
   }
 
-  bool get _isBasicRun => widget.template.subCategory == 'Basic Run';
+  bool get _isBasicRun {
+    final sub = widget.template.subCategory;
+    return sub == 'Basic Run' || sub == '기본 러닝' || sub == '자유 모드' || sub == '산악 및 오프로드';
+  }
 
   @override
   Widget build(BuildContext context) {
+    // 💡 Basic Run일 경우 임베디드(Stack) 레이아웃 적용
+    if (_isBasicRun) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          title: Text(_getCleanName(widget.template.name)),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          foregroundColor: Colors.white,
+        ),
+        body: Stack(
+          children: [
+            // 1. 배경 지도 (상단 40% 영역 차지하는 느낌으로 배치)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: MediaQuery.of(context).size.height * 0.45,
+              child: _shouldShowMap() ? _buildMapSection() : _buildTemplateInfoSection(),
+            ),
+            
+            // 2. 지도 하단 그라데이션 (패널과 자연스럽게 연결)
+            Positioned(
+              top: MediaQuery.of(context).size.height * 0.35,
+              left: 0,
+              right: 0,
+              height: 100,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Theme.of(context).colorScheme.surface,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // 3. 하단 인터랙티브 패널
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Container(
+                height: MediaQuery.of(context).size.height * 0.6,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      blurRadius: 20,
+                      offset: const Offset(0, -5),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    _buildBasicRunUI(),
+                    _buildStartButton(),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // 기존 표준 레이아웃 (Strength, Hybrid 등)
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
@@ -553,6 +672,32 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     );
   }
 
+  Widget _buildStartButton() {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+        child: _shouldShowMap() && _currentPosition == null && _locationError == null
+            ? const Center(child: CircularProgressIndicator())
+            : SizedBox(
+                height: 64,
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _startWorkout,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    elevation: 8,
+                  ),
+                  icon: const Icon(Icons.play_arrow_rounded, size: 32),
+                  label: const Text('운동 시작', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                ),
+              ),
+      ),
+    );
+  }
+
   Widget _buildStandardUI() {
     return Container(
       decoration: BoxDecoration(
@@ -586,80 +731,64 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
   Widget _buildBasicRunUI() {
     return Consumer<WorkoutTrackingService>(
       builder: (context, workoutService, child) {
-        final calculatedValues = _calculateMissingGoal(workoutService);
-        return Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            boxShadow: [
-               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.2),
-                blurRadius: 20,
-                offset: const Offset(0, -5),
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.all(24),
+        final double currentGoal = workoutService.goalDistance ?? 0.0;
+        final double displayKm = currentGoal / 1000.0;
+        final themeColor = Theme.of(context).colorScheme.tertiary;
+
+        return Expanded(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                '목표 설정',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '원하는 목표를 설정하고 바로 시작하세요',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                ),
-              ),
               const SizedBox(height: 32),
-              Expanded(
-                child: Column(
+              // 1. Hero Distance Display
+              Column(
+                children: [
+                  Text(
+                    displayKm == 0 ? 'FREE RUN' : displayKm.toStringAsFixed(1),
+                    style: TextStyle(
+                      fontSize: 80,
+                      fontWeight: FontWeight.w900,
+                      fontStyle: FontStyle.italic,
+                      color: displayKm == 0 ? Colors.grey : themeColor,
+                      letterSpacing: -2,
+                    ),
+                  ),
+                  Text(
+                    displayKm == 0 ? '목표 거리 없음' : 'KILOMETERS',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ],
+              ),
+              
+              const Spacer(),
+
+              // 2. Horizontal Ruler Picker
+              HorizontalRulerPicker(
+                minValue: 0.0,
+                maxValue: 42.2,
+                initialValue: displayKm,
+                value: displayKm, // 💡 외부 값 동기화 추가
+                onChanged: (val) {
+                  workoutService.setGoals(distance: (val * 1000).roundToDouble());
+                },
+              ),
+
+              const Spacer(),
+
+              // 3. Quick Action Chips
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    _buildBigGoalCard(
-                      label: '목표 거리',
-                      value: calculatedValues['distance'] ?? '설정 안함',
-                      icon: Icons.straighten,
-                      onTap: _showDistancePicker,
-                      isActive: workoutService.goalDistance != null || calculatedValues['distanceCalculated'] == true,
-                      isCalculated: calculatedValues['distanceCalculated'] == true,
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildBigGoalCard(
-                            label: '목표 페이스',
-                            value: calculatedValues['pace'] ?? '설정 안함',
-                            icon: Icons.speed,
-                            onTap: _showPacePicker,
-                            isActive: workoutService.goalPace != null || calculatedValues['paceCalculated'] == true,
-                            isCalculated: calculatedValues['paceCalculated'] == true,
-                            isSmall: true,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildBigGoalCard(
-                            label: '목표 시간',
-                            value: calculatedValues['time'] ?? '설정 안함',
-                            icon: Icons.timer,
-                            onTap: _showTimePicker,
-                            isActive: workoutService.goalTime != null || calculatedValues['timeCalculated'] == true,
-                            isCalculated: calculatedValues['timeCalculated'] == true,
-                            isSmall: true,
-                          ),
-                        ),
-                      ],
-                    ),
+                    _buildQuickGoalChip('5K', 5.0, workoutService),
+                    _buildQuickGoalChip('10K', 10.0, workoutService),
+                    _buildQuickGoalChip('HALF', 21.1, workoutService),
+                    _buildQuickGoalChip('FREE', 0.0, workoutService),
                   ],
                 ),
               ),
@@ -667,6 +796,30 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildQuickGoalChip(String label, double km, WorkoutTrackingService service) {
+    final bool isSelected = (service.goalDistance ?? 0) / 1000 == km;
+    final themeColor = Theme.of(context).colorScheme.tertiary;
+
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (val) {
+        if (val) {
+          service.setGoals(distance: km * 1000.0);
+          HapticFeedback.mediumImpact();
+        }
+      },
+      selectedColor: themeColor,
+      backgroundColor: Colors.white.withOpacity(0.05),
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.black : Colors.white70,
+        fontWeight: FontWeight.bold,
+      ),
+      side: BorderSide.none,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     );
   }
 
@@ -812,7 +965,7 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
             children: [
               _buildSmallChip(_getCleanName(_editableTemplate.category)),
               if (_editableTemplate.subCategory != null)
-                _buildSmallChip(_getCleanName(_editableTemplate.subCategory!)),
+                _buildSmallChip(WorkoutUIUtils.translateSubCategory(_editableTemplate.subCategory!)),
               if (_editableTemplate.environmentType != null)
                 _buildSmallChip(_getCleanName(_editableTemplate.environmentType!)),
             ],

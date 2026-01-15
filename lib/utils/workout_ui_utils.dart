@@ -234,6 +234,24 @@ class WorkoutUIUtils {
     return name[0].toUpperCase() + name.substring(1).toLowerCase();
   }
 
+  /// 서브카테고리(LSD, Interval 등)를 한국어로 번환
+  static String translateSubCategory(String subCategory) {
+    switch (subCategory) {
+      case 'Basic Run':
+        return '기본 러닝';
+      case 'LSD':
+        return '지구력 증진 (LSD)';
+      case 'Interval':
+        return '속도 및 심폐 강화';
+      case 'Tempo':
+        return '페이스 및 임계치';
+      case '산악 및 오프로드': // 레거시 지원
+        return '산악 및 오프로드';
+      default:
+        return subCategory;
+    }
+  }
+
   /// 화면 상단에 세련된 알림 표시 (Top Toast)
   static void showTopNotification(BuildContext context, String message, {bool isSuccess = true}) {
     final overlay = Overlay.of(context);

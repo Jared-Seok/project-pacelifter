@@ -1,10 +1,11 @@
 import 'dart:async';
-import 'dart:math' as math; // math prefix 사용으로 충돌 방지
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:health/health.dart';
 import 'package:sensors_plus/sensors_plus.dart';
+import 'package:permission_handler/permission_handler.dart'; // Added
 import '../models/sessions/route_point.dart';
 import '../models/templates/workout_template.dart';
 import '../models/templates/template_block.dart';
@@ -20,205 +21,238 @@ import '../utils/tracking/kalman_filter.dart';
 import '../utils/tracking/pace_smoother.dart';
 import '../utils/tracking/altitude_smoother.dart';
 
-/// 운동 추적 서비스
+/// 고도화된 러닝 트래킹 서비스 (Final Integrated Version)
 class WorkoutTrackingService extends ChangeNotifier {
-  // 상태 변수
+  // 1. 상태 변수
   bool _isTracking = false;
   bool _isPaused = false;
   bool _isAutoPaused = false;
+  bool _isInitializing = false;
   DateTime? _startTime;
-  DateTime? _stopTime; 
+  DateTime? _stopTime;
   DateTime? _pausedTime;
   Duration _totalPausedDuration = Duration.zero;
 
   final List<RoutePoint> _route = [];
-  double _totalDistance = 0; // 미터
-  double _totalElevationGain = 0; // 누적 상승 고도 (미터)
+  double _totalDistance = 0; // m
+  double _totalElevationGain = 0; // m
 
-  // 필터 및 스무더
+  // 2. 필터 및 센서 데이터
   final KalmanFilter _kalmanFilter = KalmanFilter();
   final PaceSmoother _paceSmoother = PaceSmoother(windowSizeSeconds: 10);
   final AltitudeSmoother _altitudeSmoother = AltitudeSmoother(threshold: 3.0);
   
-  final List<PaceDataPoint> _paceHistory = []; 
+  final List<PaceDataPoint> _paceHistory = [];
   int? _latestHeartRate;
   double? _lastBarometricAltitude;
-  int _lastAnnouncedKm = 0; 
-
-  // Auto Pause 설정
+  double _lastMagnitude = 0.0;
+  int _lastAnnouncedKm = 0;
   int _lowSpeedSeconds = 0;
-  static const int _autoPauseThresholdSeconds = 5;
-  static const double _autoPauseSpeedThreshold = 0.8; 
 
-  // 목표 설정
-  double? _goalDistance; 
+  // 3. 목표 및 템플릿 설정
+  double? _goalDistance;
   Duration? _goalTime;
   Pace? _goalPace;
 
-  // 구조화된 운동 (템플릿) 상태
   bool _isStructured = false;
   WorkoutTemplate? _activeTemplate;
   String _activeTemplateName = "Running";
   List<TemplateBlock> _activeBlocks = [];
   int _currentBlockIndex = 0;
-  double _blockDistanceAccumulator = 0; 
-  Duration _blockDurationAccumulator = Duration.zero; 
+  double _blockDistanceAccumulator = 0;
+  Duration _blockDurationAccumulator = Duration.zero;
   DateTime? _blockStartTime;
-  Duration? _lastBlockDuration; 
+  Duration? _lastBlockDuration;
 
-  // 서비스 및 스트림
+  // 4. 서비스 및 스트림
   final VoiceGuidanceService _voiceService = VoiceGuidanceService();
   final Health _health = Health();
   StreamSubscription<Position>? _positionStream;
   StreamSubscription<double>? _heartRateSubscription;
   StreamSubscription<BarometerEvent>? _barometerSubscription;
+  StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
   Timer? _updateTimer;
 
   final _workoutStateController = StreamController<WorkoutState>.broadcast();
   Stream<WorkoutState> get workoutStateStream => _workoutStateController.stream;
 
+  // 상수
   static const double _minSpeedThreshold = 0.5;
+  static const int _autoPauseThresholdSeconds = 5;
+  static const double _autoPauseSpeedThreshold = 0.8;
 
   // ==============================
-  // 1. 운동 시작 및 종료
+  // PUBLIC METHODS
   // ==============================
 
   Future<void> startWorkout({WorkoutTemplate? template}) async {
-    if (_isTracking) return;
+    if (_isTracking || _isInitializing) return;
 
-    // 1.1 권한 및 엔진 상태 즉시 활성화 (로딩 방지)
+    // 1.1 엔진 상태 즉시 활성화 (로딩 화면 방지)
+    _isInitializing = true;
     _isTracking = true; 
     _isPaused = false;
     _isAutoPaused = false;
-    _startTime = DateTime.now();
-    _route.clear();
-    _totalDistance = 0;
-    _totalElevationGain = 0;
-    _paceHistory.clear();
-    _lastAnnouncedKm = 0;
+    _resetTrackingState();
     
-    _kalmanFilter.reset();
-    _paceSmoother.reset();
-    _altitudeSmoother.reset();
-
-    // 1.2 템플릿 설정 즉시 반영
     if (template != null) {
-      _isStructured = true;
-      _activeTemplate = template;
-      _activeTemplateName = template.name;
-      _activeBlocks = template.phases.expand((p) => p.blocks).toList();
-      _currentBlockIndex = 0;
-      _blockDistanceAccumulator = 0;
-      _blockDurationAccumulator = Duration.zero;
-      _blockStartTime = DateTime.now();
-      _lastBlockDuration = null;
-      _paceSmoother.setWindowSize(template.subCategory?.contains('Interval') == true ? 3 : 10);
+      _setupStructuredWorkout(template);
     } else {
-      _isStructured = false;
-      _activeTemplate = null;
-      _activeTemplateName = "Free Run";
-      _activeBlocks = [];
-      _currentBlockIndex = 0;
-      _lastBlockDuration = null;
-      _paceSmoother.setWindowSize(10);
+      _setupFreeRun();
     }
-
-    // 1.3 첫 번째 상태를 즉시 스트림으로 발송 (UI 전환 트리거)
-    _updateWorkoutState();
+    
+    _updateWorkoutState(); // 첫 상태 발송
+    notifyListeners();
 
     try {
-      // 1.4 권한 확인 (병렬 처리)
-      final results = await Future.wait([
-        _checkLocationPermission(),
-        _checkHealthPermission(),
-      ]);
-
-      if (!results[0] || !results[1]) {
-        _isTracking = false;
-        notifyListeners();
-        throw Exception('필수 권한이 거부되었습니다.');
+      // 1.2 필수 권한 확인 (병렬 처리)
+      // 이미 SetupScreen에서 권한을 받았으므로, 여기서는 실제 상태만 가볍게 체크
+      // 팝업이 다시 뜨지 않도록 geolocator의 단순 체크 기능 활용
+      final locStatus = await Geolocator.checkPermission();
+      final hasLocation = locStatus == LocationPermission.whileInUse || locStatus == LocationPermission.always;
+      
+      // HealthKit은 이미 SetupScreen에서 세밀하게 체크됨 (HealthService 내부 로직 활용)
+      
+      if (!hasLocation) {
+        // 만약의 상황을 대비한 최후의 요청
+        final p = await _checkLocationPermission();
+        if (!p) throw Exception('위치 권한이 필요합니다.');
       }
 
-      // 1.5 서비스 초기화 (음성 서비스는 별도 대기)
+      // 1.3 서비스 초기화
       await _voiceService.init();
-      _voiceService.speak('$_activeTemplateName을 시작합니다.');
+      // _voiceService.speak('$_activeTemplateName을 시작합니다.'); // 💡 제거: 실제 시작(actualStart) 시점으로 이동
       HapticFeedback.heavyImpact();
 
-      // Live Activity 및 센서 추적 시작 (Non-blocking)
-      _startServicesAsync();
+      // 하드웨어 서비스 시작
+      _startHardwareServices();
+      
+      _isInitializing = false;
+      notifyListeners();
 
     } catch (e) {
       _isTracking = false;
+      _isInitializing = false;
+      _stopHardwareServices();
       debugPrint('❌ Workout Start Error: $e');
+      notifyListeners();
       rethrow;
     }
   }
 
-  /// 백그라운드에서 서비스를 순차적으로 시작 (UI를 막지 않음)
-  Future<void> _startServicesAsync() async {
-    final laService = LiveActivityService();
-    await laService.init();
-    await laService.startActivity(
-      name: _activeTemplateName, distanceKm: "0.00", duration: "00:00:00", pace: "--:--", heartRate: null,
-    );
-
-    _startGPSTracking();
-    _startBarometerTracking();
-
-    _heartRateSubscription?.cancel();
-    final watchService = WatchConnectivityService();
-    _heartRateSubscription = watchService.heartRateStream.map((bpm) => bpm.toDouble()).listen((bpm) => _latestHeartRate = bpm.toInt());
-    
-    await watchService.startWatchWorkout(activityType: _isStructured && _activeTemplate?.category == 'Strength' ? 'Strength' : 'Running');
-    _startUpdateTimer();
-  }
-
   Future<WorkoutSummary> stopWorkout({int? avgHeartRate}) async {
     if (!_isTracking) throw Exception('운동 중이 아닙니다');
-    if (_isPaused) resumeWorkout();
+    if (_isPaused) resumeWorkout(silent: true);
 
     _stopTime = DateTime.now();
     _isTracking = false;
     _isAutoPaused = false;
-    _positionStream?.cancel();
-    _heartRateSubscription?.cancel();
-    _barometerSubscription?.cancel();
-    _updateTimer?.cancel();
+    
+    _stopHardwareServices();
 
     _voiceService.speak('운동을 완료했습니다.');
     HapticFeedback.heavyImpact();
 
     final activeDuration = _stopTime!.difference(_startTime!) - _totalPausedDuration;
-    final summary = WorkoutSummary(
-      startTime: _startTime!, endTime: DateTime.now(), stopTime: _stopTime!,
-      duration: activeDuration, totalDuration: DateTime.now().difference(_startTime!),
-      distanceMeters: _totalDistance, elevationGain: _totalElevationGain,
-      averagePace: _calculatePace(_totalDistance / 1000, activeDuration),
-      calories: _calculateCalories(_totalDistance / 1000, activeDuration),
-      routePoints: List.from(_route), averageHeartRate: avgHeartRate ?? _latestHeartRate,
-      pausedDuration: _totalPausedDuration, paceData: List.from(_paceHistory),
-    );
+    final summary = _createSummary(activeDuration, avgHeartRate);
 
-    await WorkoutHistoryService().saveSession(WorkoutSession(
-      id: const Uuid().v4(), templateId: _activeTemplate?.id ?? 'free_run',
-      templateName: _activeTemplateName, category: _activeTemplate?.category ?? 'Endurance',
-      startTime: _startTime!, endTime: summary.endTime, activeDuration: activeDuration.inSeconds,
-      totalDuration: summary.totalDuration.inSeconds, totalDistance: _totalDistance,
-      calories: summary.calories, averageHeartRate: summary.averageHeartRate,
-      elevationGain: _totalElevationGain, environmentType: _activeTemplate?.environmentType,
-      exerciseRecords: [],
-    ));
-
+    // 기록 저장
+    await WorkoutHistoryService().saveSession(_createSession(summary, activeDuration));
     await _saveToHealthKit(summary);
+    
     await WatchConnectivityService().stopWatchWorkout();
     LiveActivityService().endActivity();
 
+    notifyListeners();
     return summary;
   }
 
+  void pauseWorkout() {
+    if (!_isTracking || _isPaused) return;
+    _isPaused = true;
+    _pausedTime = DateTime.now();
+    _positionStream?.pause();
+    _voiceService.speak('운동을 일시정지합니다.');
+    _updateWorkoutState();
+    notifyListeners();
+  }
+
+  void resumeWorkout({bool silent = false}) {
+    if (!_isTracking || !_isPaused || _pausedTime == null) return;
+    _totalPausedDuration += DateTime.now().difference(_pausedTime!);
+    _isPaused = false;
+    _pausedTime = null;
+    _positionStream?.resume();
+    if (!silent) _voiceService.speak('운동을 다시 시작합니다.');
+    _updateWorkoutState();
+    notifyListeners();
+  }
+
   // ==============================
-  // 2. 센서 로직
+  // PRIVATE HELPERS
   // ==============================
+
+  void _resetTrackingState() {
+    _startTime = DateTime.now();
+    _stopTime = null;
+    _pausedTime = null;
+    _totalPausedDuration = Duration.zero;
+    _route.clear();
+    _totalDistance = 0;
+    _totalElevationGain = 0;
+    _paceHistory.clear();
+    _lastAnnouncedKm = 0;
+    _lowSpeedSeconds = 0;
+    _lastMagnitude = 0;
+    _kalmanFilter.reset();
+    _paceSmoother.reset();
+    _altitudeSmoother.reset();
+  }
+
+  void _setupStructuredWorkout(WorkoutTemplate template) {
+    _isStructured = true;
+    _activeTemplate = template;
+    _activeTemplateName = template.name;
+    _activeBlocks = template.phases.expand((p) => p.blocks).toList();
+    _currentBlockIndex = 0;
+    _blockDistanceAccumulator = 0;
+    _blockDurationAccumulator = Duration.zero;
+    _blockStartTime = DateTime.now();
+    _lastBlockDuration = null;
+    
+    final sub = template.subCategory ?? '';
+    final isInterval = sub.contains('Interval') || sub.contains('인터벌') || sub.contains('속도');
+    _paceSmoother.setWindowSize(isInterval ? 3 : 10);
+  }
+
+  void _setupFreeRun() {
+    _isStructured = false;
+    _activeTemplate = null;
+    _activeTemplateName = "Free Run";
+    _activeBlocks = [];
+    _paceSmoother.setWindowSize(10);
+  }
+
+  void _startHardwareServices() {
+    _startGPSTracking();
+    _startBarometerTracking();
+    _startAccelerometerTracking();
+    _startUpdateTimer();
+    
+    // 심박수 연동
+    _heartRateSubscription?.cancel();
+    final watch = WatchConnectivityService();
+    _heartRateSubscription = watch.heartRateStream.map((bpm) => bpm.toDouble()).listen((bpm) => _latestHeartRate = bpm.toInt());
+    watch.startWatchWorkout(activityType: _isStructured && _activeTemplate?.category == 'Strength' ? 'Strength' : 'Running');
+  }
+
+  void _stopHardwareServices() {
+    _positionStream?.cancel();
+    _heartRateSubscription?.cancel();
+    _barometerSubscription?.cancel();
+    _accelerometerSubscription?.cancel();
+    _updateTimer?.cancel();
+  }
 
   void _startGPSTracking() {
     late final LocationSettings settings;
@@ -236,26 +270,42 @@ class WorkoutTrackingService extends ChangeNotifier {
         pauseLocationUpdatesAutomatically: false, showBackgroundLocationIndicator: true, allowBackgroundLocationUpdates: true,
       );
     }
-    _positionStream = Geolocator.getPositionStream(locationSettings: settings).listen(
-      _onLocationUpdate, onError: (error) => debugPrint('📍 GPS Error: $error'),
-    );
+    _positionStream = Geolocator.getPositionStream(locationSettings: settings).listen(_onLocationUpdate);
+  }
+
+  /// 💡 카운트다운 완료 후 실제 기록 시작을 알림 (시간 보정용)
+  void actualStart() {
+    if (!_isTracking) return;
+    _startTime = DateTime.now();
+    _totalDistance = 0;
+    _blockDistanceAccumulator = 0;
+    _blockStartTime = DateTime.now();
+    _updateWorkoutState();
+    
+    // 💡 실제 시작 시점에 음성 안내 출력
+    _voiceService.speak('$_activeTemplateName을 시작합니다.');
+    
+    debugPrint('🔥 Workout Recording Actually Started at: $_startTime');
   }
 
   void _startBarometerTracking() {
     _barometerSubscription?.cancel();
-    // sensors_plus 최신 API: barometerEventStream()
     _barometerSubscription = barometerEventStream().listen((event) {
-      double altitude = 44330 * (1 - math.pow(event.pressure / 1013.25, 1 / 5.255).toDouble());
-      _lastBarometricAltitude = altitude;
+      _lastBarometricAltitude = 44330 * (1 - math.pow(event.pressure / 1013.25, 1 / 5.255).toDouble());
+    });
+  }
+
+  void _startAccelerometerTracking() {
+    _accelerometerSubscription?.cancel();
+    _accelerometerSubscription = accelerometerEventStream().listen((event) {
+      _lastMagnitude = math.sqrt(event.x * event.x + event.y * event.y + event.z * event.z);
     });
   }
 
   void _onLocationUpdate(Position position) {
     if (!_isTracking) return;
 
-    final smoothed = _kalmanFilter.process(
-      position.latitude, position.longitude, position.accuracy, position.timestamp.millisecondsSinceEpoch,
-    );
+    final smoothed = _kalmanFilter.process(position.latitude, position.longitude, position.accuracy, position.timestamp.millisecondsSinceEpoch);
     final sLat = smoothed[0];
     final sLng = smoothed[1];
 
@@ -265,7 +315,8 @@ class WorkoutTrackingService extends ChangeNotifier {
       final tDiff = position.timestamp.difference(_route.last.timestamp);
       if (tDiff.inMilliseconds > 0) speed = dist / (tDiff.inMilliseconds / 1000.0);
     }
-    _checkAutoPause(speed);
+    
+    _checkAutoPauseLogic(speed);
 
     if (_isPaused || _isAutoPaused) return;
 
@@ -288,10 +339,15 @@ class WorkoutTrackingService extends ChangeNotifier {
     ));
   }
 
-  void _checkAutoPause(double speed) {
+  void _checkAutoPauseLogic(double speed) {
     if (!_isTracking || _isPaused) return;
+    bool isMoving = (_lastMagnitude - 9.8).abs() > 0.5;
+
+    // 트레일 러닝은 경사가 가파를 수 있으므로 자동 일시정지 임계값을 낮춤 (0.8 -> 0.4)
+    double threshold = _activeTemplate?.environmentType == 'Trail' ? 0.4 : _autoPauseSpeedThreshold;
+
     if (_isAutoPaused) {
-      if (speed > _autoPauseSpeedThreshold + 0.2) {
+      if (speed > threshold + 0.2 || isMoving) {
         _isAutoPaused = false;
         _lowSpeedSeconds = 0;
         _voiceService.speak('운동을 다시 시작합니다.');
@@ -299,7 +355,7 @@ class WorkoutTrackingService extends ChangeNotifier {
         notifyListeners();
       }
     } else {
-      if (speed < _autoPauseSpeedThreshold) {
+      if (speed < threshold && !isMoving) {
         _lowSpeedSeconds++;
         if (_lowSpeedSeconds >= _autoPauseThresholdSeconds) {
           _isAutoPaused = true;
@@ -321,10 +377,6 @@ class WorkoutTrackingService extends ChangeNotifier {
       _voiceService.speak('$currentKm 킬로미터 통과. 현재 페이스 ${paceStr.replaceAll(':', '분 ')}초.');
     }
   }
-
-  // ==============================
-  // 3. 업데이트 및 제어
-  // ==============================
 
   void _startUpdateTimer() {
     _updateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -363,37 +415,30 @@ class WorkoutTrackingService extends ChangeNotifier {
 
   void _updateWorkoutState() {
     if (_startTime == null) return;
-    final activeDur = DateTime.now().difference(_startTime!) - _totalPausedDuration;
-    double speed = _calculateCurrentSpeed();
-    String avgPace = _calculatePace(_totalDistance / 1000, activeDur);
+    final dur = DateTime.now().difference(_startTime!) - _totalPausedDuration;
+    double speed = _paceSmoother.currentSpeedMs;
+    String avgPace = _calculatePace(_totalDistance / 1000, dur);
     String curPace = speed > _minSpeedThreshold ? _calculatePace(speed * 3.6 / 1000, const Duration(seconds: 1)) : '--:--';
 
     if (speed >= _minSpeedThreshold) {
-      _paceHistory.add(PaceDataPoint(elapsedTime: activeDur, paceMinPerKm: 1000 / (speed * 60), speedMs: speed));
+      _paceHistory.add(PaceDataPoint(elapsedTime: dur, paceMinPerKm: 1000 / (speed * 60), speedMs: speed));
     }
 
-    final state = WorkoutState(
-      isTracking: true, isPaused: _isPaused, isAutoPaused: _isAutoPaused,
-      duration: activeDur, distanceMeters: _totalDistance, currentSpeedMs: speed,
-      averagePace: avgPace, currentPace: curPace, calories: _calculateCalories(_totalDistance / 1000, activeDur),
+    _workoutStateController.add(WorkoutState(
+      isTracking: _isTracking, isPaused: _isPaused, isAutoPaused: _isAutoPaused,
+      duration: dur, distanceMeters: _totalDistance, currentSpeedMs: speed,
+      averagePace: avgPace, currentPace: curPace, calories: _calculateCalories(_totalDistance / 1000, dur),
       heartRate: _latestHeartRate, routePointsCount: _route.length, elevationGain: _totalElevationGain,
       isStructured: _isStructured, currentBlockIndex: _currentBlockIndex,
       lastBlockDuration: _lastBlockDuration, currentBlockDuration: _blockDurationAccumulator,
-    );
-
-    _workoutStateController.add(state);
-    LiveActivityService().updateActivity(distanceKm: state.distanceKm, duration: state.durationFormatted, pace: state.currentPace, heartRate: state.heartRate);
+    ));
   }
-
-  double _calculateCurrentSpeed() => _paceSmoother.currentSpeedMs;
 
   String _calculatePace(double distKm, Duration dur) {
     if (distKm <= 0) return '--:--';
     double minKm = dur.inSeconds / 60 / distKm;
     if (minKm > 20) return '--:--';
-    int m = minKm.floor();
-    int s = ((minKm - m) * 60).round();
-    return '$m:${s.toString().padLeft(2, '0')}';
+    return '${minKm.floor()}:${((minKm - minKm.floor()) * 60).round().toString().padLeft(2, '0')}';
   }
 
   double _calculateCalories(double distKm, Duration dur) {
@@ -405,28 +450,30 @@ class WorkoutTrackingService extends ChangeNotifier {
     return met * weight * hrs;
   }
 
-  void pauseWorkout() {
-    if (!_isTracking || _isPaused) return;
-    _isPaused = true;
-    _pausedTime = DateTime.now();
-    _positionStream?.pause();
-    _voiceService.speak('운동을 일시정지합니다.');
-    _updateWorkoutState();
+  WorkoutSummary _createSummary(Duration activeDur, int? avgHR) {
+    return WorkoutSummary(
+      startTime: _startTime!, endTime: DateTime.now(), stopTime: _stopTime!,
+      duration: activeDur, totalDuration: DateTime.now().difference(_startTime!),
+      distanceMeters: _totalDistance, elevationGain: _totalElevationGain,
+      averagePace: _calculatePace(_totalDistance / 1000, activeDur),
+      calories: _calculateCalories(_totalDistance / 1000, activeDur),
+      routePoints: List.from(_route), averageHeartRate: avgHR ?? _latestHeartRate,
+      pausedDuration: _totalPausedDuration, paceData: List.from(_paceHistory),
+    );
   }
 
-  void resumeWorkout() {
-    if (!_isTracking || !_isPaused || _pausedTime == null) return;
-    _totalPausedDuration += DateTime.now().difference(_pausedTime!);
-    _isPaused = false;
-    _pausedTime = null;
-    _positionStream?.resume();
-    _voiceService.speak('운동을 다시 시작합니다.');
-    _updateWorkoutState();
+  WorkoutSession _createSession(WorkoutSummary summary, Duration activeDur) {
+    return WorkoutSession(
+      id: const Uuid().v4(), templateId: _activeTemplate?.id ?? 'free_run',
+      templateName: _activeTemplateName, category: _activeTemplate?.category ?? 'Endurance',
+      startTime: _startTime!, endTime: summary.endTime, activeDuration: activeDur.inSeconds,
+      totalDuration: summary.totalDuration.inSeconds, totalDistance: _totalDistance,
+      calories: summary.calories, averageHeartRate: summary.averageHeartRate,
+      elevationGain: _totalElevationGain, environmentType: _activeTemplate?.environmentType,
+      exerciseRecords: [],
+      routePoints: List.from(_route),
+    );
   }
-
-  // ==============================
-  // 4. 권한 및 헬퍼
-  // ==============================
 
   Future<void> _saveToHealthKit(WorkoutSummary summary) async {
     try {
@@ -449,10 +496,18 @@ class WorkoutTrackingService extends ChangeNotifier {
     } catch (_) { return false; }
   }
 
+  Future<bool> _checkSensorPermission() async {
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      final status = await Permission.sensors.request();
+      return status.isGranted || status.isLimited;
+    }
+    return true; 
+  }
+
   @override
   void dispose() {
-    _positionStream?.cancel(); _heartRateSubscription?.cancel(); _barometerSubscription?.cancel();
-    _updateTimer?.cancel(); _workoutStateController.close();
+    _stopHardwareServices();
+    _workoutStateController.close();
     super.dispose();
   }
 
@@ -460,6 +515,7 @@ class WorkoutTrackingService extends ChangeNotifier {
   bool get isTracking => _isTracking;
   bool get isPaused => _isPaused;
   bool get isAutoPaused => _isAutoPaused;
+  bool get isInitializing => _isInitializing;
   double get totalDistance => _totalDistance;
   List<RoutePoint> get route => List.unmodifiable(_route);
   double? get goalDistance => _goalDistance;
@@ -472,7 +528,6 @@ class WorkoutTrackingService extends ChangeNotifier {
     if (pace != null) _goalPace = pace;
     notifyListeners();
   }
-
   void resetGoals() { _goalDistance = null; _goalTime = null; _goalPace = null; notifyListeners(); }
 }
 

@@ -9,6 +9,7 @@ import '../services/workout_tracking_service.dart';
 import '../services/heart_rate_service.dart';
 import '../widgets/heart_rate_monitor_widget.dart';
 import 'tracking/components/free_run_body.dart';
+import 'tracking/components/basic_run_body.dart';
 import 'tracking/components/interval_tracking_body.dart';
 import 'tracking/components/steady_state_tracking_body.dart';
 import 'package:pacelifter/services/native_activation_service.dart';
@@ -40,6 +41,8 @@ class _EnduranceTrackingScreenState extends State<EnduranceTrackingScreen> with 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
+  String? _errorMessage;
+
   @override
   void initState() {
     super.initState();
@@ -49,7 +52,7 @@ class _EnduranceTrackingScreenState extends State<EnduranceTrackingScreen> with 
     // 템플릿 모드 확인
     if (widget.template != null) {
       final sub = widget.template!.subCategory?.toLowerCase() ?? '';
-      if (sub.contains('basic') || sub.contains('free')) {
+      if (sub.contains('basic') || sub.contains('free') || sub.contains('기본') || sub.contains('자유')) {
         _isTemplateMode = false; // Basic Run은 기존 Free Run UI 사용
       } else {
         _isTemplateMode = true;
@@ -66,10 +69,13 @@ class _EnduranceTrackingScreenState extends State<EnduranceTrackingScreen> with 
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
+    // UX 최적화: 카운트다운 시작과 동시에 엔진 선제 초기화 (워밍업)
+    _startTrackingEngine();
+
     // 카운트다운 시작
     _startCountdown();
 
-    // 실시간 업데이트 리스닝
+    // 실시간 업데이트 리스닝 (상태 스트림)
     _service.workoutStateStream.listen((state) {
       if (mounted) {
         setState(() {
@@ -80,11 +86,17 @@ class _EnduranceTrackingScreenState extends State<EnduranceTrackingScreen> with 
         });
       }
     });
+  }
 
-    // 서비스의 현재 상태를 즉시 반영
-    if (_service.isTracking) {
-      // 강제로 첫 상태 업데이트를 요청할 수 있는 메소드가 서비스에 있다면 더 좋음
-      // 예: _service.requestUpdate();
+  Future<void> _startTrackingEngine() async {
+    try {
+      await _service.startWorkout(template: widget.template);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString().replaceAll('Exception: ', '');
+        });
+      }
     }
   }
 
@@ -107,7 +119,7 @@ class _EnduranceTrackingScreenState extends State<EnduranceTrackingScreen> with 
           _showCountdown = false;
           _pulseController.stop();
           _hrService.startMonitoring();
-          _service.startWorkout(template: widget.template);
+          _service.actualStart(); // 💡 실제 기록 시작 시점 마킹
           timer.cancel();
         }
       });
@@ -127,28 +139,99 @@ class _EnduranceTrackingScreenState extends State<EnduranceTrackingScreen> with 
 
   @override
   Widget build(BuildContext context) {
-    // 트래킹 중인지 즉시 확인
-    final bool isActuallyTracking = _service.isTracking;
+    return Consumer<WorkoutTrackingService>(
+      builder: (context, trackingService, child) {
+        final bool isActuallyTracking = trackingService.isTracking;
+        final bool isInitializing = trackingService.isInitializing;
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      body: SafeArea(
-        top: false,
-        bottom: false,
-        child: _showCountdown
-            ? _buildCountdownScreen()
-            : (isActuallyTracking
-                ? _buildTrackingScreen() // _currentState가 찰나의 순간 null이어도 내부적으로 null check 수행
-                : const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 16),
-                        Text('트래킹 엔진을 초기화 중입니다...', style: TextStyle(color: Colors.grey)),
-                      ],
-                    ),
-                  )),
+        // 1. 에러가 발생한 경우 즉시 에러 화면 노출
+        if (_errorMessage != null) {
+          return Scaffold(
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            body: SafeArea(child: _buildErrorScreen(_errorMessage!)),
+          );
+        }
+
+        // 2. 카운트다운 중이면 카운트다운 화면 노출
+        if (_showCountdown) {
+          return Scaffold(
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            body: SafeArea(child: _buildCountdownScreen()),
+          );
+        }
+
+        // 3. 카운트다운은 끝났는데 엔진이 아직 초기화 중(권한 체크 등)이면 로딩 노출
+        if (isInitializing) {
+          return Scaffold(
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            body: SafeArea(child: _buildLoadingScreen()),
+          );
+        }
+
+        // 4. 초기화 완료 후 트래킹 중이면 트래킹 UI, 아니면(비정상 상황) 로딩/에러
+        return Scaffold(
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          body: SafeArea(
+            child: isActuallyTracking
+                ? _buildTrackingScreen()
+                : _buildLoadingScreen(),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLoadingScreen() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircularProgressIndicator(),
+          const SizedBox(height: 24),
+          Text(
+            '트래킹 엔진을 초기화 중입니다...',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorScreen(String error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, color: Colors.red, size: 64),
+            const SizedBox(height: 24),
+            Text(
+              '운동을 시작할 수 없습니다',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              error,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('돌아가기'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -160,16 +243,18 @@ class _EnduranceTrackingScreenState extends State<EnduranceTrackingScreen> with 
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // 배경 장식 (은은한 그라데이션)
+            // 배경 장식 (은은한 그라데이션) - 💡 RepaintBoundary로 드로잉 분리
             Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    colors: [
-                      Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.15),
-                      Colors.transparent,
-                    ],
-                    radius: 0.8,
+              child: RepaintBoundary(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      colors: [
+                        Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.15),
+                        Colors.transparent,
+                      ],
+                      radius: 0.8,
+                    ),
                   ),
                 ),
               ),
@@ -199,28 +284,30 @@ class _EnduranceTrackingScreenState extends State<EnduranceTrackingScreen> with 
               ),
             ),
 
-            // 중앙 숫자 애니메이션 (완전 중앙)
+            // 중앙 숫자 애니메이션 (완전 중앙) - 💡 RepaintBoundary로 드로잉 분리
             Center(
-              child: AnimatedBuilder(
-                animation: _pulseAnimation,
-                builder: (context, child) {
-                  return Opacity(
-                    opacity: (1.5 - _pulseAnimation.value).clamp(0.0, 1.0),
-                    child: Transform.scale(
-                      scale: _pulseAnimation.value,
-                      child: Text(
-                        '$_countdown',
-                        style: TextStyle(
-                          fontSize: 200, // 더 크게
-                          fontWeight: FontWeight.w900,
-                          color: Theme.of(context).colorScheme.tertiary,
-                          fontStyle: FontStyle.italic,
-                          height: 1,
+              child: RepaintBoundary(
+                child: AnimatedBuilder(
+                  animation: _pulseAnimation,
+                  builder: (context, child) {
+                    return Opacity(
+                      opacity: (1.5 - _pulseAnimation.value).clamp(0.0, 1.0),
+                      child: Transform.scale(
+                        scale: _pulseAnimation.value,
+                        child: Text(
+                          '$_countdown',
+                          style: TextStyle(
+                            fontSize: 200, // 더 크게
+                            fontWeight: FontWeight.w900,
+                            color: Theme.of(context).colorScheme.tertiary,
+                            fontStyle: FontStyle.italic,
+                            height: 1,
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
 
@@ -246,7 +333,6 @@ class _EnduranceTrackingScreenState extends State<EnduranceTrackingScreen> with 
   /// 운동 중 추적 화면 (고도화된 퍼포먼스 UI)
   Widget _buildTrackingScreen() {
     // _currentState가 아직 오지 않은 경우(0.1초 미만)를 위한 기본값 처리
-    final duration = _currentState?.durationFormatted ?? "00:00:00";
     final isPaused = _currentState?.isPaused ?? false;
     final isAutoPaused = _currentState?.isAutoPaused ?? false;
 
@@ -262,7 +348,10 @@ class _EnduranceTrackingScreenState extends State<EnduranceTrackingScreen> with 
         Expanded(
           child: _isTemplateMode 
             ? _buildTemplateTrackingBody() 
-            : FreeRunBody(currentState: _currentState ?? _getInitialState()),
+            : BasicRunBody(
+                currentState: _currentState ?? _getInitialState(),
+                goalDistance: _service.goalDistance,
+              ),
         ),
 
         // 4. 하단 컨트롤 버튼
@@ -299,7 +388,7 @@ class _EnduranceTrackingScreenState extends State<EnduranceTrackingScreen> with 
     final block = _blocks[_currentBlockIndex];
     final subCategory = widget.template?.subCategory ?? '';
 
-    if (subCategory.contains('Interval') || subCategory.contains('Sprint')) {
+    if (subCategory.contains('Interval') || subCategory.contains('Sprint') || subCategory.contains('인터벌') || subCategory.contains('속도')) {
       return IntervalTrackingBody(
         currentState: _currentState!,
         currentBlock: block,
@@ -307,7 +396,7 @@ class _EnduranceTrackingScreenState extends State<EnduranceTrackingScreen> with 
         totalBlocks: _blocks.length,
         onNextBlock: _service.advanceBlock,
       );
-    } else if (subCategory.contains('LSD') || subCategory.contains('Tempo')) {
+    } else if (subCategory.contains('LSD') || subCategory.contains('Tempo') || subCategory.contains('지구력') || subCategory.contains('페이스')) {
       return SteadyStateTrackingBody(
         currentState: _currentState!,
         currentBlock: block,
@@ -788,9 +877,11 @@ class _EnduranceTrackingScreenState extends State<EnduranceTrackingScreen> with 
     );
   }
 
-  /// 컨트롤 버튼 (개선된 UI)
+  /// 컨트롤 버튼 (2단계 시스템: 운동 중에는 PAUSE만, 일시정지 시 RESUME/STOP 노출)
   Widget _buildControls() {
     final isPaused = _currentState?.isPaused ?? false;
+    final isAutoPaused = _currentState?.isAutoPaused ?? false;
+    final bool showDoubleButtons = isPaused || isAutoPaused;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
@@ -806,73 +897,84 @@ class _EnduranceTrackingScreenState extends State<EnduranceTrackingScreen> with 
       ),
       child: SafeArea(
         top: false,
-        child: Row(
-          children: [
-            // 일시정지/재개 버튼 (크고 눈에 띄게)
-            Expanded(
-              flex: 2,
-              child: ElevatedButton(
-                onPressed: isPaused ? _resumeWorkout : _pauseWorkout,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isPaused
-                      ? Theme.of(context).colorScheme.secondary
-                      : Theme.of(context).colorScheme.tertiary,
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 0,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          transitionBuilder: (child, animation) => FadeTransition(
+            opacity: animation,
+            child: ScaleTransition(scale: animation, child: child),
+          ),
+          child: showDoubleButtons
+              ? Row(
+                  key: const ValueKey('paused_controls'),
                   children: [
-                    Icon(
-                      isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
-                      size: 28,
+                    // 종료 버튼
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _showStopConfirmation,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: const BorderSide(color: Colors.red, width: 2),
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: const Text(
+                          '종료',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                      ),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      isPaused ? '재개' : '일시정지',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                    const SizedBox(width: 12),
+                    // 재개 버튼
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        onPressed: _resumeWorkout,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.tertiary,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          '재개',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ),
                   ],
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-
-            // 종료 버튼 (작게)
-            Expanded(
-              child: OutlinedButton(
-                onPressed: _showStopConfirmation,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.red,
-                  side: const BorderSide(color: Colors.red, width: 2),
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                )
+              : SizedBox(
+                  key: const ValueKey('running_controls'),
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _pauseWorkout,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.pause_rounded, size: 28),
+                        SizedBox(width: 8),
+                        Text(
+                          'PAUSE',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 2),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                child: const Column(
-                  children: [
-                    Icon(Icons.stop_rounded, size: 24),
-                    SizedBox(height: 2),
-                    Text(
-                      '종료',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -916,6 +1018,17 @@ class _EnduranceTrackingScreenState extends State<EnduranceTrackingScreen> with 
 
   /// 운동 종료
   Future<void> _stopWorkout() async {
+    // 종료 전 서비스 상태 재확인
+    if (!_service.isTracking) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('현재 진행 중인 운동이 없습니다.')),
+        );
+        Navigator.pop(context); // 트래킹 화면 닫기
+      }
+      return;
+    }
+
     try {
       final hrStats = _hrService.getSessionStats();
       final summary = await _service.stopWorkout(

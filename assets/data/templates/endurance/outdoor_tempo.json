@@ -3,8 +3,8 @@
   "name": "템포",
   "category": "Endurance",
   "environmentType": "Outdoor",
-  "subCategory": "젖산 역치 향상",
-  "description": "야외에서 진행하는 템포 런입니다. 일정한 중강도 페이스를 유지합니다.",
+  "subCategory": "Tempo",
+  "description": "야외에서 진행하는 템포런입니다. 일정한 속도로 한계 지점까지 달립니다.",
   "imagePath": "assets/images/endurance/runner-icon.svg",
   "isCustom": false,
   "phases": [

@@ -21,7 +21,8 @@ class HealthKitBridge {
             "path_provider_foundation", "shared_preferences_foundation", 
             "sqflite_darwin", "geolocator_apple", "health", 
             "live_activities", "google_maps_flutter_ios", "pedometer", 
-            "workmanager_apple", "flutter_app_group_directory", "sensors_plus"
+            "workmanager_apple", "flutter_app_group_directory", "sensors_plus",
+            "flutter_tts"
         ]
         
         for mod in defaultModules {
@@ -253,6 +254,7 @@ class HealthKitBridge {
 @main
 @objc class AppDelegate: FlutterAppDelegate {
   private lazy var healthKitBridge = HealthKitBridge()
+  private var isGoogleMapsInitialized = false
 
   override func application(
     _ application: UIApplication,
@@ -292,7 +294,8 @@ class HealthKitBridge {
             ("GeolocatorPlugin", "geolocator_apple"),
             ("HealthPlugin", "health"),
             ("PermissionHandlerPlugin", "permission_handler_apple"),
-            ("WatchConnectivityPlugin", "watch_connectivity")
+            ("WatchConnectivityPlugin", "watch_connectivity"),
+            ("FlutterTtsPlugin", "flutter_tts")
         ]
         for (name, mod) in stage1 {
             HealthKitBridge.registerPlugin(name: name, registry: self, module: mod)
@@ -343,7 +346,10 @@ class HealthKitBridge {
       case "activateGoogleMaps":
           NSLog("🚀 [ON-DEMAND] Activating GoogleMaps")
           if let apiKey = Bundle.main.object(forInfoDictionaryKey: "GOOGLE_MAPS_API_KEY") as? String, !apiKey.isEmpty {
-              GMSServices.provideAPIKey(apiKey)
+              if !isGoogleMapsInitialized {
+                  GMSServices.provideAPIKey(apiKey)
+                  isGoogleMapsInitialized = true
+              }
               HealthKitBridge.registerPlugin(name: "FLTGoogleMapsPlugin", registry: self, module: "google_maps_flutter_ios")
               NSLog("✅ [ON-DEMAND] Google Maps Activated Successfully")
               result(true)

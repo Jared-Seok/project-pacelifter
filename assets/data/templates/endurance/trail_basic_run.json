@@ -3,7 +3,7 @@
   "name": "러닝",
   "category": "Endurance",
   "environmentType": "Trail",
-  "subCategory": "산악 및 오프로드",
+  "subCategory": "Basic Run",
   "description": "자유롭게 거리나 시간을 설정하여 달리는 기본 모드입니다.",
   "imagePath": "assets/images/endurance/trail-icon.svg",
   "isCustom": false,

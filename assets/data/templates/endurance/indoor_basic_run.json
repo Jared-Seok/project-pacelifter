@@ -3,7 +3,7 @@
   "name": "러닝",
   "category": "Endurance",
   "environmentType": "Indoor",
-  "subCategory": "자유 모드",
+  "subCategory": "Basic Run",
   "description": "자유롭게 거리나 시간을 설정하여 달리는 기본 모드입니다.",
   "imagePath": "assets/images/endurance/runner-icon.svg",
   "isCustom": false,

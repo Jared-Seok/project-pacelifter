@@ -28,15 +28,18 @@ class SteadyStateTrackingBody extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 24),
-        Container(
-          height: 150,
-          width: 300,
-          decoration: BoxDecoration(
-            color: Colors.grey.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 40),
+          child: Container(
+            height: 120,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.grey.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+            ),
+            child: const Center(child: Text('Zone Meter Placeholder')),
           ),
-          child: const Center(child: Text('Zone Meter Placeholder')),
         ),
         const SizedBox(height: 48),
 

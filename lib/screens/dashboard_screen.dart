@@ -319,23 +319,55 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
       }
 
-      // 3. 통합 리스트 생성
+      // 3. 통합 리스트 생성 (중복 제거 포함)
       final List<WorkoutDataWrapper> unified = [];
       final Set<String> linkedSessionIds = {};
+      final Set<String> processedHealthIds = {};
 
-      // 3-1. HealthKit 데이터 기반 매핑
+      // 3-1. 직접 매핑 (UUID 기반)
       for (var data in workoutData) {
         final session = sessionMap[data.uuid];
         if (session != null) {
           linkedSessionIds.add(session.id);
+          processedHealthIds.add(data.uuid);
+          unified.add(WorkoutDataWrapper(healthData: data, session: session));
         }
-        unified.add(WorkoutDataWrapper(healthData: data, session: session));
       }
 
-      // 3-2. 연결되지 않은 로컬 세션 추가
-      for (var s in sessions) {
-        if (!linkedSessionIds.contains(s.id)) {
-          unified.add(WorkoutDataWrapper(session: s));
+      // 3-2. 시간 기반 매핑 (UUID 매핑이 안 된 경우 중복 방지)
+      // 앱 내부 기록과 헬스앱 기록의 시간이 거의 일치하면 동일 운동으로 간주
+      final remainingHealthData = workoutData.where((d) => !processedHealthIds.contains(d.uuid)).toList();
+      final remainingSessions = sessions.where((s) => !linkedSessionIds.contains(s.id)).toList();
+
+      for (var session in remainingSessions) {
+        // 해당 세션과 시간이 5분 이내로 차이나는 헬스 데이터를 찾음
+        HealthDataPoint? match;
+        try {
+          match = remainingHealthData.firstWhere((hd) {
+            final diff = hd.dateFrom.difference(session.startTime).inMinutes.abs();
+            // 시간 차이가 적고 카테고리가 일치하면 동일 운동으로 판단
+            final hdCategory = WorkoutUIUtils.getWorkoutCategory(
+              (hd.value as WorkoutHealthValue).workoutActivityType.name
+            );
+            return diff < 5 && hdCategory == session.category;
+          });
+        } catch (_) {}
+
+        if (match != null) {
+          linkedSessionIds.add(session.id);
+          processedHealthIds.add(match.uuid);
+          unified.add(WorkoutDataWrapper(healthData: match, session: session));
+        } else {
+          // 일치하는 헬스 데이터가 없으면 로컬 세션만 추가
+          unified.add(WorkoutDataWrapper(session: session));
+          linkedSessionIds.add(session.id);
+        }
+      }
+
+      // 3-3. 아직 처리되지 않은 순수 HealthKit 데이터 추가
+      for (var data in workoutData) {
+        if (!processedHealthIds.contains(data.uuid)) {
+          unified.add(WorkoutDataWrapper(healthData: data));
         }
       }
 
