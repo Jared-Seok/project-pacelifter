@@ -56,7 +56,7 @@ PODS:
     - Flutter
   - image_cropper (0.0.4):
     - Flutter
-    - TOCropViewController (~> 2.7.4)
+    - TOCropViewController (~> 2.8.0)
   - image_gallery_saver (2.0.2):
     - Flutter
   - image_picker_ios (0.0.1):
@@ -86,7 +86,7 @@ PODS:
     - Flutter
     - FlutterMacOS
   - SwiftyGif (5.4.5)
-  - TOCropViewController (2.7.4)
+  - TOCropViewController (2.8.0)
   - watch_connectivity (0.0.1):
     - Flutter
   - workmanager_apple (0.0.1):
@@ -185,7 +185,7 @@ SPEC CHECKSUMS:
   google_maps_flutter_ios: 0291eb2aa252298a769b04d075e4a9d747ff7264
   GoogleMaps: 0608099d4870cac8754bdba9b6953db543432438
   health: e310387222e199d4b3261337490a67aaff6d18eb
-  image_cropper: 5f162dcf988100dc1513f9c6b7eb42cd6fbf9156
+  image_cropper: 64567491beea6cd1bc4b11948e2babb590de5826
   image_gallery_saver: 14711d79da40581063e8842a11acf1969d781ed7
   image_picker_ios: e0ece4aa2a75771a7de3fa735d26d90817041326
   live_activities: 4dfa736d0736e1c77866a2f9c056a76513cc9e7b
@@ -199,7 +199,7 @@ SPEC CHECKSUMS:
   shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
   sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
   SwiftyGif: 706c60cf65fa2bc5ee0313beece843c8eb8194d4
-  TOCropViewController: 80b8985ad794298fb69d3341de183f33d1853654
+  TOCropViewController: 797deaf39c90e6e9ddd848d88817f6b9a8a09888
   watch_connectivity: 88e5bea25b473e66ef8d3f960954d154ed0356d6
   workmanager_apple: 904529ae31e97fc5be632cf628507652294a0778
 

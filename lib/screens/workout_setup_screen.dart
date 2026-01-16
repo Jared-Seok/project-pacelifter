@@ -77,8 +77,13 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
 
     // 맵이 필요한 환경인지 확인 (Outdoor, Track)
     if (_shouldShowMap()) {
-      NativeActivationService().activateGoogleMaps();
-      _getCurrentLocation();
+      // 💡 최적화: 화면 전환 렉 방지를 위해 미세한 지연 후 맵 활성화
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          NativeActivationService().activateGoogleMaps();
+          _getCurrentLocation();
+        }
+      });
     } else {
       _isLoadingLocation = false;
     }

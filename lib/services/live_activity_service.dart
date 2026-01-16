@@ -18,7 +18,7 @@ class LiveActivityService {
   // ⚠️ 중요: 이 값은 Xcode > Runner > Signing & Capabilities > App Groups에 등록한 값과 정확히 일치해야 합니다.
   // 사용자의 Bundle ID가 com.jared.pacelifter 라면 group.com.jared.pacelifter 가 일반적입니다.
   static const String _appGroupId = "group.com.jared.pacelifter";
-  static const String _workoutActivityId = "workout_tracking";
+  static const String _workoutActivityId = "Workout";
 
   /// 네이티브 플러그인 동적 활성화 요청
   Future<void> _activateNativePlugin() async {
@@ -68,11 +68,11 @@ class LiveActivityService {
       await endActivity();
 
       final Map<String, dynamic> activityData = {
-        'workoutName': name,
-        'distance': distanceKm,
-        'duration': duration,
-        'pace': pace,
-        'heartRate': heartRate?.toString() ?? '--',
+        'name': name.toString(),
+        'dist': distanceKm.toString(),
+        'time': duration.toString(),
+        'pace': pace.toString(),
+        'hr': heartRate?.toString() ?? '--',
       };
 
       print('🚀 LiveActivityService: Creating Activity with data: $activityData');
@@ -103,10 +103,11 @@ class LiveActivityService {
 
     try {
       final Map<String, dynamic> updateData = {
-        'distance': distanceKm,
-        'duration': duration,
-        'pace': pace,
-        'heartRate': heartRate?.toString() ?? '--',
+        'dist': distanceKm.toString(),
+        'time': duration.toString(),
+        'pace': pace.toString(),
+        'hr': heartRate?.toString() ?? '--',
+        'name': '러닝', 
       };
 
       print('🔄 LiveActivityService: Updating Activity: $updateData');

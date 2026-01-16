@@ -91,7 +91,7 @@ dependencies:
   screenshot: ^3.0.0
   share_plus: ^10.1.2
   image_gallery_saver: ^2.0.3
-  image_cropper: ^8.0.2
+  image_cropper: ^11.0.0
   live_activities: ^2.4.3
 
 dev_dependencies:

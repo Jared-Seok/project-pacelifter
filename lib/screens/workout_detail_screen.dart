@@ -58,6 +58,10 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   }
 
   Future<void> _activateServices() async {
+    // 💡 최적화: 화면 진입 렉 방지를 위해 미세한 지연 후 네이티브 서비스 활성화
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (!mounted) return;
+    
     await Future.wait([
       NativeActivationService().activateGoogleMaps(),
       NativeActivationService().activateMediaPicker(),

@@ -47,8 +47,7 @@ class WorkoutTrackingService extends ChangeNotifier {
   final List<PaceDataPoint> _paceHistory = [];
   int? _latestHeartRate;
   int? _currentCadence;
-  int? _lastStepCount;
-  DateTime? _lastStepTimestamp;
+  final List<({DateTime time, int steps})> _cadenceHistory = []; // 💡 이동 평균용 이력
   double? _lastBarometricAltitude;
   double _lastMagnitude = 0.0;
   int _lastAnnouncedKm = 0;
@@ -154,16 +153,17 @@ class WorkoutTrackingService extends ChangeNotifier {
     _isTracking = false;
     _isAutoPaused = false;
     
+    // 💡 중요: 하드웨어 중단 전 데이터를 먼저 캡처
+    final activeDuration = _stopTime!.difference(_startTime!) - _totalPausedDuration;
+    final summary = _createSummary(activeDuration, avgHeartRate);
+    final session = _createSession(summary, activeDuration);
+
     _stopHardwareServices();
 
     _voiceService.speak('운동을 완료했습니다.');
     HapticFeedback.heavyImpact();
 
-    final activeDuration = _stopTime!.difference(_startTime!) - _totalPausedDuration;
-    final summary = _createSummary(activeDuration, avgHeartRate);
-
     // 기록 저장
-    final session = _createSession(summary, activeDuration);
     await WorkoutHistoryService().saveSession(session);
     
     // HealthKit 저장 후 반환된 ID를 로컬 세션에 업데이트 (중복 방지 핵심)
@@ -213,6 +213,7 @@ class WorkoutTrackingService extends ChangeNotifier {
     _totalDistance = 0;
     _totalElevationGain = 0;
     _paceHistory.clear();
+    _cadenceHistory.clear(); // 💡 초기화 추가
     _lastAnnouncedKm = 0;
     _lowSpeedSeconds = 0;
     _lastMagnitude = 0;
@@ -265,34 +266,27 @@ class WorkoutTrackingService extends ChangeNotifier {
     // 케이던스 (Pedometer) 연동
     _pedometerSubscription?.cancel();
     _pedometerSubscription = Pedometer.stepCountStream.listen((StepCount event) {
-      if (!_isTracking || _isPaused || _isAutoPaused) {
-        _lastStepCount = event.steps;
-        _lastStepTimestamp = DateTime.now();
-        return;
-      }
+      if (!_isTracking || _isPaused || _isAutoPaused) return;
 
-      if (_lastStepCount != null && _lastStepTimestamp != null) {
-        final now = DateTime.now();
-        final secondsDiff = now.difference(_lastStepTimestamp!).inSeconds;
+      final now = DateTime.now();
+      _cadenceHistory.add((time: now, steps: event.steps));
+
+      // 💡 10초 이전 데이터 삭제 (이동 평균 윈도우)
+      _cadenceHistory.removeWhere((item) => now.difference(item.time).inSeconds > 10);
+
+      if (_cadenceHistory.length >= 2) {
+        final oldest = _cadenceHistory.first;
+        final newest = _cadenceHistory.last;
+        final durationSeconds = newest.time.difference(oldest.time).inSeconds;
         
-        // 💡 2초 이상의 간격으로 케이던스 계산 (노이즈 방지)
-        if (secondsDiff >= 2) {
-          final stepsDiff = event.steps - _lastStepCount!;
-          if (stepsDiff >= 0) {
-            // SPM = (걸음수 차이 / 초 차이) * 60
-            _currentCadence = ((stepsDiff / secondsDiff) * 60).round();
-            // 비정상 수치 필터링 (0~250 범위만 허용)
-            if (_currentCadence! > 250) _currentCadence = 250;
-          }
-          _lastStepCount = event.steps;
-          _lastStepTimestamp = now;
+        if (durationSeconds >= 2) { // 최소 2초는 확보되어야 계산
+          final stepsDiff = newest.steps - oldest.steps;
+          // SPM = (걸음수 차이 / 시간 차이) * 60
+          _currentCadence = ((stepsDiff / durationSeconds) * 60).round();
+          if (_currentCadence! > 250) _currentCadence = 250;
           
-          // 케이던스 업데이트 시 UI 즉시 반영
           _updateWorkoutState();
         }
-      } else {
-        _lastStepCount = event.steps;
-        _lastStepTimestamp = DateTime.now();
       }
     });
   }
@@ -336,6 +330,17 @@ class WorkoutTrackingService extends ChangeNotifier {
     
     // 💡 실제 시작 시점에 음성 안내 출력
     _voiceService.speak('$_activeTemplateName을 시작합니다.');
+
+    // 💡 Live Activity (다이나믹 아일랜드) 세션 시작
+    if (!kIsWeb && Platform.isIOS) {
+      LiveActivityService().startActivity(
+        name: _activeTemplateName,
+        distanceKm: "0.00",
+        duration: "00:00:00",
+        pace: "--:--",
+        heartRate: _latestHeartRate,
+      );
+    }
     
     debugPrint('🔥 Workout Recording Actually Started at: $_startTime');
   }

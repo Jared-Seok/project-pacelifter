@@ -23,10 +23,13 @@ class VoiceGuidanceService {
     
     // 오디오 덕킹 설정 (안내 방송 시 배경 음악 볼륨 낮춤)
     if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS)) {
+      // 💡 defaultToSpeaker는 playAndRecord 카테고리에만 적용 가능하므로 제거
+      // mixWithOthers를 추가하여 다른 배경음악과 자연스럽게 섞이도록 설정
       await _flutterTts.setIosAudioCategory(IosTextToSpeechAudioCategory.playback, [
         IosTextToSpeechAudioCategoryOptions.duckOthers,
-        IosTextToSpeechAudioCategoryOptions.defaultToSpeaker,
+        IosTextToSpeechAudioCategoryOptions.mixWithOthers,
       ]);
+      await _flutterTts.setSharedInstance(true);
     }
 
     _isInitialized = true;

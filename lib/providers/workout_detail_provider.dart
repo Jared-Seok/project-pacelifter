@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:health/health.dart';
 import '../../../models/sessions/workout_session.dart';
@@ -7,7 +6,6 @@ import '../../../models/workout_data_wrapper.dart';
 import '../../../services/health_service.dart';
 import '../../../services/healthkit_bridge_service.dart';
 import '../../../services/workout_history_service.dart';
-import '../../../utils/workout_ui_utils.dart';
 
 /// 운동 상세 화면의 데이터 로딩 및 가공을 담당하는 Provider
 class WorkoutDetailProvider extends ChangeNotifier {

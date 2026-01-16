@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 70;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -14,6 +14,10 @@
 		8455E4982F18B9CC00AEF86D /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8455E4972F18B9CC00AEF86D /* WidgetKit.framework */; };
 		8455E49A2F18B9CC00AEF86D /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8455E4992F18B9CC00AEF86D /* SwiftUI.framework */; };
 		8455E4A92F18B9CF00AEF86D /* PaceLifterWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 8455E4962F18B9CC00AEF86D /* PaceLifterWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		8455E4B42F18DA6B00AEF86D /* WorkoutAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8455E4B32F18DA6B00AEF86D /* WorkoutAttributes.swift */; };
+		8455E4B52F18DA6B00AEF86D /* WorkoutAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8455E4B32F18DA6B00AEF86D /* WorkoutAttributes.swift */; };
+		8455E4B72F18DE8600AEF86D /* ActivityKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8455E4B62F18DE8500AEF86D /* ActivityKit.framework */; };
+		8455E4B82F18DE8600AEF86D /* ActivityKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8455E4B62F18DE8500AEF86D /* ActivityKit.framework */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
@@ -79,6 +83,9 @@
 		8455E4962F18B9CC00AEF86D /* PaceLifterWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PaceLifterWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		8455E4972F18B9CC00AEF86D /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		8455E4992F18B9CC00AEF86D /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		8455E4B32F18DA6B00AEF86D /* WorkoutAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutAttributes.swift; sourceTree = "<group>"; };
+		8455E4B62F18DE8500AEF86D /* ActivityKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ActivityKit.framework; path = System/Library/Frameworks/ActivityKit.framework; sourceTree = SDKROOT; };
+		8455E4B92F18E00000AEF86D /* PaceLifterWidgetsExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PaceLifterWidgetsExtension.entitlements; sourceTree = "<group>"; };
 		84AFEAFB2F12462400A24258 /* WatchApp Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WatchApp Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Flutter/Debug.xcconfig; sourceTree = "<group>"; };
 		9740EEB31CF90195004384FC /* Generated.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Generated.xcconfig; path = Flutter/Generated.xcconfig; sourceTree = "<group>"; };
@@ -94,7 +101,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		8455E4AE2F18B9CF00AEF86D /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		8455E4AE2F18B9CF00AEF86D /* Exceptions for "PaceLifterWidgets" folder in "PaceLifterWidgetsExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -104,8 +111,29 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		8455E49B2F18B9CC00AEF86D /* PaceLifterWidgets */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (8455E4AE2F18B9CF00AEF86D /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = PaceLifterWidgets; sourceTree = "<group>"; };
-		84AFEAFC2F12462400A24258 /* WatchApp Watch App */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = "WatchApp Watch App"; sourceTree = "<group>"; };
+		8455E49B2F18B9CC00AEF86D /* PaceLifterWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				8455E4AE2F18B9CF00AEF86D /* Exceptions for "PaceLifterWidgets" folder in "PaceLifterWidgetsExtension" target */,
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = PaceLifterWidgets;
+			sourceTree = "<group>";
+		};
+		84AFEAFC2F12462400A24258 /* WatchApp Watch App */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = "WatchApp Watch App";
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -113,6 +141,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8455E4B72F18DE8600AEF86D /* ActivityKit.framework in Frameworks */,
 				8455E49A2F18B9CC00AEF86D /* SwiftUI.framework in Frameworks */,
 				8455E4982F18B9CC00AEF86D /* WidgetKit.framework in Frameworks */,
 			);
@@ -129,6 +158,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8455E4B82F18DE8600AEF86D /* ActivityKit.framework in Frameworks */,
 				B1EA1F677D01A2CEA59F3012 /* Pods_Runner.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -206,6 +236,8 @@
 			children = (
 				97C146FA1CF9000F007C117D /* Main.storyboard */,
 				97C146FD1CF9000F007C117D /* Assets.xcassets */,
+				8455E4B32F18DA6B00AEF86D /* WorkoutAttributes.swift */,
+				8455E4B92F18E00000AEF86D /* PaceLifterWidgetsExtension.entitlements */,
 				97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */,
 				843553092F12653900E55AEC /* Runner.entitlements */,
 				97C147021CF9000F007C117D /* Info.plist */,
@@ -220,6 +252,7 @@
 		9B8A01F677FAEDF359C16148 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				8455E4B62F18DE8500AEF86D /* ActivityKit.framework */,
 				C25F14250440E7B9798E133C /* Pods_Runner.framework */,
 				2B11A555E730C5EB01AB6D2C /* Pods_RunnerTests.framework */,
 				8455E4972F18B9CC00AEF86D /* WidgetKit.framework */,
@@ -266,8 +299,6 @@
 				8455E49B2F18B9CC00AEF86D /* PaceLifterWidgets */,
 			);
 			name = PaceLifterWidgetsExtension;
-			packageProductDependencies = (
-			);
 			productName = PaceLifterWidgetsExtension;
 			productReference = 8455E4962F18B9CC00AEF86D /* PaceLifterWidgetsExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
@@ -444,13 +475,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -518,13 +545,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -546,6 +569,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8455E4B52F18DA6B00AEF86D /* WorkoutAttributes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -562,6 +586,7 @@
 			files = (
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
+				8455E4B42F18DA6B00AEF86D /* WorkoutAttributes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -745,11 +770,12 @@
 				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				CODE_SIGN_ENTITLEMENTS = PaceLifterWidgets/PaceLifterWidgetsExtension.entitlements;
+				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = YES;
+				CODE_SIGN_ENTITLEMENTS = Runner/PaceLifterWidgetsExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = VAWBVZFG3J;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PaceLifterWidgets/Info.plist;
@@ -791,11 +817,12 @@
 				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				CODE_SIGN_ENTITLEMENTS = PaceLifterWidgets/PaceLifterWidgetsExtension.entitlements;
+				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = YES;
+				CODE_SIGN_ENTITLEMENTS = Runner/PaceLifterWidgetsExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = VAWBVZFG3J;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PaceLifterWidgets/Info.plist;
@@ -834,11 +861,12 @@
 				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				CODE_SIGN_ENTITLEMENTS = PaceLifterWidgets/PaceLifterWidgetsExtension.entitlements;
+				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = YES;
+				CODE_SIGN_ENTITLEMENTS = Runner/PaceLifterWidgetsExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = VAWBVZFG3J;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PaceLifterWidgets/Info.plist;
@@ -881,7 +909,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = VAWBVZFG3J;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = WatchApp;
@@ -930,7 +958,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = VAWBVZFG3J;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = WatchApp;
@@ -976,7 +1004,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = VAWBVZFG3J;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = WatchApp;
