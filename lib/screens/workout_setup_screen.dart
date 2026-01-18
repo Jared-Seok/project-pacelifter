@@ -63,12 +63,23 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
   
   late WorkoutTrackingService _workoutService;
 
+  // 탭 상태 관리 (0: 세부 조정, 1: 전체 목표)
+  int _selectedTabIndex = 0;
+  
+  // LSD 모드 상태 (0: 거리, 1: 시간)
+  int _lsdMode = 0;
+
   @override
   void initState() {
     super.initState();
     
     // 템플릿 딥 카피 생성 (toJson -> fromJson)
     _editableTemplate = WorkoutTemplate.fromJson(widget.template.toJson());
+
+    // LSD 모드 초기화 (기본값: 거리)
+    if (_isLSD) {
+      _lsdMode = 0;
+    }
 
     // 💡 최적화: 설정 화면 진입 시점에 즉시 필수 권한 확보 (iOS 팝업 트리거)
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -512,10 +523,15 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     return sub == 'Basic Run' || sub == '기본 러닝' || sub == '자유 모드' || sub == '산악 및 오프로드';
   }
 
+  bool get _isLSD {
+    final sub = widget.template.subCategory;
+    return sub == 'LSD' || sub == '장거리' || sub == 'Long Run' || (widget.template.name.contains('LSD'));
+  }
+
   @override
   Widget build(BuildContext context) {
-    // 💡 Basic Run일 경우 임베디드(Stack) 레이아웃 적용
-    if (_isBasicRun) {
+    // 💡 Basic Run 또는 LSD일 경우 임베디드(Stack) 레이아웃 적용
+    if (_isBasicRun || _isLSD) {
       return Scaffold(
         backgroundColor: Colors.black,
         extendBodyBehindAppBar: true,
@@ -574,7 +590,7 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
                 ),
                 child: Column(
                   children: [
-                    _buildBasicRunUI(),
+                    if (_isLSD) _buildLSDUI() else _buildBasicRunUI(),
                     _buildStartButton(),
                   ],
                 ),
@@ -715,21 +731,230 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
           ),
         ],
       ),
-      child: DefaultTabController(
-        length: 2,
-        child: Column(
-          children: [
-            const TabBar(
-              tabs: [ Tab(text: '세부 조정'), Tab(text: '전체 목표'), ],
-            ),
-            Expanded(
-              child: TabBarView(
-                children: [ _buildCustomizationTab(), _buildGlobalGoalTab(), ],
+      child: Column(
+        children: [
+          const SizedBox(height: 16),
+          // Modern Segmented Control
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: SizedBox(
+              width: double.infinity,
+              child: CupertinoSlidingSegmentedControl<int>(
+                groupValue: _selectedTabIndex,
+                children: const {
+                  0: Padding(padding: EdgeInsets.symmetric(horizontal: 20), child: Text('세부 조정', style: TextStyle(fontWeight: FontWeight.w600))),
+                  1: Padding(padding: EdgeInsets.symmetric(horizontal: 20), child: Text('전체 목표', style: TextStyle(fontWeight: FontWeight.w600))),
+                },
+                onValueChanged: (int? value) {
+                  if (value != null) setState(() => _selectedTabIndex = value);
+                },
+                thumbColor: Theme.of(context).colorScheme.surface,
+                backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
               ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: _selectedTabIndex == 0 
+                ? _buildCustomizationTab() 
+                : _buildGlobalGoalTab(),
+            ),
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildLSDUI() {
+    return Consumer<WorkoutTrackingService>(
+      builder: (context, workoutService, child) {
+        final themeColor = Theme.of(context).colorScheme.tertiary;
+        final bool isDistanceMode = _lsdMode == 0;
+
+        // Current Values
+        double displayValue;
+        String unitLabel;
+        
+        if (isDistanceMode) {
+          displayValue = (workoutService.goalDistance ?? 10000.0) / 1000.0;
+          unitLabel = 'KILOMETERS';
+        } else {
+          displayValue = (workoutService.goalTime?.inMinutes ?? 60).toDouble();
+          unitLabel = 'MINUTES';
+        }
+
+        return Expanded(
+          child: Column(
+            children: [
+              const SizedBox(height: 24),
+              
+              // 1. Mode Toggle (Distance vs Time)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.all(4),
+                  child: CupertinoSlidingSegmentedControl<int>(
+                    groupValue: _lsdMode,
+                    children: const {
+                      0: Padding(padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8), child: Text('거리 목표', style: TextStyle(fontWeight: FontWeight.w600))),
+                      1: Padding(padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8), child: Text('시간 목표', style: TextStyle(fontWeight: FontWeight.w600))),
+                    },
+                    onValueChanged: (int? value) {
+                      if (value != null) {
+                        setState(() {
+                          _lsdMode = value;
+                          // Set default values when switching
+                          if (value == 0) {
+                            workoutService.setGoals(distance: 10000); // Default 10km
+                          } else {
+                            workoutService.setGoals(time: const Duration(minutes: 60)); // Default 60min
+                          }
+                        });
+                        HapticFeedback.selectionClick();
+                      }
+                    },
+                    thumbColor: Theme.of(context).colorScheme.surface,
+                    backgroundColor: Colors.transparent,
+                  ),
+                ),
+              ),
+
+              const Spacer(),
+
+              // 2. Hero Display
+              Column(
+                children: [
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      isDistanceMode 
+                        ? displayValue.toStringAsFixed(1) 
+                        : displayValue.toInt().toString(),
+                      style: TextStyle(
+                        fontSize: 80,
+                        fontWeight: FontWeight.w900,
+                        fontStyle: FontStyle.italic,
+                        color: themeColor,
+                        letterSpacing: -2,
+                        height: 1.0,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    unitLabel,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: themeColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: themeColor.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.monitor_heart_outlined, size: 14, color: themeColor),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Keep Heart Rate in Zone 2',
+                          style: TextStyle(fontSize: 12, color: themeColor, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              
+              const Spacer(),
+
+              // 3. Ruler Picker
+              HorizontalRulerPicker(
+                minValue: 0.0,
+                maxValue: isDistanceMode ? 42.2 : 180.0,
+                step: isDistanceMode ? 0.1 : 1.0, // 💡 거리: 0.1km, 시간: 1분 단위
+                value: displayValue,
+                initialValue: displayValue,
+                onChanged: (val) {
+                  if (isDistanceMode) {
+                    workoutService.setGoals(distance: (val * 1000).roundToDouble());
+                  } else {
+                    final int minutes = val.round();
+                    workoutService.setGoals(time: Duration(minutes: minutes));
+                  }
+                },
+              ),
+
+              const Spacer(),
+
+              // 4. Quick Action Chips
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: isDistanceMode 
+                    ? [
+                        _buildQuickGoalChip('10K', 10.0, workoutService),
+                        const SizedBox(width: 8),
+                        _buildQuickGoalChip('15K', 15.0, workoutService),
+                        const SizedBox(width: 8),
+                        _buildQuickGoalChip('HALF', 21.1, workoutService),
+                        const SizedBox(width: 8),
+                        _buildQuickGoalChip('30K', 30.0, workoutService),
+                      ]
+                    : [
+                        _buildQuickTimeChip('60min', 60, workoutService),
+                        const SizedBox(width: 8),
+                        _buildQuickTimeChip('90min', 90, workoutService),
+                        const SizedBox(width: 8),
+                        _buildQuickTimeChip('120min', 120, workoutService),
+                      ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildQuickTimeChip(String label, int minutes, WorkoutTrackingService service) {
+    final bool isSelected = (service.goalTime?.inMinutes ?? 0) == minutes;
+    final themeColor = Theme.of(context).colorScheme.tertiary;
+
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (val) {
+        if (val) {
+          service.setGoals(time: Duration(minutes: minutes));
+          HapticFeedback.mediumImpact();
+        }
+      },
+      selectedColor: themeColor,
+      backgroundColor: Colors.white.withOpacity(0.05),
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.black : Colors.white70,
+        fontWeight: FontWeight.bold,
+      ),
+      side: BorderSide.none,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     );
   }
 
@@ -747,14 +972,17 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
               // 1. Hero Distance Display
               Column(
                 children: [
-                  Text(
-                    displayKm == 0 ? 'FREE RUN' : displayKm.toStringAsFixed(1),
-                    style: TextStyle(
-                      fontSize: 80,
-                      fontWeight: FontWeight.w900,
-                      fontStyle: FontStyle.italic,
-                      color: displayKm == 0 ? Colors.grey : themeColor,
-                      letterSpacing: -2,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      displayKm == 0 ? 'FREE RUN' : displayKm.toStringAsFixed(1),
+                      style: TextStyle(
+                        fontSize: 80,
+                        fontWeight: FontWeight.w900,
+                        fontStyle: FontStyle.italic,
+                        color: displayKm == 0 ? Colors.grey : themeColor,
+                        letterSpacing: -2,
+                      ),
                     ),
                   ),
                   Text(
@@ -835,61 +1063,88 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     required VoidCallback onTap,
     required bool isActive,
     bool isCalculated = false,
-    bool isSmall = false,
   }) {
     final themeColor = Theme.of(context).colorScheme.primary;
     
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(24),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
         decoration: BoxDecoration(
           color: isActive 
-              ? themeColor.withValues(alpha: 0.15) 
+              ? themeColor.withValues(alpha: 0.1) 
               : Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(24),
           border: Border.all(
             color: isActive ? themeColor : Colors.transparent,
             width: 2,
           ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Row(
-              children: [
-                Icon(
-                  icon,
-                  color: isActive ? themeColor : Colors.grey,
-                  size: isSmall ? 20 : 24,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: isSmall ? 14 : 16,
-                    color: isActive ? themeColor : Colors.grey,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                if (isCalculated) ...[
-                  const SizedBox(width: 4),
-                  Icon(Icons.auto_awesome, size: 12, color: Theme.of(context).colorScheme.primary),
-                ],
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: isSmall ? 24 : 32,
-                fontWeight: FontWeight.bold,
-                color: isActive ? Theme.of(context).colorScheme.onSurface : Colors.grey,
-                fontStyle: isCalculated ? FontStyle.italic : FontStyle.normal,
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isActive ? themeColor.withValues(alpha: 0.2) : Colors.grey.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                color: isActive ? themeColor : Colors.grey,
+                size: 28,
               ),
             ),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: isActive ? themeColor : Colors.grey,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (isCalculated) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: themeColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.auto_awesome, size: 10, color: themeColor),
+                              const SizedBox(width: 4),
+                              Text('자동 계산', style: TextStyle(fontSize: 10, color: themeColor, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      color: isActive ? Theme.of(context).colorScheme.onSurface : Colors.grey,
+                      letterSpacing: -0.5,
+                      fontFamily: 'Montserrat', // Modern font if available, else falls back
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.grey.withValues(alpha: 0.5)),
           ],
         ),
       ),
@@ -1029,88 +1284,83 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
 
   Widget _buildCustomizationTab() {
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 140),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 140),
       itemCount: _editableTemplate.phases.length,
       itemBuilder: (context, phaseIndex) {
         final phase = _editableTemplate.phases[phaseIndex];
         final phaseDisplayName = _getCleanPhaseName(phase.name);
         final displayItems = _groupBlocks(phase.blocks, phaseDisplayName);
 
-        String subtitleText = '';
-        if (phase.name == 'Main Set') {
-          int totalSets = 0;
-          for (var item in displayItems) {
-            totalSets += item.count;
-          }
-          subtitleText = '$totalSets 세트';
-        } else {
-          subtitleText = '${phase.blocks.length}개 항목';
-        }
-
-        return Card(
-          margin: const EdgeInsets.only(bottom: 16),
-          child: ExpansionTile(
-            leading: SvgPicture.asset(
-              'assets/images/endurance/runner-icon.svg',
-              width: 24,
-              height: 24,
-              colorFilter: ColorFilter.mode(
-                _getThemeColor(),
-                BlendMode.srcIn,
-              ),
-            ),
-            title: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    phaseDisplayName,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_horiz),
-                  tooltip: '프리셋 옵션',
-                  onSelected: (value) {
-                    if (value == 'load') {
-                      _showLoadPresetDialog(phaseIndex);
-                    } else if (value == 'save') {
-                      _showSavePresetDialog(phaseIndex);
-                    }
-                  },
-                  itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                    const PopupMenuItem<String>(
-                      value: 'load',
-                      child: Row(
-                        children: [
-                          Icon(Icons.file_download_outlined, size: 20),
-                          SizedBox(width: 8),
-                          Text('프리셋 불러오기'),
-                        ],
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Phase Header
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _getThemeColor().withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        phaseDisplayName.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: _getThemeColor(),
+                          letterSpacing: 1.0,
+                        ),
                       ),
                     ),
-                    const PopupMenuItem<String>(
-                      value: 'save',
-                      child: Row(
-                        children: [
-                          Icon(Icons.save_alt, size: 20),
-                          SizedBox(width: 8),
-                          Text('현재 구성 저장'),
-                        ],
-                      ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.more_horiz, size: 20, color: Colors.grey),
+                      onPressed: () {
+                        // Phase Options (Preset Load/Save)
+                        showModalBottomSheet(
+                          context: context,
+                          builder: (context) => Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ListTile(
+                                leading: const Icon(Icons.file_download_outlined),
+                                title: const Text('프리셋 불러오기'),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _showLoadPresetDialog(phaseIndex);
+                                },
+                              ),
+                              ListTile(
+                                leading: const Icon(Icons.save_alt),
+                                title: const Text('현재 구성 저장'),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _showSavePresetDialog(phaseIndex);
+                                },
+                              ),
+                              const SizedBox(height: 20),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
-              ],
-            ),
-            subtitle: Text(subtitleText),
-            initiallyExpanded: true,
-            children: displayItems.map((item) {
-              if (item.isGroup) {
-                return _buildGroupItem(item, phaseIndex);
-              } else {
-                return _buildBlockItem(item.blocks.first, phaseIndex, item.startIndex);
-              }
-            }).toList(),
+              ),
+              // Timeline-style List
+              ...displayItems.map((item) {
+                if (item.isGroup) {
+                  return _buildGroupItem(item, phaseIndex);
+                } else {
+                  return _buildBlockItem(item.blocks.first, phaseIndex, item.startIndex);
+                }
+              }),
+            ],
           ),
         );
       },
@@ -1206,72 +1456,103 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
   }
 
   Widget _buildGroupItem(_DisplayItem item, int phaseIndex) {
-    final bool isStrength = _editableTemplate.category == 'Strength';
-    
-    // 스타일 설정 분리: Endurance/Hybrid는 고밀도 모드
-    final double iconSize = isStrength ? 40.0 : 20.0; 
-    final double avatarRadius = isStrength ? 40.0 : 20.0;
-    final double sectionWidth = isStrength ? 100.0 : 48.0;
-    final double titleFontSize = isStrength ? 18.0 : 14.0;
-    final double summaryFontSize = isStrength ? 14.0 : 12.0;
-    final double actionIconSize = isStrength ? 28.0 : 18.0;
-
     final workBlock = item.blocks[0];
     final restBlock = item.blocks.length > 1 ? item.blocks[1] : null;
-
     final themeColor = _getThemeColor();
 
-    return Theme(
-      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-      child: ExpansionTile(
-        tilePadding: EdgeInsets.symmetric(horizontal: 16, vertical: isStrength ? 12 : 4),
-        leading: SizedBox(
-          width: sectionWidth,
-          child: Center(
-            child: CircleAvatar(
-              radius: avatarRadius,
-              backgroundColor: themeColor.withValues(alpha: 0.2),
-              child: Icon(Icons.repeat, color: themeColor, size: iconSize),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.transparent),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _showEditGroupDialog(item, phaseIndex),
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Set Counter Badge
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: themeColor.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '${item.count}',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: themeColor,
+                          height: 1.0,
+                        ),
+                      ),
+                      Text(
+                        'SETS',
+                        style: TextStyle(fontSize: 8, color: themeColor.withValues(alpha: 0.8), fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                // Details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildMiniBlockRow(workBlock, isWork: true),
+                      if (restBlock != null) ...[
+                        const SizedBox(height: 6),
+                        _buildMiniBlockRow(restBlock, isWork: false),
+                      ],
+                    ],
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
+              ],
             ),
           ),
         ),
-        title: Text(
-          '${item.count} 세트: ${_getCleanName(workBlock.name).replaceAll(RegExp(r' \d+$'), '')}',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: titleFontSize),
-        ),
-        subtitle: Text(
-          '${_getBlockSummary(workBlock)}' + 
-          (restBlock != null ? ' + ${_getBlockSummary(restBlock)}' : ''),
-          style: TextStyle(fontSize: summaryFontSize),
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              icon: Icon(Icons.edit, size: actionIconSize, color: Colors.grey),
-              onPressed: () => _showEditGroupDialog(item, phaseIndex),
-              tooltip: '전체 세트 수정',
-            ),
-            const Icon(Icons.keyboard_arrow_down, size: 20),
-          ],
-        ),
-        children: List.generate(item.count * item.blocks.length, (i) {
-          final actualIndex = item.startIndex + i;
-          final block = _editableTemplate.phases[phaseIndex].blocks[actualIndex];
-          return Padding(
-            padding: const EdgeInsets.only(left: 8.0),
-            child: _buildBlockItem(block, phaseIndex, actualIndex),
-          );
-        }),
       ),
     );
   }
 
+  Widget _buildMiniBlockRow(TemplateBlock block, {required bool isWork}) {
+    return Row(
+      children: [
+        _buildBlockIcon(
+          block,
+          size: 14,
+          color: isWork ? _getThemeColor() : Colors.grey,
+        ),
+        const SizedBox(width: 6),
+        Text(
+          _getBlockSummary(block),
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: isWork ? FontWeight.w600 : FontWeight.normal,
+            color: isWork ? Theme.of(context).colorScheme.onSurface : Colors.grey,
+          ),
+        ),
+      ],
+    );
+  }
+
   void _showEditGroupDialog(_DisplayItem item, int phaseIndex) {
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) => IntervalSetEditDialog(
         workBlock: item.blocks[0],
         restBlock: item.blocks.length > 1 ? item.blocks[1] : null,
@@ -1313,78 +1594,41 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
   }
 
   Widget _buildBlockItem(TemplateBlock block, int phaseIndex, int blockIndex) {
-    final bool isStrength = _editableTemplate.category == 'Strength';
-    
-    // 스타일 설정 분리: Endurance/Hybrid는 고밀도(Compact) 모드 적용
-    final double iconSize = isStrength ? 92.0 : 32.0;
-    final double iconSectionWidth = isStrength ? 100.0 : 48.0;
-    final double titleFontSize = isStrength ? 18.0 : 14.0;
-    final double summaryFontSize = isStrength ? 14.0 : 12.0;
-    final double verticalPadding = isStrength ? 18.0 : 6.0;
-    final double actionIconSize = isStrength ? 28.0 : 18.0;
-
+    // Single Block Item (non-grouped)
     final themeColor = _getThemeColor();
+    final isWork = block.type == 'endurance' || block.type == 'strength';
 
-    String? specificIconPath;
-    if (block.type == 'strength' && block.exerciseId != null) {
-      final exercise = TemplateService.getExerciseById(block.exerciseId!);
-      specificIconPath = exercise?.imagePath;
-    }
-
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: verticalPadding, horizontal: 16.0),
-      child: Row(
-        children: [
-          // Icon Section
-          SizedBox(
-            width: iconSectionWidth,
-            child: Center(
-              child: specificIconPath != null
-                ? SvgPicture.asset(
-                    specificIconPath,
-                    width: iconSize,
-                    height: iconSize,
-                    colorFilter: ColorFilter.mode(
-                      themeColor,
-                      BlendMode.srcIn,
-                    ),
-                  )
-                : CircleAvatar(
-                    radius: iconSectionWidth / 2.5, 
-                    backgroundColor: themeColor.withValues(alpha: 0.2),
-                    child: _buildBlockIcon(
-                      block,
-                      size: iconSize * 0.6,
-                      color: themeColor,
-                    ),
-                  ),
-            ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface, // Flat background
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+      ),
+      child: ListTile(
+        onTap: () => _showEditBlockDialog(block, phaseIndex, blockIndex),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: isWork ? themeColor.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
           ),
-          const SizedBox(width: 12),
-          // Info Section
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _getCleanName(block.name),
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: titleFontSize),
-                ),
-                Text(
-                  _getBlockSummary(block),
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6), fontSize: summaryFontSize),
-                ),
-              ],
-            ),
+          child: _buildBlockIcon(
+            block,
+            size: 20,
+            color: isWork ? themeColor : Colors.grey,
           ),
-          // Action Section
-          IconButton(
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            icon: Icon(Icons.edit, size: actionIconSize, color: Colors.grey),
-            onPressed: () => _showEditBlockDialog(block, phaseIndex, blockIndex),
-          ),
-        ],
+        ),
+        title: Text(
+          _getCleanName(block.name),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+        ),
+        subtitle: Text(
+          _getBlockSummary(block),
+          style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+        ),
+        trailing: const Icon(Icons.edit, size: 16, color: Colors.grey),
       ),
     );
   }
@@ -1431,21 +1675,23 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
         int totalSeconds = block.targetPace!.toInt();
         int minutes = totalSeconds ~/ 60;
         int seconds = totalSeconds % 60;
-        parts.add("$minutes'${seconds.toString().padLeft(2, '0')}");
+        parts.add("$minutes'${seconds.toString().padLeft(2, '0')}\"/km");
       }
       
-      if (block.targetDuration != null) parts.add('${block.targetDuration}s');
+      if (block.targetDuration != null) parts.add('${_formatDuration(Duration(seconds: block.targetDuration!))}');
       
       if (parts.isEmpty) return 'Free Run';
       return parts.join(' | ');
     } else {
-      return '${block.targetDuration ?? 0}s Rest';
+      return '${_formatDuration(Duration(seconds: block.targetDuration ?? 0))} Rest';
     }
   }
 
   void _showEditBlockDialog(TemplateBlock block, int phaseIndex, int blockIndex) {
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) => BlockEditDialog(
         block: block,
         onSave: (updatedBlock) {
@@ -1465,44 +1711,41 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
       builder: (context, workoutService, child) {
         final calculatedValues = _calculateMissingGoal(workoutService);
         return SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
           child: Column(
             children: [
-              const Text('전체 운동 목표 설정', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildGoalButton(
-                      label: '거리',
-                      value: calculatedValues['distance'] ?? '선택',
-                      icon: Icons.straighten,
-                      onTap: _showDistancePicker,
-                      isCalculated: calculatedValues['distanceCalculated'] == true,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildGoalButton(
-                      label: '페이스',
-                      value: calculatedValues['pace'] ?? '선택',
-                      icon: Icons.speed,
-                      onTap: _showPacePicker,
-                      isCalculated: calculatedValues['paceCalculated'] == true,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildGoalButton(
-                      label: '시간',
-                      value: calculatedValues['time'] ?? '선택',
-                      icon: Icons.timer,
-                      onTap: _showTimePicker,
-                      isCalculated: calculatedValues['timeCalculated'] == true,
-                    ),
-                  ),
-                ],
+              _buildBigGoalCard(
+                label: '목표 거리',
+                value: calculatedValues['distance'] ?? '설정되지 않음',
+                icon: Icons.straighten,
+                onTap: _showDistancePicker,
+                isActive: workoutService.goalDistance != null,
+                isCalculated: calculatedValues['distanceCalculated'] == true,
               ),
+              const SizedBox(height: 12),
+              _buildBigGoalCard(
+                label: '목표 페이스',
+                value: calculatedValues['pace'] ?? '설정되지 않음',
+                icon: Icons.speed,
+                onTap: _showPacePicker,
+                isActive: workoutService.goalPace != null,
+                isCalculated: calculatedValues['paceCalculated'] == true,
+              ),
+              const SizedBox(height: 12),
+              _buildBigGoalCard(
+                label: '목표 시간',
+                value: calculatedValues['time'] ?? '설정되지 않음',
+                icon: Icons.timer,
+                onTap: _showTimePicker,
+                isActive: workoutService.goalTime != null,
+                isCalculated: calculatedValues['timeCalculated'] == true,
+              ),
+              const SizedBox(height: 24),
+              if (workoutService.goalDistance == null && workoutService.goalTime == null && workoutService.goalPace == null)
+                const Text(
+                  '💡 목표를 하나 이상 설정하면 나머지가 자동 계산됩니다.',
+                  style: TextStyle(color: Colors.grey, fontSize: 13),
+                ),
             ],
           ),
         );
@@ -1742,7 +1985,7 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
       final paceMinutes = (totalMinutes / distanceKm);
       final paceMin = paceMinutes.floor();
       final paceSec = ((paceMinutes - paceMin) * 60).round();
-      paceValue = '$paceMin:${paceSec.toString().padLeft(2, '0')}';
+      paceValue = '$paceMin:${paceSec.toString().padLeft(2, '0')}"';
       paceCalculated = true;
       distanceValue = '${distanceKm.toStringAsFixed(2)} km';
       timeValue = _formatDuration(service.goalTime!);
@@ -1766,6 +2009,8 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
   }
 
   Widget _buildGoalButton({required String label, required String value, required IconData icon, required VoidCallback onTap, bool isCalculated = false}) {
+    // This method is kept for backward compatibility if other widgets use it, 
+    // but _buildBigGoalCard is preferred for the main screen.
     final hasValue = value != '선택';
     return InkWell(
       onTap: onTap,
@@ -1792,6 +2037,9 @@ class _WorkoutSetupScreenState extends State<WorkoutSetupScreen> {
     String twoDigits(int n) => n.toString().padLeft(2, "0");
     String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
     String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
-    return "${twoDigits(duration.inHours)}:$twoDigitMinutes:$twoDigitSeconds";
+    if (duration.inHours > 0) {
+      return "${twoDigits(duration.inHours)}:$twoDigitMinutes:$twoDigitSeconds";
+    }
+    return "$twoDigitMinutes:$twoDigitSeconds";
   }
 }

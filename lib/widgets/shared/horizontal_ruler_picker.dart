@@ -7,6 +7,7 @@ class HorizontalRulerPicker extends StatefulWidget {
   final double maxValue;
   final double initialValue;
   final double? value; // 외부에서 제어하기 위한 현재 값
+  final double step; // 💡 스텝 값 파라미터 추가
   final ValueChanged<double> onChanged;
   final Color? color;
 
@@ -16,6 +17,7 @@ class HorizontalRulerPicker extends StatefulWidget {
     this.maxValue = 50.0,
     this.initialValue = 5.0,
     this.value,
+    this.step = 0.1, // 기본값 0.1
     required this.onChanged,
     this.color,
   });
@@ -27,16 +29,15 @@ class HorizontalRulerPicker extends StatefulWidget {
 class _HorizontalRulerPickerState extends State<HorizontalRulerPicker> {
   late FixedExtentScrollController _controller;
   late double _currentValue;
-  bool _isAnimating = false; // 💡 애니메이션 중인지 여부 플래그
+  bool _isAnimating = false;
   
-  static const double _step = 0.1;
   static const double _itemWidth = 12.0;
 
   @override
   void initState() {
     super.initState();
     _currentValue = widget.value ?? widget.initialValue;
-    int initialIndex = ((_currentValue - widget.minValue) / _step).round();
+    int initialIndex = ((_currentValue - widget.minValue) / widget.step).round();
     _controller = FixedExtentScrollController(initialItem: initialIndex);
   }
 
@@ -44,7 +45,7 @@ class _HorizontalRulerPickerState extends State<HorizontalRulerPicker> {
   void didUpdateWidget(HorizontalRulerPicker oldWidget) {
     super.didUpdateWidget(oldWidget);
     // 외부에서 값이 명시적으로 변경되었을 때만 이동 (소수점 오차 방지 포함)
-    if (widget.value != null && (widget.value! - oldWidget.value!).abs() > 0.01) {
+    if (widget.value != null && (widget.value! - oldWidget.value!).abs() > (widget.step / 2)) {
       _animateToValue(widget.value!);
     }
   }
@@ -52,15 +53,15 @@ class _HorizontalRulerPickerState extends State<HorizontalRulerPicker> {
   void _animateToValue(double val) {
     if (!_controller.hasClients) return;
     
-    int index = ((val - widget.minValue) / _step).round();
-    if (_controller.selectedItem == index) return; // 💡 이미 해당 위치면 무시
+    int index = ((val - widget.minValue) / widget.step).round();
+    if (_controller.selectedItem == index) return;
 
     _isAnimating = true;
     _currentValue = val;
     _controller.animateToItem(
       index,
       duration: const Duration(milliseconds: 600),
-      curve: Curves.easeOutCubic, // 💡 더 안정적인 곡선으로 변경
+      curve: Curves.easeOutCubic,
     ).then((_) {
       _isAnimating = false;
     });
@@ -75,7 +76,7 @@ class _HorizontalRulerPickerState extends State<HorizontalRulerPicker> {
   @override
   Widget build(BuildContext context) {
     final themeColor = widget.color ?? Theme.of(context).colorScheme.tertiary;
-    final int totalItems = ((widget.maxValue - widget.minValue) / _step).round() + 1;
+    final int totalItems = ((widget.maxValue - widget.minValue) / widget.step).round() + 1;
 
     return SizedBox(
       height: 100,
@@ -91,10 +92,10 @@ class _HorizontalRulerPickerState extends State<HorizontalRulerPicker> {
               diameterRatio: 3.0,
               physics: const FixedExtentScrollPhysics(),
               onSelectedItemChanged: (index) {
-                if (_isAnimating) return; // 💡 외부 제어로 이동 중일 때는 이벤트 무시 (무한 루프 방지)
+                if (_isAnimating) return;
                 
-                double newValue = widget.minValue + (index * _step);
-                if ((newValue - _currentValue).abs() > 0.05) { // 💡 임계값을 조금 더 줌
+                double newValue = widget.minValue + (index * widget.step);
+                if ((newValue - _currentValue).abs() > (widget.step / 2)) {
                   _currentValue = newValue;
                   widget.onChanged(newValue);
                   HapticFeedback.selectionClick();
@@ -103,9 +104,20 @@ class _HorizontalRulerPickerState extends State<HorizontalRulerPicker> {
               childDelegate: ListWheelChildBuilderDelegate(
                 childCount: totalItems,
                 builder: (context, index) {
-                  double value = widget.minValue + (index * _step);
-                  bool isMajor = (value * 10).round() % 10 == 0;
-                  bool isHalf = (value * 10).round() % 5 == 0 && !isMajor;
+                  double value = widget.minValue + (index * widget.step);
+                  // 스텝에 따라 메이저 눈금 표시 로직 유동적으로 변경
+                  bool isMajor;
+                  bool isHalf;
+                  
+                  if (widget.step >= 1.0) {
+                     // 1단위 이상일 때 (예: 시간 분 단위)
+                     isMajor = value % 10 == 0;
+                     isHalf = value % 5 == 0 && !isMajor;
+                  } else {
+                     // 0.1 단위일 때 (거리)
+                     isMajor = (value * 10).round() % 10 == 0;
+                     isHalf = (value * 10).round() % 5 == 0 && !isMajor;
+                  }
 
                   return RotatedBox(
                     quarterTurns: 1,
@@ -124,12 +136,20 @@ class _HorizontalRulerPickerState extends State<HorizontalRulerPicker> {
                         ),
                         const SizedBox(height: 8),
                         if (isMajor)
-                          Text(
-                            value.toInt().toString(),
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: themeColor,
+                          // 💡 숫자가 12px 너비를 넘어 가로로 정상 표시되도록 OverflowBox 적용
+                          SizedBox(
+                            width: 12,
+                            child: OverflowBox(
+                              maxWidth: 50, // 충분한 가로 공간 확보
+                              child: Text(
+                                value.toInt().toString(),
+                                softWrap: false, // 줄바꿈 방지
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: themeColor,
+                                ),
+                              ),
                             ),
                           )
                         else

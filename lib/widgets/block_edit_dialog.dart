@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/cupertino.dart';
 import '../models/templates/template_block.dart';
+import '../utils/workout_ui_utils.dart'; // For color utilities if needed
 
 class BlockEditDialog extends StatefulWidget {
   final TemplateBlock block;
   final Function(TemplateBlock) onSave;
-
-  // 정적 변수로 클립보드 역할 (앱이 실행되는 동안 유지)
-  static TemplateBlock? _copiedBlock;
 
   const BlockEditDialog({
     super.key,
@@ -21,163 +18,45 @@ class BlockEditDialog extends StatefulWidget {
 }
 
 class _BlockEditDialogState extends State<BlockEditDialog> {
-  late TextEditingController _setsController;
-  late TextEditingController _repsController;
-  late TextEditingController _weightController;
-  late TextEditingController _distanceController;
-  late TextEditingController _durationController;
-  late TextEditingController _restController;
+  // Common
+  late String _name;
   
+  // Strength
+  int _sets = 1;
+  int _reps = 10;
+  double _weight = 0;
+
+  // Endurance
+  double _distance = 0;
+  int _duration = 0;
   int _paceMinutes = 0;
   int _paceSeconds = 0;
-  bool _isInternalUpdate = false;
+  
+  // Rest
+  int _restSeconds = 0;
 
   @override
   void initState() {
     super.initState();
-    _setsController = TextEditingController(text: widget.block.sets?.toString() ?? '');
-    _repsController = TextEditingController(text: widget.block.reps?.toString() ?? '');
-    _weightController = TextEditingController(text: widget.block.weight?.toString() ?? '');
-    _distanceController = TextEditingController(text: widget.block.targetDistance?.toString() ?? '');
-    _durationController = TextEditingController(text: widget.block.targetDuration?.toString() ?? '');
-    _restController = TextEditingController(text: widget.block.restSeconds?.toString() ?? '');
+    _name = widget.block.name;
+    _sets = widget.block.sets ?? 1;
+    _reps = widget.block.reps ?? 10;
+    _weight = widget.block.weight ?? 0;
     
+    _distance = widget.block.targetDistance ?? 0;
+    _duration = widget.block.targetDuration ?? 0;
+    _restSeconds = widget.block.restSeconds ?? 0;
+    
+    // For pure Rest blocks, targetDuration is the rest time
+    if (widget.block.type == 'rest') {
+      _duration = widget.block.targetDuration ?? 0;
+    }
+
     if (widget.block.targetPace != null) {
       int totalSeconds = widget.block.targetPace!.toInt();
       _paceMinutes = totalSeconds ~/ 60;
       _paceSeconds = totalSeconds % 60;
     }
-
-    _distanceController.addListener(_onDistanceChanged);
-    _durationController.addListener(_onDurationChanged);
-  }
-
-  void _onDistanceChanged() {
-    if (_isInternalUpdate) return;
-    _calculateDuration();
-  }
-
-  void _onDurationChanged() {
-    if (_isInternalUpdate) return;
-    _calculateDistance();
-  }
-
-  void _calculateDuration() {
-    // Distance changed + Pace exists => Calculate Duration
-    double distance = double.tryParse(_distanceController.text) ?? 0;
-    double paceSecondsPerKm = (_paceMinutes * 60 + _paceSeconds).toDouble();
-
-    if (distance > 0 && paceSecondsPerKm > 0) {
-      int duration = (distance * paceSecondsPerKm / 1000).round();
-      _updateController(_durationController, duration.toString());
-    }
-  }
-
-  void _calculateDistance() {
-    // Duration changed + Pace exists => Calculate Distance
-    int duration = int.tryParse(_durationController.text) ?? 0;
-    double paceSecondsPerKm = (_paceMinutes * 60 + _paceSeconds).toDouble();
-
-    if (duration > 0 && paceSecondsPerKm > 0) {
-      int distance = (duration * 1000 / paceSecondsPerKm).round();
-      _updateController(_distanceController, distance.toString());
-    }
-  }
-
-  void _onPaceChanged() {
-    // Pace changed
-    // Priority: If Distance exists, update Duration.
-    // Else if Duration exists, update Distance.
-    double distance = double.tryParse(_distanceController.text) ?? 0;
-    int duration = int.tryParse(_durationController.text) ?? 0;
-    double paceSecondsPerKm = (_paceMinutes * 60 + _paceSeconds).toDouble();
-
-    if (paceSecondsPerKm <= 0) return;
-
-    if (distance > 0) {
-      int newDuration = (distance * paceSecondsPerKm / 1000).round();
-      _updateController(_durationController, newDuration.toString());
-    } else if (duration > 0) {
-      int newDistance = (duration * 1000 / paceSecondsPerKm).round();
-      _updateController(_distanceController, newDistance.toString());
-    }
-  }
-
-  void _updateController(TextEditingController controller, String value) {
-    if (controller.text != value) {
-      _isInternalUpdate = true;
-      controller.text = value;
-      _isInternalUpdate = false;
-    }
-  }
-
-  @override
-  void dispose() {
-    _setsController.dispose();
-    _repsController.dispose();
-    _weightController.dispose();
-    _distanceController.dispose();
-    _durationController.dispose();
-    _restController.dispose();
-    super.dispose();
-  }
-
-  void _copyBlock() {
-    double? targetPace;
-    if (_paceMinutes > 0 || _paceSeconds > 0) {
-      targetPace = (_paceMinutes * 60 + _paceSeconds).toDouble();
-    }
-
-    BlockEditDialog._copiedBlock = widget.block.copyWith(
-      sets: int.tryParse(_setsController.text),
-      reps: int.tryParse(_repsController.text),
-      weight: double.tryParse(_weightController.text),
-      targetDistance: double.tryParse(_distanceController.text),
-      targetDuration: int.tryParse(_durationController.text),
-      restSeconds: int.tryParse(_restController.text),
-      targetPace: targetPace,
-    );
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('설정이 복사되었습니다'), duration: Duration(seconds: 1)),
-    );
-    setState(() {});
-  }
-
-  void _pasteBlock() {
-    final source = BlockEditDialog._copiedBlock;
-    if (source == null) return;
-
-    if (source.type != widget.block.type) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('다른 타입의 블록 설정은 붙여넣을 수 없습니다')),
-      );
-      return;
-    }
-
-    setState(() {
-      _isInternalUpdate = true; // Prevent triggering listeners during paste
-      _setsController.text = source.sets?.toString() ?? '';
-      _repsController.text = source.reps?.toString() ?? '';
-      _weightController.text = source.weight?.toString() ?? '';
-      _distanceController.text = source.targetDistance?.toString() ?? '';
-      _durationController.text = source.targetDuration?.toString() ?? '';
-      _restController.text = source.restSeconds?.toString() ?? '';
-      _isInternalUpdate = false;
-
-      if (source.targetPace != null) {
-        int totalSeconds = source.targetPace!.toInt();
-        _paceMinutes = totalSeconds ~/ 60;
-        _paceSeconds = totalSeconds % 60;
-      } else {
-        _paceMinutes = 0;
-        _paceSeconds = 0;
-      }
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('설정이 붙여넣기 되었습니다'), duration: Duration(seconds: 1)),
-    );
   }
 
   void _save() {
@@ -186,136 +65,282 @@ class _BlockEditDialogState extends State<BlockEditDialog> {
       targetPace = (_paceMinutes * 60 + _paceSeconds).toDouble();
     }
 
-    final updatedBlock = widget.block.copyWith(
-      sets: int.tryParse(_setsController.text),
-      reps: int.tryParse(_repsController.text),
-      weight: double.tryParse(_weightController.text),
-      targetDistance: double.tryParse(_distanceController.text),
-      targetDuration: int.tryParse(_durationController.text),
-      restSeconds: int.tryParse(_restController.text),
+    TemplateBlock updatedBlock = widget.block.copyWith(
+      sets: _sets,
+      reps: _reps,
+      weight: _weight,
+      targetDistance: _distance > 0 ? _distance : null,
+      targetDuration: _duration > 0 ? _duration : null,
+      restSeconds: _restSeconds > 0 ? _restSeconds : null,
       targetPace: targetPace,
     );
+    
+    // Special handling for Rest type
+    if (widget.block.type == 'rest') {
+      updatedBlock = updatedBlock.copyWith(
+        targetDuration: _duration > 0 ? _duration : null,
+        targetDistance: null, // Rest blocks usually don't have distance
+      );
+    }
+
     widget.onSave(updatedBlock);
     Navigator.of(context).pop();
   }
 
-  void _showPacePicker() {
-    showCupertinoModalPopup(
-      context: context,
-      builder: (context) => Container(
-        height: 320,
-        padding: const EdgeInsets.only(top: 6.0),
-        color: const Color(0xFF1C1C1E),
-        child: SafeArea(
-          top: false,
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  @override
+  Widget build(BuildContext context) {
+    final double height = MediaQuery.of(context).size.height * 0.65;
+
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      child: Column(
+        children: [
+          _buildHeader(),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              child: Column(
                 children: [
-                  CupertinoButton(
-                    child: const Text('취소', style: TextStyle(color: Colors.grey)),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  const Text('목표 페이스 설정', 
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 18,
-                      decoration: TextDecoration.none,
-                      color: Colors.white,
-                    )
-                  ),
-                  CupertinoButton(
-                    child: Text('확인', style: TextStyle(color: Theme.of(context).colorScheme.primary)),
-                    onPressed: () => Navigator.pop(context),
-                  ),
+                  const SizedBox(height: 16),
+                  if (widget.block.type == 'strength') _buildStrengthUI(),
+                  if (widget.block.type == 'endurance') _buildEnduranceUI(),
+                  if (widget.block.type == 'rest') _buildRestUI(),
+                  const SizedBox(height: 40),
                 ],
               ),
-              Expanded(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: CupertinoPicker(
-                        magnification: 1.22,
-                        squeeze: 1.2,
-                        useMagnifier: true,
-                        itemExtent: 32,
-                        scrollController: FixedExtentScrollController(initialItem: _paceMinutes),
-                        onSelectedItemChanged: (int selectedItem) {
-                          setState(() {
-                            _paceMinutes = selectedItem;
-                          });
-                          _onPaceChanged();
-                        },
-                        children: List<Widget>.generate(30, (int index) {
-                          return Center(child: Text('$index', style: const TextStyle(color: Colors.white, fontSize: 20)));
-                        }),
-                      ),
-                    ),
-                    const DefaultTextStyle(
-                      style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
-                      child: Text("분"),
-                    ),
-                    Expanded(
-                      child: CupertinoPicker(
-                        magnification: 1.22,
-                        squeeze: 1.2,
-                        useMagnifier: true,
-                        itemExtent: 32,
-                        scrollController: FixedExtentScrollController(initialItem: _paceSeconds),
-                        onSelectedItemChanged: (int selectedItem) {
-                          setState(() {
-                            _paceSeconds = selectedItem;
-                          });
-                          _onPaceChanged();
-                        },
-                        children: List<Widget>.generate(60, (int index) {
-                          return Center(child: Text(index.toString().padLeft(2, '0'), style: const TextStyle(color: Colors.white, fontSize: 20)));
-                        }),
-                      ),
-                    ),
-                    const DefaultTextStyle(
-                      style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
-                      child: Text("초"),
-                    ),
-                    const SizedBox(width: 20),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+          _buildBottomBar(),
+        ],
       ),
     );
   }
 
-  Widget _buildPaceSelector() {
-    return GestureDetector(
-      onTap: _showPacePicker,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade700),
-          borderRadius: BorderRadius.circular(8),
-          color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+  Widget _buildHeader() {
+    return Column(
+      children: [
+        const SizedBox(height: 12),
+        Container(
+          width: 40,
+          height: 5,
+          decoration: BoxDecoration(
+            color: Colors.grey.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 10),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${_name} 설정',
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        ),
+        const Divider(),
+      ],
+    );
+  }
+
+  Widget _buildStrengthUI() {
+    return Column(
+      children: [
+        Row(
           children: [
-            const Text('목표 페이스', style: TextStyle(fontSize: 16)),
-            Row(
+            Expanded(
+              child: _buildValueTile(
+                '세트', 
+                '$_sets', 
+                'sets', 
+                isActive: true,
+                onTap: () => _showNumberPicker('세트 수', '', _sets, 20, (v) {}, (v) => setState(() => _sets = v)),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildValueTile(
+                '횟수', 
+                '$_reps', 
+                'reps', 
+                isActive: true,
+                onTap: () => _showNumberPicker('반복 횟수', '', _reps, 100, (v) {}, (v) => setState(() => _reps = v)),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _buildValueTile(
+          '중량', 
+          '${_weight.toInt()}', 
+          'kg', 
+          isFullWidth: true,
+          onTap: () => _showNumberPicker('중량 설정', 'kg', _weight.toInt(), 300, (v) {}, (v) => setState(() => _weight = v.toDouble()), step: 5),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEnduranceUI() {
+    final bool isDistanceSet = _distance > 0;
+    final bool isDurationSet = _duration > 0;
+
+    return Column(
+      children: [
+        // Toggle Logic for Easy Jog / Cool Down: usually distinct choice
+        // But allowing both is flexible. We'll use the Card style.
+        
+        _buildValueTile(
+          '목표 거리', 
+          '${_distance.toInt()}', 
+          'm', 
+          isActive: isDistanceSet,
+          isFullWidth: true,
+          onTap: () => _showNumberPicker(
+            '목표 거리', 
+            'm', 
+            _distance.toInt(), 
+            20000, 
+            step: 50,
+            (v) {}, 
+            (v) => setState(() {
+               _distance = v.toDouble();
+               // Optional: Auto-clear duration if user sets distance, to enforce "one or the other" 
+               // for Warmup/CoolDown, but let's keep it flexible or maybe just clear it to avoid confusion.
+               if (v > 0) _duration = 0; 
+            }),
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildValueTile(
+          '목표 시간',
+          _formatDuration(_duration),
+          '', 
+          isActive: isDurationSet,
+          isFullWidth: true,
+          onTap: () => _showTimePicker(
+            '목표 시간', 
+            _duration, 
+            (v) {}, 
+            (v) => setState(() {
+              _duration = v;
+              if (v > 0) _distance = 0; // Enforce single objective preference
+            }),
+          ),
+        ),
+        const SizedBox(height: 24),
+        
+        // Pace Section (Optional)
+        // Collapsible or just a smaller tile
+        InkWell(
+          onTap: _showPacePicker,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                const Text('목표 페이스 (선택)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
                 Text(
-                  "$_paceMinutes' ${_paceSeconds.toString().padLeft(2, '0')}\"",
+                  (_paceMinutes > 0 || _paceSeconds > 0) 
+                      ? "$_paceMinutes' ${_paceSeconds.toString().padLeft(2, '0')}\"" 
+                      : '설정 안함',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 16, 
                     fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
+                    color: (_paceMinutes > 0 || _paceSeconds > 0) 
+                        ? Theme.of(context).colorScheme.primary 
+                        : Colors.grey,
                   ),
                 ),
-                const SizedBox(width: 8),
-                const Icon(Icons.keyboard_arrow_down, size: 20),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRestUI() {
+    return Column(
+      children: [
+        const Icon(Icons.timer_outlined, size: 48, color: Colors.grey),
+        const SizedBox(height: 16),
+        _buildValueTile(
+          '휴식 시간', 
+          _formatDuration(_duration), 
+          '', 
+          isActive: true,
+          isFullWidth: true,
+          onTap: () => _showTimePicker(
+            '휴식 시간', 
+            _duration, 
+            (v) {}, 
+            (v) => setState(() => _duration = v),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildValueTile(String label, String value, String unit, {bool isActive = false, bool isFullWidth = false, required VoidCallback onTap}) {
+    final color = isActive ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface;
+    final bgColor = isActive 
+        ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1) 
+        : Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3);
+    final borderColor = isActive 
+        ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3) 
+        : Colors.transparent;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        width: isFullWidth ? double.infinity : null,
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: borderColor),
+        ),
+        child: Column(
+          children: [
+            Text(label, style: TextStyle(fontSize: 12, color: color.withValues(alpha: 0.7), fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(
+                  value, 
+                  style: TextStyle(
+                    fontSize: 28, 
+                    fontWeight: FontWeight.w600, 
+                    color: color,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+                if (unit.isNotEmpty) ...[
+                  const SizedBox(width: 2),
+                  Text(unit, style: TextStyle(fontSize: 14, color: color.withValues(alpha: 0.7), fontWeight: FontWeight.w500)),
+                ],
               ],
             ),
           ],
@@ -324,88 +349,242 @@ class _BlockEditDialogState extends State<BlockEditDialog> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-      title: Row(
-        children: [
-          Expanded(child: Text('${widget.block.name} 설정')),
-          IconButton(
-            icon: const Icon(Icons.copy, size: 20),
-            onPressed: _copyBlock,
-            tooltip: '설정 복사',
+  Widget _buildBottomBar() {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: SizedBox(
+          width: double.infinity,
+          height: 56,
+          child: FilledButton(
+            onPressed: _save,
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+            child: const Text('설정 저장', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           ),
-          IconButton(
-            icon: const Icon(Icons.paste, size: 20),
-            onPressed: BlockEditDialog._copiedBlock != null ? _pasteBlock : null,
-            tooltip: '설정 붙여넣기',
-            color: BlockEditDialog._copiedBlock != null 
-                ? Theme.of(context).colorScheme.primary 
-                : Colors.grey,
-          ),
-        ],
-      ),
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 16),
-            if (widget.block.type == 'strength') ...[
-              _buildTextField('세트 수', _setsController, isInt: true),
-              const SizedBox(height: 12),
-              _buildTextField('반복 횟수 (Reps)', _repsController, isInt: true),
-              const SizedBox(height: 12),
-              _buildTextField('중량 (kg)', _weightController),
-              const SizedBox(height: 12),
-            ],
-            if (widget.block.type == 'endurance') ...[
-              _buildPaceSelector(),
-              const SizedBox(height: 16),
-              _buildTextField('목표 거리 (m)', _distanceController),
-              const SizedBox(height: 12),
-              _buildTextField('목표 시간 (초)', _durationController, isInt: true),
-              const SizedBox(height: 12),
-            ],
-            if (widget.block.type == 'rest' || widget.block.restSeconds != null) ...[
-              _buildTextField('휴식 시간 (초)', _restController, isInt: true),
-            ],
-          ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text('취소', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
-        ),
-        ElevatedButton(
-          onPressed: _save,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            foregroundColor: Theme.of(context).colorScheme.onSecondary,
-          ),
-          child: const Text('저장'),
-        ),
-      ],
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, {bool isInt = false}) {
-    return TextField(
-      controller: controller,
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
+  String _formatDuration(int seconds) {
+    if (seconds == 0) return '0';
+    if (seconds >= 60) {
+      int min = seconds ~/ 60;
+      int sec = seconds % 60;
+      return '$min:${sec.toString().padLeft(2, '0')}';
+    }
+    return '$seconds';
+  }
+
+  // --- Pickers (Reused Logic) ---
+
+  void _showNumberPicker(
+    String title, 
+    String unit, 
+    int initialValue, 
+    int maxValue, 
+    Function(int) onComplete,
+    Function(int) onChanged, 
+    {int step = 1}
+  ) {
+    int currentValue = initialValue;
+    int initialIndex = initialValue ~/ step;
+    
+    showCupertinoModalPopup(
+      context: context,
+      builder: (context) => Container(
+        height: 300,
+        color: const Color(0xFF1C1C1E),
+        child: Column(
+          children: [
+            _buildPickerHeader(title, () {
+              Navigator.pop(context);
+              onComplete(currentValue);
+            }),
+            Expanded(
+              child: CupertinoPicker(
+                magnification: 1.22,
+                squeeze: 1.2,
+                useMagnifier: true,
+                itemExtent: 32,
+                scrollController: FixedExtentScrollController(initialItem: initialIndex),
+                onSelectedItemChanged: (int index) {
+                  currentValue = index * step;
+                  onChanged(currentValue);
+                },
+                children: List<Widget>.generate((maxValue ~/ step) + 1, (int index) {
+                  return Center(
+                    child: Text(
+                      '${index * step} $unit', 
+                      style: const TextStyle(color: Colors.white, fontSize: 20)
+                    ),
+                  );
+                }),
+              ),
+            ),
+          ],
+        ),
       ),
-      keyboardType: TextInputType.numberWithOptions(decimal: !isInt),
-      inputFormatters: [
-        isInt
-            ? FilteringTextInputFormatter.digitsOnly
-            : FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d*'))
-      ],
+    );
+  }
+
+  void _showTimePicker(
+    String title, 
+    int initialSeconds, 
+    Function(int) onComplete,
+    Function(int) onChanged,
+  ) {
+    int min = initialSeconds ~/ 60;
+    int sec = initialSeconds % 60;
+
+    showCupertinoModalPopup(
+      context: context,
+      builder: (context) => Container(
+        height: 300,
+        color: const Color(0xFF1C1C1E),
+        child: Column(
+          children: [
+            _buildPickerHeader(title, () {
+               Navigator.pop(context);
+               onComplete(min * 60 + sec);
+            }),
+            Expanded(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: CupertinoPicker(
+                      itemExtent: 32,
+                      scrollController: FixedExtentScrollController(initialItem: min),
+                      onSelectedItemChanged: (int index) {
+                        min = index;
+                        onChanged(min * 60 + sec);
+                      },
+                      children: List<Widget>.generate(120, (int index) {
+                        return Center(child: Text('$index', style: const TextStyle(color: Colors.white, fontSize: 20)));
+                      }),
+                    ),
+                  ),
+                  const Text('분', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  Expanded(
+                    child: CupertinoPicker(
+                      itemExtent: 32,
+                      scrollController: FixedExtentScrollController(initialItem: sec),
+                      onSelectedItemChanged: (int index) {
+                        sec = index;
+                        onChanged(min * 60 + sec);
+                      },
+                      children: List<Widget>.generate(60, (int index) {
+                        return Center(child: Text(index.toString().padLeft(2, '0'), style: const TextStyle(color: Colors.white, fontSize: 20)));
+                      }),
+                    ),
+                  ),
+                  const Text('초', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showPacePicker() {
+    showCupertinoModalPopup(
+      context: context,
+      builder: (context) => Container(
+        height: 300,
+        color: const Color(0xFF1C1C1E),
+        child: Column(
+          children: [
+            _buildPickerHeader('목표 페이스', () {
+              Navigator.pop(context);
+            }),
+            Expanded(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: CupertinoPicker(
+                      itemExtent: 32,
+                      scrollController: FixedExtentScrollController(initialItem: _paceMinutes),
+                      onSelectedItemChanged: (int selectedItem) {
+                        setState(() {
+                          _paceMinutes = selectedItem;
+                        });
+                      },
+                      children: List<Widget>.generate(30, (int index) {
+                        return Center(child: Text('$index', style: const TextStyle(color: Colors.white, fontSize: 20)));
+                      }),
+                    ),
+                  ),
+                  const Text("분", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  Expanded(
+                    child: CupertinoPicker(
+                      itemExtent: 32,
+                      scrollController: FixedExtentScrollController(initialItem: _paceSeconds),
+                      onSelectedItemChanged: (int selectedItem) {
+                        setState(() {
+                          _paceSeconds = selectedItem;
+                        });
+                      },
+                      children: List<Widget>.generate(60, (int index) {
+                        return Center(child: Text(index.toString().padLeft(2, '0'), style: const TextStyle(color: Colors.white, fontSize: 20)));
+                      }),
+                    ),
+                  ),
+                  const Text("초", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPickerHeader(String title, VoidCallback onConfirm) {
+    return Container(
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C1C1E),
+        border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+      ),
+      child: Stack(
+        children: [
+          Center(
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.4,
+              ),
+            ),
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: CupertinoButton(
+              padding: EdgeInsets.zero,
+              minSize: 0,
+              onPressed: onConfirm,
+              child: Text(
+                '완료',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

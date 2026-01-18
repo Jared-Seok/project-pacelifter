@@ -21,7 +21,7 @@ class MockWorkoutTrackingService extends ChangeNotifier implements WorkoutTracki
   Pace? get goalPace => null;
   
   @override
-  Future<void> startWorkout() async {}
+  Future<void> startWorkout({WorkoutTemplate? template}) async {}
   
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -74,20 +74,20 @@ void main() {
     // 3. Find and Tap Edit Group Button
     await tester.pumpAndSettle();
     
-    // Check for grouping text (2 sets) - might appear in Phase subtitle and Group title
-    expect(find.textContaining('2 세트'), findsAtLeastNWidgets(1));
+    // Check for grouping text (2 sets) - split into '2' and 'SETS'
+    expect(find.text('2'), findsAtLeastNWidgets(1));
+    expect(find.text('SETS'), findsOneWidget);
     
-    final groupEditButton = find.byTooltip('전체 세트 수정');
-    expect(groupEditButton, findsOneWidget);
-
-    await tester.tap(groupEditButton);
+    // Tap the group item (the whole card is tappable)
+    // We can find it by the text 'SETS' inside the badge
+    await tester.tap(find.text('SETS').first);
     await tester.pumpAndSettle();
 
     // 4. Verify Dialog is open
     expect(find.byType(IntervalSetEditDialog), findsOneWidget);
 
     // 5. Tap "적용" (Apply)
-    final applyButton = find.text('적용');
+    final applyButton = find.text('설정 적용');
     await tester.tap(applyButton);
     
     // 6. Verify flow
