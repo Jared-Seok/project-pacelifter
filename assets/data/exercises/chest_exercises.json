@@ -82,7 +82,8 @@
       "variations": ["경사도: 플랫", "경사도: 인클라인"],
       "isCompound": false,
       "isUnilateral": true,
-      "group": "플라이"
+      "group": "플라이",
+      "imagePath": "assets/images/strength/chest/dumbell-fly.svg"
     },
     {
       "id": "machine_chest_press",
@@ -115,7 +116,8 @@
       "variations": ["타겟: 하이 투 로우", "타겟: 로우 투 하이", "타겟: 미들", "자세: 스탠딩", "자세: 인클라인 벤치", "수행: 양손", "수행: 한손"],
       "isCompound": false,
       "isUnilateral": true,
-      "group": "플라이"
+      "group": "플라이",
+      "imagePath": "assets/images/strength/chest/cable-cross-over.svg"
     },
     {
       "id": "pec_deck_fly",
@@ -165,7 +167,8 @@
       "variations": ["장비: 덤벨", "장비: 바벨", "장비: 머신"],
       "isCompound": false,
       "isUnilateral": false,
-      "group": "기타"
+      "group": "기타",
+      "imagePath": "assets/images/strength/chest/pull-over.svg"
     },
     {
       "id": "svend_press",

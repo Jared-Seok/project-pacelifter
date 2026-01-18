@@ -31,7 +31,8 @@
       "variations": ["자세: 시티드", "자세: 스탠딩", "장비: 바벨", "장비: 스미스 머신"],
       "isCompound": true,
       "isUnilateral": false,
-      "group": "프레스"
+      "group": "프레스",
+      "imagePath": "assets/images/strength/shoulders/behind-neck-press.svg"
     },
     {
       "id": "dumbbell_shoulder_press",
@@ -196,7 +197,8 @@
       "variations": ["장비: 덤벨", "장비: 원판", "장비: 케이블", "그립: 뉴트럴", "그립: 오버핸드"],
       "isCompound": false,
       "isUnilateral": true,
-      "group": "레이즈"
+      "group": "레이즈",
+      "imagePath": "assets/images/strength/shoulders/front-raise.svg"
     },
     {
       "id": "y_raise",

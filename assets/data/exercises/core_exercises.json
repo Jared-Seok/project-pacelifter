@@ -30,7 +30,8 @@
       "variations": ["유형: 일반", "유형: 바이시클", "유형: 리버스", "자세: 인클라인 벤치", "부하: 맨몸", "부하: 밴드"],
       "isCompound": false,
       "isUnilateral": false,
-      "group": "복근"
+      "group": "복근",
+      "imagePath": "assets/images/strength/core/crunch.svg"
     },
     {
       "id": "leg_raise",
